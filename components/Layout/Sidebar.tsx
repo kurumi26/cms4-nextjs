@@ -13,7 +13,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="d-flex flex-column flex-shrink-0 p-3 bg-light"
+      className="d-flex flex-column flex-shrink-0 p-3 bg-dark text-white"
       style={{ width: '250px', height: '100vh', boxShadow: '0 0 10px rgba(0,0,0,0.1)' }}
     >
       <h1 className="fs-4 fw-bold mb-5">Admin Portal</h1>
@@ -27,17 +27,17 @@ export default function Sidebar() {
         />
         <div>
           <div className="fw-bold">{user.name}</div>
-          <div className="text-muted small">{user.role}</div>
+          <div className="text-white small">{user.role}</div>
         </div>
       </div>
 
       <div className="mb-4">
-        <Link href="/" className="nav-link p-0 text-decoration-none d-flex align-items-center">
+        <Link href="/" className="nav-link text-white p-0 text-decoration-none d-flex align-items-center">
           🌐 View Website
         </Link>
       </div>
 
-      <div className="mb-3 text-uppercase text-muted small fw-bold">
+      <div className="mb-3 text-uppercase text-white small fw-bold">
         CMS
       </div>
 
@@ -56,14 +56,14 @@ export default function Sidebar() {
           <Link
             key={link.href}
             href={link.href}
-            className={`nav-link text-dark mb-2 rounded ${isActive(link.href) ? 'active bg-primary text-white' : ''}`}
+            className={`nav-link text-white mb-2 rounded ${isActive(link.href) ? 'active bg-primary text-white' : ''}`}
           >
             {link.label}
           </Link>
         ))}
       </nav>
 
-      <div className="mt-auto text-muted pt-3 small">
+      <div className="mt-auto text-white pt-3 small">
         © {new Date().getFullYear()}
       </div>
     </aside>
