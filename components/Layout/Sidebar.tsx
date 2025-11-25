@@ -1,18 +1,21 @@
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Sidebar() {
+  const pathname = usePathname();
   const user = {
     name: "Thugtech97",
     role: "Admin",
     avatar: "https://avatars.githubusercontent.com/u/34189306?s=96&v=4"
   };
+  
+  const isActive = (href: string) => pathname === href;
 
   return (
     <aside
       className="d-flex flex-column flex-shrink-0 p-3 bg-light"
       style={{ width: '250px', height: '100vh', boxShadow: '0 0 10px rgba(0,0,0,0.1)' }}
     >
-        
       <h1 className="fs-4 fw-bold mb-5">Admin Portal</h1>
 
       <div className="d-flex align-items-center mb-4">
@@ -39,33 +42,25 @@ export default function Sidebar() {
       </div>
 
       <nav className="nav nav-pills flex-column mb-auto">
-        <Link href="/dashboard" className="nav-link text-dark mb-2 rounded">
-          🏠 Dashboard
-        </Link>
-        <Link href="/pages" className="nav-link text-dark mb-2 rounded">
-          📄 Pages
-        </Link>
-        <Link href="/banners" className="nav-link text-dark mb-2 rounded">
-          🖼️ Banners
-        </Link>
-        <Link href="/files" className="nav-link text-dark mb-2 rounded">
-          📁 Files
-        </Link>
-        <Link href="/menu" className="nav-link text-dark mb-2 rounded">
-          📌 Menu
-        </Link>
-        <Link href="/news" className="nav-link text-dark mb-2 rounded">
-          📰 News
-        </Link>
-        <Link href="/settings" className="nav-link text-dark mb-2 rounded">
-          ⚙️ Settings
-        </Link>
-        <Link href="/users" className="nav-link text-dark mb-2 rounded">
-          👥 Users
-        </Link>
-        <Link href="/account-management" className="nav-link text-dark mb-2 rounded">
-          🔐 Account Management
-        </Link>
+        {[
+          { href: "/dashboard", label: "🏠 Dashboard" },
+          { href: "/pages", label: "📄 Pages" },
+          { href: "/banners", label: "🖼️ Banners" },
+          { href: "/files", label: "📁 Files" },
+          { href: "/menu", label: "📌 Menu" },
+          { href: "/news", label: "📰 News" },
+          { href: "/settings", label: "⚙️ Settings" },
+          { href: "/users", label: "👥 Users" },
+          { href: "/account-management", label: "🔐 Account Management" },
+        ].map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`nav-link text-dark mb-2 rounded ${isActive(link.href) ? 'active bg-primary text-white' : ''}`}
+          >
+            {link.label}
+          </Link>
+        ))}
       </nav>
 
       <div className="mt-auto text-muted pt-3 small">
