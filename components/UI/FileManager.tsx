@@ -1,11 +1,11 @@
+{/**
+
 "use client";
 
 import { useState } from "react";
 import FileManager from "react-file-manager";
 
 export default function FileManagerUI() {
-  {/**
-    
     
   const [files, setFiles] = useState([
     {
@@ -28,9 +28,9 @@ export default function FileManagerUI() {
       size: 1024,
     },
   ]);
-    */}
   return (
     <div>
     </div>
   );
 }
+*/}
