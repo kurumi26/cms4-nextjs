@@ -1,5 +1,3 @@
-import { ReactNode } from "react";
-
 export default function WebsiteSummary() {
   return (
     <div className="card shadow-sm border-0">
