@@ -1,17 +1,17 @@
 import AdminLayout from "@/components/Layout/AdminLayout";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TinyEditor from "@/components/UI/Editor";
-import { createPage } from "@/services/pageService";
+import { getPageById, updatePage } from "@/services/pageService";
 import { useRouter } from "next/router";
 
-const DEFAULT_CONTENT = ``;
-
-export default function CreatePage() {
-  // Page state
+export default function EditPage() {
   const router = useRouter();
+  const { id } = router.query;
+
+  // Page state
   const [title, setTitle] = useState("");
   const [label, setLabel] = useState("");
-  const [content, setContent] = useState(DEFAULT_CONTENT);
+  const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState(true);
 
   // SEO
@@ -19,8 +19,27 @@ export default function CreatePage() {
   const [seoDescription, setSeoDescription] = useState("");
   const [seoKeywords, setSeoKeywords] = useState("");
 
-  // UI
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // ✅ Load page data
+  useEffect(() => {
+    if (!id) return;
+
+    getPageById(Number(id))
+      .then((res) => {
+        const page = res.data;
+
+        setTitle(page.name);
+        setLabel(page.label || "");
+        setContent(page.contents);
+        setVisibility(page.status === "public");
+        setSeoTitle(page.meta_title || "");
+        setSeoDescription(page.meta_description || "");
+        setSeoKeywords(page.meta_keyword || "");
+      })
+      .finally(() => setInitialLoading(false));
+  }, [id]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -31,7 +50,7 @@ export default function CreatePage() {
     try {
       setLoading(true);
 
-      await createPage({
+      await updatePage(Number(id), {
         name: title,
         label: label || undefined,
         contents: content,
@@ -41,14 +60,12 @@ export default function CreatePage() {
         meta_keyword: seoKeywords || undefined,
       });
 
-      alert("Page created successfully");
-
-      // ✅ Redirect to pages list
+      alert("Page updated successfully");
       router.push("/pages");
 
     } catch (error: any) {
       console.error(error);
-      alert(error?.response?.data?.message || "Failed to create page");
+      alert(error?.response?.data?.message || "Failed to update page");
     } finally {
       setLoading(false);
     }
@@ -56,7 +73,7 @@ export default function CreatePage() {
 
   return (
     <div className="container">
-      <h3 className="mb-4">Create a Page</h3>
+      <h3 className="mb-4">Edit Page</h3>
 
       <div className="card mb-4">
         <div className="card-header fw-bold">Page Details</div>
@@ -85,7 +102,7 @@ export default function CreatePage() {
           <div className="mb-3">
             <label className="form-label">Page Content</label>
             <TinyEditor
-              initialValue={content} // ✅ default content shown
+              initialValue={content}
               onChange={(html: string) => setContent(html)}
             />
           </div>
@@ -146,13 +163,13 @@ export default function CreatePage() {
           onClick={handleSave}
           disabled={loading}
         >
-          {loading ? "Saving..." : "Save Page"}
+          {loading ? "Saving..." : "Update Page"}
         </button>
 
         <button
           className="btn btn-outline-secondary"
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => router.back()}
         >
           Cancel
         </button>
@@ -161,4 +178,4 @@ export default function CreatePage() {
   );
 }
 
-CreatePage.Layout = AdminLayout;
+EditPage.Layout = AdminLayout;

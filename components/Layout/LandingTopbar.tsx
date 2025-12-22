@@ -21,23 +21,18 @@ export default function LandingTopbar() {
         <div className="collapse navbar-collapse" id="landingNavbar">
           <ul className="navbar-nav ms-auto mb-2 mb-lg-0 gap-lg-3">
             <li className="nav-item">
-              <Link href="#features" className="nav-link">
-                Features
+              <Link href="/public/home" className="nav-link">
+                Home
               </Link>
             </li>
             <li className="nav-item">
-              <Link href="#how-it-works" className="nav-link">
-                How It Works
+              <Link href="/public/about" className="nav-link">
+                About
               </Link>
             </li>
             <li className="nav-item">
               <Link href="#pricing" className="nav-link">
                 Pricing
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link href="/login" className="btn btn-outline-primary ms-lg-2">
-                Login
               </Link>
             </li>
           </ul>

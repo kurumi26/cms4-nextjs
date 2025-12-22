@@ -15,7 +15,7 @@ export default function TinyEditor({ initialValue, onChange }: TinyEditorProps) 
     <Editor
       apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
       onInit={(evt, editor) => (editorRef.current = editor)}
-      initialValue={initialValue || "<p>Start typing...</p>"}
+      initialValue={initialValue || "<p>Write your content here...</p>"}
       init={{
         height: 1000,
         menubar: true,

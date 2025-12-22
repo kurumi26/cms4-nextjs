@@ -1,8 +1,13 @@
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
+import { useEffect, useState } from "react";
+import { getPages } from "@/services/pageService";
+import { useRouter } from "next/router";
+import { loading } from "@/plugins/loading";
 
 interface PageRow {
+  id: number;
   title: string;
   url: string;
   label: string;
@@ -11,29 +16,27 @@ interface PageRow {
 }
 
 export default function ManagePages() {
-  const pages: PageRow[] = [
-    {
-      title: "Forms",
-      url: "https://healthpartnersdental.com/accreditation/forms",
-      label: "Forms",
-      visibility: "Published",
-      lastModified: "Mar 14, 2025 3:15 PM",
-    },
-    {
-      title: "Update Accreditation",
-      url: "https://healthpartnersdental.com/accreditation/update-accreditation",
-      label: "Update Accreditation",
-      visibility: "Published",
-      lastModified: "Mar 14, 2025 3:12 PM",
-    },
-    {
-      title: "Requirements",
-      url: "https://healthpartnersdental.com/accreditation/requirements",
-      label: "Requirements",
-      visibility: "Published",
-      lastModified: "Mar 14, 2025 3:11 PM",
-    },
-  ];
+  const router = useRouter();
+  const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL!;
+  const [pages, setPages] = useState<PageRow[]>([]);
+  const [isLoading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const fetchPages = async () => {
+    try {
+      setLoading(true);
+      const res = await getPages({ search });
+      setPages(res.data.data);
+    } catch (error) {
+      console.error("Failed to load pages", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPages();
+  }, [search]);
 
   const columns: Column<PageRow>[] = [
     {
@@ -44,18 +47,22 @@ export default function ManagePages() {
     {
       key: "title",
       header: "Title",
-      render: (row) => (
+      render: (row: any) => (
         <div>
           <a
-            href={row.url}
+            href={`/public/${row.slug}`}
             target="_blank"
             rel="noreferrer"
             className="text-primary fw-bold"
           >
-            {row.title}
+            {row.label}
           </a>
-          <div style={{ fontSize: "0.8rem", color: "#6c757d" }}>{row.url}</div>
+
+          <div style={{ fontSize: "0.8rem", color: "#6c757d" }}>
+            {FRONTEND_URL}/public/{row.slug}
+          </div>
         </div>
+
       ),
     },
     { key: "label", header: "Label" },
@@ -64,14 +71,25 @@ export default function ManagePages() {
     {
       key: "options",
       header: "Options",
-      render: () => (
+      render: (row: any) => (
         <>
-          <button className="btn btn-link p-0 me-2 text-secondary">
+          {/* View */}
+          <button
+            className="btn btn-link p-0 me-2 text-secondary"
+            onClick={() => window.open(`/public/${row.slug}`, "_blank")}
+          >
             <i className="fas fa-eye"></i>
           </button>
-          <button className="btn btn-link p-0 me-2 text-secondary">
+
+          {/* Edit */}
+          <button
+            className="btn btn-link p-0 me-2 text-secondary"
+            onClick={() => router.push(`/pages/edit/${row.id}`)}
+          >
             <i className="fas fa-edit"></i>
           </button>
+
+          {/* Settings (future) */}
           <button className="btn btn-link p-0 text-secondary">
             <i className="fas fa-cogs"></i>
           </button>
@@ -84,9 +102,17 @@ export default function ManagePages() {
     <div className="container">
       <h3 className="mb-3">Manage Pages</h3>
 
-      <SearchBar placeholder="Search by Title" />
+      <SearchBar
+        placeholder="Search by Title"
+        onChange={(value: string) => setSearch(value)}
+      />
 
-      <DataTable<PageRow> columns={columns} data={pages} itemsPerPage={10} />
+      <DataTable<PageRow>
+        columns={columns}
+        data={pages}
+        loading={isLoading}
+        itemsPerPage={10}
+      />
     </div>
   );
 }
