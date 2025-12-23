@@ -40,8 +40,8 @@ axiosInstance.interceptors.response.use(
 
     if (error.response?.status === 401) {
       // optional auto-logout
-      // localStorage.removeItem("auth_token");
-      // window.location.href = "/";
+      localStorage.removeItem("auth_token");
+      window.location.href = "/";
     }
 
     return Promise.reject(error);
