@@ -1,4 +1,4 @@
-import { axiosInstance, setCsrfCookie } from "./axios";
+import { axiosInstance } from "./axios";
 
 export interface CreatePagePayload {
   name: string;
@@ -14,7 +14,6 @@ export interface CreatePagePayload {
 }
 
 export const createPage = async (payload: CreatePagePayload) => {
-  await setCsrfCookie(); // Sanctum CSRF
 
   return axiosInstance.post("/pages", payload);
 };

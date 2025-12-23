@@ -6,5 +6,6 @@ export interface DashboardStats {
 }
 
 export const getDashboardStats = async () => {
+  //await setCsrfCookie(); // MUST succeed
   return axiosInstance.get<{ data: DashboardStats }>("/dashboard/stats");
 };
