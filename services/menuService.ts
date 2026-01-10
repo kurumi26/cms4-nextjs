@@ -16,7 +16,7 @@ export interface MenuRow {
   id: number;
   name: string;
   is_active: boolean;
-  updated_at: string;
+  updated_at_formatted: string;
 }
 
 interface GetMenusParams {

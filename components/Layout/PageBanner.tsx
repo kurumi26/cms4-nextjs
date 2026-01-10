@@ -64,7 +64,7 @@ export default function PageBanner({
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(0,0,0,0.35)",
+            background: "rgba(0,0,0,0.40)",
             zIndex: 1,
           }}
         />
@@ -75,7 +75,7 @@ export default function PageBanner({
           style={{
             position: "relative",
             zIndex: 2,
-            minHeight: "350px",
+            minHeight: "400px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",

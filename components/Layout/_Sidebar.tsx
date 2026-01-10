@@ -84,8 +84,8 @@ export default function Sidebar() {
       label: "🔐 Account Management", 
       href: "/account-management",
       children: [
-        { label: "• Roles", href: "/account-management" },
-        { label: "• Access Rights", href: "" },
+        { label: "• Roles", href: "/account-management/roles" },
+        { label: "• Access Rights", href: "/account-management/access_rights" },
       ]
     }
   ];

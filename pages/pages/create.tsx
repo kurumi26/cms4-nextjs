@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { getAlbums } from "@/services/albumService";
 import { toast } from "@/lib/toast";
+import AiAssistant from "@/components/AI/AiAssistant";
 
 const DEFAULT_CONTENT = ``;
 
@@ -60,9 +61,8 @@ export default function CreatePage() {
   };
 
   useEffect(() => {
-    getAlbums({ page: 1, per_page: 1000 }) // big enough for dropdown
+    getAlbums({ page: 1, per_page: 1000 })
       .then((res) => {
-        // adjust depending on your API structure
         setAlbums(res.data.data ?? res.data);
       })
       .catch(() => setAlbums([]));
@@ -117,6 +117,10 @@ export default function CreatePage() {
 
           <div className="mb-3">
             <label className="form-label">Page Content</label>
+            <AiAssistant
+              content={content}
+              onApply={(html) => setContent(html)}
+            />
             <TinyEditor
               value={content}
               onChange={setContent}

@@ -67,7 +67,7 @@ export default function MainBanner({ album }: MainBannerProps) {
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(0,0,0,0.10)",
+          background: "rgba(0,0,0,0.40)",
           zIndex: 1,
         }}
       />
@@ -90,7 +90,7 @@ export default function MainBanner({ album }: MainBannerProps) {
         )}
 
         {banner.button_text && banner.url && (
-          <a href={banner.url} className="btn btn-primary">
+          <a href={banner.url} target="_blank" className="btn btn-primary">
             {banner.button_text}
           </a>
         )}

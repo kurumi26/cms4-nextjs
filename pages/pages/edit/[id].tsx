@@ -5,6 +5,7 @@ import { getPageById, updatePage } from "@/services/pageService";
 import { useRouter } from "next/router";
 import { getAlbums } from "@/services/albumService";
 import { toast } from "@/lib/toast";
+import AiAssistant from "@/components/AI/AiAssistant";
 
 function EditPage() {
   const router = useRouter();
@@ -138,6 +139,10 @@ function EditPage() {
 
           <div className="mb-3">
             <label className="form-label">Page Content</label>
+            <AiAssistant
+              content={content}
+              onApply={(html) => setContent(html)}
+            />
             <TinyEditor
               value={content}
               onChange={setContent}

@@ -170,3 +170,18 @@ export const updateArticle = async (
 
   return res.data;
 };
+
+
+
+// news page endpoints
+export const getPublicArticles = (params?: any) =>
+  axiosInstance.get("/public-articles", { params });
+
+export const getCategories = () =>
+  axiosInstance.get("/public-article-categories");
+
+export const getArchive = () =>
+  axiosInstance.get("/public-articles-archive");
+
+export const getArticleBySlug = (slug: string) =>
+  axiosInstance.get(`/public-articles/${slug}`);

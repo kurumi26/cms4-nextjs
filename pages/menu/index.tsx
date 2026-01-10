@@ -88,7 +88,7 @@ function ManageMenus() {
       ),
     },
     {
-      key: "updated_at",
+      key: "updated_at_formatted",
       header: "Date Modified",
     },
     {

@@ -59,7 +59,7 @@ function ManageNews() {
         is_featured: !!item.is_featured,
         visibility:
           item.status === "published" ? "Published" : "Private",
-        updated: new Date(item.updated_at).toLocaleString(),
+        updated: item.updated_at_formatted,
       })),
     [articles]
   );

@@ -1,5 +1,9 @@
 import { useState, ChangeEvent } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
+import { useEffect } from "react";
+import { websiteService } from "@/services/websiteService";
+import { toast } from "@/lib/toast";
+import TinyEditor from "@/components/UI/Editor";
 
 type TabKey = "website" | "contact" | "social" | "privacy";
 
@@ -18,6 +22,12 @@ function WebsiteSettingsPage() {
   const [googleMap, setGoogleMap] = useState("");
   const [recaptcha, setRecaptcha] = useState("");
 
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+
   /* =======================
      Contact tab state
   ======================= */
@@ -26,6 +36,38 @@ function WebsiteSettingsPage() {
   const [fax, setFax] = useState("");
   const [telephone, setTelephone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+
+  const [privacyTitle, setPrivacyTitle] = useState("");
+  const [privacyPopup, setPrivacyPopup] = useState("");
+  const [privacyContent, setPrivacyContent] = useState("");
+
+  type SocialRow = {
+    name: string;
+    media_account: string;
+  };
+
+  const [socials, setSocials] = useState<SocialRow[]>([
+    { name: "", media_account: "" },
+  ]);
+
+  const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+      setLogoName(file.name);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFaviconChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setFaviconFile(file);
+      setFaviconName(file.name);
+      setFaviconPreview(URL.createObjectURL(file));
+    }
+  };
+
 
   /* =======================
      Handlers
@@ -38,6 +80,157 @@ function WebsiteSettingsPage() {
       setter(e.target.files[0].name);
     }
   };
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const s = await websiteService.getSettings();
+
+      setCompanyName(s.company_name);
+      setWebsiteName(s.website_name);
+      setCopyright(s.copyright);
+      setAnalytics(s.google_analytics);
+      setGoogleMap(s.google_map);
+      setRecaptcha(s.google_recaptcha_sitekey);
+
+      setAddress(s.company_address);
+      setMobile(s.mobile_no);
+      setFax(s.fax_no);
+      setTelephone(s.tel_no);
+      setContactEmail(s.email);
+
+      setPrivacyTitle(s.data_privacy_title);
+      setPrivacyPopup(s.data_privacy_popup_content);
+      setPrivacyContent(s.data_privacy_content);
+
+      if (s.company_logo) {
+        setLogoPreview(
+          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.company_logo}`
+        );
+        setLogoName(s.company_logo);
+      }
+
+      if (s.website_favicon) {
+        setFaviconPreview(
+          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.website_favicon}`
+        );
+        setFaviconName(s.website_favicon);
+      }
+
+    };
+    const loadSocials = async () => {
+      try {
+        const res = await websiteService.getSocials();
+        if (res.data.length > 0) {
+          setSocials(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load social media accounts", err);
+      }
+    };
+
+    loadSocials();
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview?.startsWith("blob:")) URL.revokeObjectURL(logoPreview);
+      if (faviconPreview?.startsWith("blob:")) URL.revokeObjectURL(faviconPreview);
+    };
+  }, [logoPreview, faviconPreview]);
+
+
+  const saveWebsite = async () => {
+    try {
+      const fd = new FormData();
+
+      fd.append("company_name", companyName);
+      fd.append("website_name", websiteName);
+      fd.append("copyright", copyright);
+      fd.append("google_analytics", analytics);
+      fd.append("google_map", googleMap);
+      fd.append("google_recaptcha_sitekey", recaptcha);
+
+      if (logoFile) fd.append("company_logo", logoFile);
+      if (faviconFile) fd.append("website_favicon", faviconFile);
+
+      await websiteService.updateWebsite(fd);
+
+      toast.success("Website settings saved");
+    } catch (err: any) {
+      console.error("Failed to save website settings", err);
+
+      toast.error(
+        err?.response?.data?.message ||
+          "Failed to save website settings. Please try again."
+      );
+    }
+  };
+
+  const handleSocialChange = (
+    index: number,
+    field: keyof SocialRow,
+    value: string
+  ) => {
+    const updated = [...socials];
+    updated[index][field] = value;
+    setSocials(updated);
+  };
+
+  const addSocialRow = () => {
+    setSocials([...socials, { name: "", media_account: "" }]);
+  };
+
+  const removeSocialRow = (index: number) => {
+    setSocials(socials.filter((_, i) => i !== index));
+  };
+
+  const handleSaveSocials = async () => {
+    try {
+      await websiteService.updateSocials(
+        socials.filter(
+          (s) => s.name && s.media_account
+        )
+      );
+      toast.success("Social media accounts saved successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save social media accounts");
+    }
+  };
+
+
+  const handleSaveContact = async () => {
+    try {
+      await websiteService.updateContact({
+        company_address: address,
+        mobile_no: mobile,
+        fax_no: fax,
+        tel_no: telephone,
+        email: contactEmail,
+      });
+
+      toast.success("Contact settings saved successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save contact settings");
+    }
+  };
+
+  const handleSavePrivacy = async () => {
+    try {
+      await websiteService.updatePrivacy({
+        data_privacy_title: privacyTitle,
+        data_privacy_popup_content: privacyPopup,
+        data_privacy_content: privacyContent,
+      });
+
+      toast.success("Data privacy settings saved successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save data privacy settings");
+    }
+  };
+
+
+
 
   return (
     <div className="container">
@@ -117,6 +310,23 @@ function WebsiteSettingsPage() {
 
               <div className="mb-3">
                 <label className="form-label">Logo</label>
+
+                {logoPreview && (
+                  <div className="mb-2">
+                    <img
+                      src={logoPreview}
+                      alt="Website Logo"
+                      style={{
+                        maxHeight: 100,
+                        maxWidth: "100%",
+                        border: "1px solid #e1e5ee",
+                        padding: 6,
+                        borderRadius: 4,
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div className="input-group">
                   <input className="form-control" value={logoName} readOnly />
                   <label className="input-group-text">
@@ -124,10 +334,12 @@ function WebsiteSettingsPage() {
                     <input
                       type="file"
                       hidden
-                      onChange={(e) => handleFileName(e, setLogoName)}
+                      accept=".png,.jpg,.jpeg,.svg"
+                      onChange={handleLogoChange}
                     />
                   </label>
                 </div>
+
                 <small className="text-muted">
                   PNG, JPG, SVG • Max 1MB
                 </small>
@@ -135,6 +347,23 @@ function WebsiteSettingsPage() {
 
               <div className="mb-3">
                 <label className="form-label">Favicon</label>
+
+                {faviconPreview && (
+                  <div className="mb-2">
+                    <img
+                      src={faviconPreview}
+                      alt="Website Favicon"
+                      style={{
+                        height: 48,
+                        width: 48,
+                        border: "1px solid #e1e5ee",
+                        padding: 6,
+                        borderRadius: 4,
+                      }}
+                    />
+                  </div>
+                )}
+
                 <div className="input-group">
                   <input className="form-control" value={faviconName} readOnly />
                   <label className="input-group-text">
@@ -142,10 +371,12 @@ function WebsiteSettingsPage() {
                     <input
                       type="file"
                       hidden
-                      onChange={(e) => handleFileName(e, setFaviconName)}
+                      accept=".ico,.png"
+                      onChange={handleFaviconChange}
                     />
                   </label>
                 </div>
+
                 <small className="text-muted">
                   128×128 ICO • Max 100KB
                 </small>
@@ -181,7 +412,13 @@ function WebsiteSettingsPage() {
                 />
               </div>
 
-              <button className="btn btn-primary">Save Settings</button>
+              <button
+                className="btn btn-primary"
+                onClick={saveWebsite}
+              >
+                Save Settings
+              </button>
+
             </div>
           )}
 
@@ -236,7 +473,12 @@ function WebsiteSettingsPage() {
                 />
               </div>
 
-              <button className="btn btn-primary">Save Settings</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveContact}
+              >
+                Save Settings
+              </button>
             </div>
           )}
 
@@ -249,22 +491,58 @@ function WebsiteSettingsPage() {
                 Add your social media links
               </p>
 
-              <div className="d-flex gap-2 mb-2">
-                <select className="form-control">
-                  <option>Facebook</option>
-                  <option>Twitter</option>
-                  <option>Instagram</option>
-                  <option>Youtube</option>
-                  <option>LinkedIn</option>
-                </select>
-                <input className="form-control" placeholder="URL" />
-                <button className="btn btn-outline-danger">×</button>
-              </div>
+              {socials.map((social, index) => (
+                <div className="d-flex gap-2 mb-2" key={index}>
+                  <select
+                    className="form-control"
+                    value={social.name}
+                    onChange={(e) =>
+                      handleSocialChange(index, "name", e.target.value)
+                    }
+                  >
+                    <option value="">Choose</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="twitter">Twitter</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="youtube">Youtube</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="google">Google</option>
+                  </select>
 
-              <button className="btn btn-outline-primary mb-3">+ Add</button>
+                  <input
+                    className="form-control"
+                    placeholder="URL"
+                    value={social.media_account}
+                    onChange={(e) =>
+                      handleSocialChange(index, "media_account", e.target.value)
+                    }
+                  />
+
+                  <button
+                    className="btn btn-outline-danger"
+                    onClick={() => removeSocialRow(index)}
+                    disabled={socials.length === 1}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              <button
+                className="btn btn-outline-primary mb-3"
+                onClick={addSocialRow}
+              >
+                + Add
+              </button>
 
               <br />
-              <button className="btn btn-primary">Save Settings</button>
+
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveSocials}
+              >
+                Save Settings
+              </button>
             </div>
           )}
 
@@ -272,27 +550,40 @@ function WebsiteSettingsPage() {
              DATA PRIVACY TAB
           ======================= */}
           {activeTab === "privacy" && (
-            <div style={{ maxWidth: 800 }}>
+            <div>
               <div className="mb-3">
                 <label className="form-label">Page Title *</label>
-                <input className="form-control" />
+                <input
+                  className="form-control"
+                  value={privacyTitle}
+                  onChange={(e) => setPrivacyTitle(e.target.value)}
+                />
               </div>
 
               <div className="mb-3">
                 <label className="form-label">Pop-up Content *</label>
-                <textarea rows={3} className="form-control" />
+                <textarea
+                  rows={3}
+                  className="form-control"
+                  value={privacyPopup}
+                  onChange={(e) => setPrivacyPopup(e.target.value)}
+                />
               </div>
 
               <div className="mb-4">
                 <label className="form-label">Content *</label>
-                <textarea
-                  rows={8}
-                  className="form-control"
-                  placeholder="Rich text editor goes here"
+                <TinyEditor
+                  value={privacyContent}
+                  onChange={setPrivacyContent}
                 />
               </div>
 
-              <button className="btn btn-primary">Save Settings</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSavePrivacy}
+              >
+                Save Settings
+              </button>
             </div>
           )}
         </div>
