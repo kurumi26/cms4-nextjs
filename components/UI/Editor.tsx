@@ -19,7 +19,7 @@ export default function TinyEditor({ value, onChange }: TinyEditorProps) {
       init={{
         height: 1000,
         menubar: true,
-
+        content_css: "/css/custom.css",
         plugins: [
           "directionality",
           "advlist",
