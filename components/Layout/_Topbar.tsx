@@ -6,7 +6,7 @@ export default function LandingTopbar() {
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
       <div className="container">
-        <Link href="/" className="navbar-brand fw-bold">
+        <Link href="/public/home" className="navbar-brand fw-bold">
           Cms5
         </Link>
 

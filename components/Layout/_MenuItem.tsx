@@ -11,10 +11,16 @@ export default function MenuItem({
   const href = item.target;
   const isInternal = item.type === "page";
 
-  const isCurrent =
-    isInternal &&
-    (currentPath === href ||
-      currentPath.startsWith(href + "/"));
+  const normalizePath = (url: string) => {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return url;
+    }
+  };
+
+  const hrefPath = normalizePath(href);
+  const isCurrent = isInternal && (currentPath === hrefPath || currentPath.startsWith(hrefPath + "/"));
 
   return (
     <li className={`menu-item ${isCurrent ? "current" : ""}`}>
