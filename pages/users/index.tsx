@@ -3,8 +3,9 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
 import PageSizeSelector from "@/components/UI/PageSizeSelector";
-import { getUsers, UserRow } from "@/services/userService";
+import { getUsers, toggleUserActive, UserRow } from "@/services/userService";
 import { useRouter } from "next/router";
+import { toast } from "@/lib/toast";
 
 function ManageUsers() {
   const router = useRouter();
@@ -16,37 +17,136 @@ function ManageUsers() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<string>("asc");
+  const [showInactiveOnly, setShowInactiveOnly] = useState<boolean>(false);
 
-  const fetchUsers = async () => {
-  try {
-    setLoading(true);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-    const res = await getUsers({
-      search,
-      page: currentPage,
-      per_page: perPage,
+  const sortRowsClientSide = (rows: UserRow[], sortByKey: string, order: string) => {
+    const direction = String(order).toLowerCase() === "asc" ? 1 : -1;
+    const copy = [...rows];
+
+    const getName = (r: UserRow) => (r?.name ?? "").toString().toLowerCase();
+    const getEmail = (r: UserRow) => (r?.email ?? "").toString().toLowerCase();
+    const getModifiedMs = (r: any) => {
+      const raw = r?.updated_at ?? r?.updated_at_formatted ?? r?.updated;
+      if (!raw) return 0;
+      const ms = new Date(raw).getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    };
+
+    copy.sort((a: any, b: any) => {
+      if (sortByKey === "email") {
+        const av = getEmail(a);
+        const bv = getEmail(b);
+        if (av < bv) return -1 * direction;
+        if (av > bv) return 1 * direction;
+        return 0;
+      }
+      if (sortByKey === "updated_at") {
+        return (getModifiedMs(a) - getModifiedMs(b)) * direction;
+      }
+
+      const av = getName(a);
+      const bv = getName(b);
+      if (av < bv) return -1 * direction;
+      if (av > bv) return 1 * direction;
+      return 0;
     });
 
-    // ✅ MUST BE ARRAY
-    setUsers(res.data.data);
+    return copy;
+  };
 
-    // ✅ pagination meta
-    setTotalPages(res.meta.last_page);
-  } finally {
-    setLoading(false);
-  }
-};
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+
+      const res = await getUsers({
+        search,
+        page: currentPage,
+        per_page: perPage,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        // backend may support this; UI also enforces client-side below
+        status: showInactiveOnly ? "Inactive" : undefined,
+      });
+
+      const apiRows: UserRow[] = Array.isArray(res?.data?.data) ? res.data.data : [];
+
+      const filteredRows = showInactiveOnly
+        ? apiRows.filter((u) => String(u.status ?? "").toLowerCase() !== "active")
+        : apiRows;
+
+      const sortedRows = sortRowsClientSide(filteredRows, sortBy, sortOrder);
+
+      setUsers(sortedRows);
+      setTotalPages(res?.meta?.last_page ?? 1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isActiveUser = (row: UserRow) => String(row.status ?? "").toLowerCase() === "active";
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedIds(users.map((u) => u.id));
+    else setSelectedIds([]);
+  };
+
+  const toggleRow = (id: number, checked: boolean) => {
+    setSelectedIds((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)));
+  };
+
+  const bulkSetActive = async (active: boolean) => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map((id) => toggleUserActive(id, active)));
+      toast.success(`${active ? "Activated" : "Deactivated"} ${selectedIds.length} user(s)`);
+      setSelectedIds([]);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update selected users");
+    }
+  };
+
+  const handleToggleActive = async (row: UserRow) => {
+    try {
+      await toggleUserActive(row.id, !isActiveUser(row));
+      toast.success(`User ${!isActiveUser(row) ? "activated" : "deactivated"}`);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update user status");
+    }
+  };
 
   useEffect(() => {
     const timeout = setTimeout(fetchUsers, 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly]);
 
   const columns: Column<UserRow>[] = [
     {
       key: "select",
-      header: <input type="checkbox" />,
-      render: () => <input type="checkbox" />,
+      header: (
+        <input
+          type="checkbox"
+          checked={users.length > 0 && users.every((u) => selectedIds.includes(u.id))}
+          onChange={(e) => toggleSelectAll(e.target.checked)}
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={(e) => toggleRow(row.id, e.target.checked)}
+        />
+      ),
     },
     {
       key: "name",
@@ -77,12 +177,37 @@ function ManageUsers() {
       key: "options",
       header: "Options",
       render: (row) => (
-        <button
-          className="btn btn-link p-0 text-secondary"
-          onClick={() => router.push(`/users/edit/${row.id}`)}
-        >
-          <i className="fas fa-edit" />
-        </button>
+        <>
+          <button
+            className="btn btn-link p-0 me-2 text-secondary"
+            title="View"
+            onClick={() => router.push(`/users/view/${row.id}`)}
+            type="button"
+          >
+            <i className="fas fa-eye" />
+          </button>
+
+          <button
+            className="btn btn-link p-0 me-2 text-secondary"
+            title="Edit"
+            onClick={() => router.push(`/users/edit/${row.id}`)}
+            type="button"
+          >
+            <i className="fas fa-edit" />
+          </button>
+
+          <button
+            className="btn btn-link p-0"
+            title={isActiveUser(row) ? "Deactivate" : "Activate"}
+            onClick={() => handleToggleActive(row)}
+            style={{
+              color: isActiveUser(row) ? "#198754" : "#6c757d",
+            }}
+            type="button"
+          >
+            <i className={`fas ${isActiveUser(row) ? "fa-toggle-on" : "fa-toggle-off"}`} />
+          </button>
+        </>
       ),
     },
   ];
@@ -98,6 +223,38 @@ function ManageUsers() {
           setSearch(v);
           setCurrentPage(1);
         }}
+        actionsMenu={(
+          <>
+            <button
+              className="list-group-item list-group-item-action"
+              onClick={() => bulkSetActive(true)}
+              type="button"
+              disabled={selectedIds.length === 0 || loading}
+            >
+              Activate
+            </button>
+            <button
+              className="list-group-item list-group-item-action"
+              onClick={() => bulkSetActive(false)}
+              type="button"
+              disabled={selectedIds.length === 0 || loading}
+            >
+              Deactivate
+            </button>
+          </>
+        )}
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sInactiveOnly, perPage: sPerPage }) => {
+          setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
+          setSortOrder(sOrder);
+          setShowInactiveOnly(sInactiveOnly);
+          setPerPage(sPerPage);
+          setCurrentPage(1);
+        }}
+        initialSortBy={sortBy === "updated_at" ? "modified" : sortBy === "name" ? "title" : sortBy}
+        initialSortOrder={sortOrder}
+        initialPerPage={perPage}
+        initialShowDeleted={showInactiveOnly}
+        showDeletedLabel="Show inactive only"
       />
 
       <PageSizeSelector

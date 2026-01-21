@@ -13,6 +13,9 @@ interface SearchBarProps {
   initialSortOrder?: string;
   initialShowDeleted?: boolean;
   initialPerPage?: number;
+  // optional show-deleted toggle control
+  showDeletedToggle?: boolean;
+  showDeletedLabel?: string;
 }
 
 export default function SearchBar({
@@ -25,6 +28,8 @@ export default function SearchBar({
   initialSortOrder,
   initialShowDeleted,
   initialPerPage,
+  showDeletedToggle = true,
+  showDeletedLabel = "Show deleted only (Trash)",
 }: SearchBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -155,10 +160,12 @@ export default function SearchBar({
                 </div>
               </div>
 
-              <div className="form-check mb-2">
-                <input className="form-check-input" type="checkbox" id="showDeleted" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
-                <label className="form-check-label" htmlFor="showDeleted">Show deleted only (Trash)</label>
-              </div>
+              {showDeletedToggle && (
+                <div className="form-check mb-2">
+                  <input className="form-check-input" type="checkbox" id="showDeleted" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+                  <label className="form-check-label" htmlFor="showDeleted">{showDeletedLabel}</label>
+                </div>
+              )}
 
               <div className="mb-3">
                 <small className="text-muted">Items displayed</small>

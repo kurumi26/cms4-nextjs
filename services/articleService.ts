@@ -125,11 +125,121 @@ interface GetArticlesParams {
   search?: string;
   page?: number;
   per_page?: number;
+  sort_by?: string;
+  sort_order?: string;
+  show_deleted?: boolean | number;
+  with_trashed?: boolean | number;
+  only_trashed?: boolean | number;
+  only_deleted?: boolean | number;
 }
 
 export const getArticles = async (params: GetArticlesParams) => {
   const res = await axiosInstance.get("/articles", { params });
   return res.data; // 🔥 RAW Laravel pagination
+};
+
+export const deleteArticle = (id: number) => {
+  return axiosInstance.delete(`/articles/${id}`);
+};
+
+export const postMethodDeleteArticle = (id: number) => {
+  return axiosInstance.post(`/articles/${id}`, { _method: "DELETE" });
+};
+
+export const postDeleteArticleByPayload = (id: number) => {
+  return axiosInstance.post(`/articles/delete`, { id });
+};
+
+export const updateArticleStatus = async (id: number, status: "published" | "private" | "draft") => {
+  // Backend reports: PATCH not supported for /api/articles/:id
+  // Prefer POST-based conventions and only fall back to a full update when required.
+  const postJson = () => axiosInstance.post(`/articles/${id}`, { status });
+  const postJsonMethodPut = () => axiosInstance.post(`/articles/${id}`, { _method: "PUT", status });
+  const postForm = () => {
+    const fd = new FormData();
+    fd.append("status", status);
+    return axiosInstance.post(`/articles/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+  };
+  const postFormMethodPut = () => {
+    const fd = new FormData();
+    fd.append("_method", "PUT");
+    fd.append("status", status);
+    return axiosInstance.post(`/articles/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+  };
+
+  const attempts: Array<() => Promise<any>> = [postJson, postJsonMethodPut, postForm, postFormMethodPut];
+
+  let lastErr: any;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (err: any) {
+      lastErr = err;
+      const http = err?.response?.status;
+      // If it is a validation error (common when backend requires full article payload),
+      // fall through to the full-update fallback below.
+      if (http && http !== 422) {
+        // try next attempt
+      }
+    }
+  }
+
+  // Fallback: some backends only allow updating articles via the full update form.
+  // We'll fetch the article, then resubmit with the same fields + new status.
+  try {
+    const existing: any = await getArticle(id);
+
+    const title = existing?.name ?? existing?.title;
+    const date = existing?.date;
+    const categoryId = existing?.category_id ?? existing?.category?.id;
+    const content = existing?.contents ?? existing?.content;
+    const teaser = existing?.teaser;
+    const isFeatured = !!(existing?.is_featured ?? existing?.featured);
+
+    if (!title || !date || !categoryId || !content || typeof teaser === "undefined") {
+      throw lastErr;
+    }
+
+    return await updateArticle(id, {
+      title,
+      date,
+      category_id: Number(categoryId),
+      content,
+      teaser,
+      status,
+      is_featured: isFeatured,
+      meta_title: existing?.meta_title,
+      meta_keyword: existing?.meta_keyword,
+      meta_description: existing?.meta_description,
+    });
+  } catch (err) {
+    throw lastErr;
+  }
+};
+
+export const restoreArticle = async (id: number) => {
+  const attempts: Array<() => Promise<any>> = [
+    () => axiosInstance.post(`/articles/${id}/restore`),
+    () => axiosInstance.post(`/articles/restore/${id}`),
+    () => axiosInstance.patch(`/articles/${id}/restore`),
+    () => axiosInstance.put(`/articles/${id}/restore`),
+    () => axiosInstance.post(`/articles/${id}/restore`, { _method: "PATCH" }),
+    () => axiosInstance.post(`/articles/restore`, { id }),
+  ];
+
+  let lastErr: any;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (err: any) {
+      lastErr = err;
+      const status = err?.response?.status;
+      if (status === 400 || status === 401 || status === 403 || status === 404 || status === 422) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
 };
 
 
