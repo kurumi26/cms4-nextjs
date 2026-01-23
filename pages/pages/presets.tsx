@@ -5,6 +5,8 @@ import {
   LayoutPreset,
 } from "@/services/layoutPresetService";
 import { toast } from "@/lib/toast";
+import { Modal } from "bootstrap";
+
 
 export default function FileManagerPage() {
   const [presets, setPresets] = useState<LayoutPreset[]>([]);
@@ -89,8 +91,8 @@ export default function FileManagerPage() {
       setThumbnailPreview(null);
       loadPresets();
 
-      (window as any).bootstrap.Modal.getInstance(
-        document.getElementById("addPresetModal")
+      Modal.getInstance(
+        document.getElementById("addPresetModal")!
       )?.hide();
     } catch (e) {
       toast.error("Something went wrong.");
@@ -101,9 +103,10 @@ export default function FileManagerPage() {
     setDeleteId(preset.id);
     setDeleteName(preset.name);
 
-    const modal = new (window as any).bootstrap.Modal(
-      document.getElementById("deletePresetModal")
-    );
+    const el = document.getElementById("deletePresetModal");
+    if (!el) return;
+
+    const modal = new Modal(el);
     modal.show();
   };
 
@@ -134,14 +137,15 @@ export default function FileManagerPage() {
     setForm({
       name: preset.name,
       category: preset.category || "",
-      thumbnail: null, // user can optionally replace
+      thumbnail: null,
       content: preset.content,
       is_active: preset.is_active,
     });
 
-    const modal = new (window as any).bootstrap.Modal(
-      document.getElementById("addPresetModal")
-    );
+    const el = document.getElementById("addPresetModal");
+    if (!el) return;
+
+    const modal = new Modal(el);
     modal.show();
   };
 
