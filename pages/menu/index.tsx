@@ -330,6 +330,9 @@ function ManageMenus() {
     {
       key: "name",
       header: "Menu Name",
+      sortable: true,
+      sortField: "name",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className={showDeleted ? "fw-bold text-decoration-line-through text-muted" : "fw-bold text-primary"}>
           {row.name}
@@ -344,6 +347,9 @@ function ManageMenus() {
     {
       key: "is_active",
       header: "Menu Status",
+      sortable: true,
+      sortField: "is_active",
+      defaultSortOrder: "desc",
       render: (row) => (
         <span
           className={`badge ${
@@ -357,6 +363,10 @@ function ManageMenus() {
     {
       key: "updated_at_formatted",
       header: "Date Modified",
+      sortable: true,
+      sortField: "updated_at",
+      sortLabel: "Date Modified",
+      defaultSortOrder: "desc",
     },
     {
       key: "options",
@@ -484,6 +494,13 @@ function ManageMenus() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortBy={sortBy}
+        sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
+        onSortChange={(nextBy, nextOrder) => {
+          setSortBy(nextBy);
+          setSortOrder(nextOrder);
+          setCurrentPage(1);
+        }}
       />
 
       {/* Small anchored dropdown menu (near cogs icon) */}

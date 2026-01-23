@@ -44,6 +44,45 @@ export default function ManagePages() {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
 
+  const applySort = (next: { sortBy?: string; sortOrder?: string }) => {
+    const nextSortBy = next.sortBy ?? sortBy;
+    const nextSortOrder = next.sortOrder ?? sortOrder;
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortOrder);
+    setCurrentPage(1);
+    fetchPages({ sortBy: nextSortBy, sortOrder: nextSortOrder, page: 1 });
+  };
+
+  const toggleSortField = (field: string, defaultOrder: 'asc' | 'desc') => {
+    const normalizedField = field.toString();
+    if (sortBy === normalizedField) {
+      applySort({ sortOrder: (sortOrder === 'asc' ? 'desc' : 'asc') });
+      return;
+    }
+    applySort({ sortBy: normalizedField, sortOrder: defaultOrder });
+  };
+
+  const SortHeader = ({ label, field, defaultOrder }: { label: string; field: string; defaultOrder: 'asc' | 'desc' }) => {
+    const active = sortBy === field;
+    const iconClass = !active
+      ? 'fas fa-sort text-muted'
+      : (sortOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down');
+
+    return (
+      <button
+        type="button"
+        className="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-1"
+        style={{ color: 'inherit', fontWeight: 600 }}
+        onClick={() => toggleSortField(field, defaultOrder)}
+        aria-label={`Sort by ${label}`}
+        title={`Sort by ${label}`}
+      >
+        <span>{label}</span>
+        <i className={iconClass} />
+      </button>
+    );
+  };
+
   const isRowDeleted = (row: PageRow) => {
     if (row.deleted_at) return true;
     if (row.is_deleted) return true;
@@ -418,7 +457,7 @@ export default function ManagePages() {
     },
     {
       key: "title",
-      header: "Title",
+      header: <SortHeader label="Title" field="title" defaultOrder="asc" />,
       render: (row: any) => (
         <div>
           {showDeleted || isRowDeleted(row) ? (
@@ -453,7 +492,7 @@ export default function ManagePages() {
         return <span className={statusBadgeClass(s)}>{statusLabel(s)}</span>;
       },
     },
-    { key: "lastModified", header: "Last Modified" },
+    { key: "lastModified", header: <SortHeader label="Last Modified" field="modified" defaultOrder="desc" /> },
     {
       key: "options",
       header: "Options",

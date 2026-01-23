@@ -151,11 +151,17 @@ function ManageUsers() {
     {
       key: "name",
       header: "Name",
+      sortable: true,
+      sortField: "name",
+      defaultSortOrder: "asc",
       render: (row) => <span className="fw-bold">{row.name}</span>,
     },
     {
       key: "email",
       header: "Email",
+      sortable: true,
+      sortField: "email",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span style={{ fontFamily: "monospace" }}>{row.email}</span>
       ),
@@ -167,6 +173,9 @@ function ManageUsers() {
     {
       key: "status",
       header: "Status",
+      sortable: true,
+      sortField: "status",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className={`badge ${row.status === "Active" ? "bg-success" : "bg-secondary"}`}>
           {row.status}
@@ -272,6 +281,13 @@ function ManageUsers() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortBy={sortBy}
+        sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
+        onSortChange={(nextBy, nextOrder) => {
+          setSortBy(nextBy);
+          setSortOrder(nextOrder);
+          setCurrentPage(1);
+        }}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { BannerForm } from "@/schemas/banner";
 import { OptionItem, getOptions } from "@/services/optionService";
 import { getAlbum, updateAlbum } from "@/services/albumService";
 import { toast } from "@/lib/toast";
+import { axiosInstance } from "@/services/axios";
 
 function EditAlbum() {
   const router = useRouter();
@@ -25,8 +26,22 @@ function EditAlbum() {
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
   const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
   const cropStartRef = useRef<{ x: number; y: number } | null>(null);
+  const cropDragRef = useRef<null | {
+    mode: 'draw' | 'move' | 'resize';
+    handle?: 'nw' | 'ne' | 'sw' | 'se';
+    startX: number;
+    startY: number;
+    startRect: { x: number; y: number; w: number; h: number };
+  }>(null);
   const [isProcessingCrop, setIsProcessingCrop] = useState(false);
   const [cropPreview, setCropPreview] = useState<string | null>(null);
+
+  const toProxiedImageUrl = (rawUrl: string) => {
+    if (!rawUrl) return rawUrl;
+    if (rawUrl.startsWith("/")) return rawUrl;
+    if (rawUrl.startsWith("blob:") || rawUrl.startsWith("data:")) return rawUrl;
+    return `/api/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+  };
 
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
   const [exitOptions, setExitOptions] = useState<OptionItem[]>([]);
@@ -63,7 +78,7 @@ function EditAlbum() {
       setBanners(
         album.banners.map((b: any) => ({
           id: b.id,
-          preview: `${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`,
+          preview: toProxiedImageUrl(`${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`),
           title: b.title,
           description: b.description,
           button_text: b.button_text,
@@ -119,35 +134,208 @@ function EditAlbum() {
     setCropPreview(null);
   };
 
-  const onCropMouseDown = (e: React.MouseEvent) => {
+  const clampCropRectToImage = (
+    next: { x: number; y: number; w: number; h: number },
+    imgW: number,
+    imgH: number
+  ) => {
+    const minSize = 20;
+    let w = Math.max(minSize, next.w);
+    let h = Math.max(minSize, next.h);
+    let x = next.x;
+    let y = next.y;
+
+    w = Math.min(w, Math.max(minSize, imgW));
+    h = Math.min(h, Math.max(minSize, imgH));
+
+    x = Math.max(0, Math.min(x, imgW - w));
+    y = Math.max(0, Math.min(y, imgH - h));
+
+    return { x, y, w, h };
+  };
+
+  const getPointInImage = (e: React.PointerEvent) => {
     const imgEl = imageRef.current;
-    if (!imgEl) return;
+    if (!imgEl) return null;
     const rect = imgEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    cropStartRef.current = { x, y };
+    return {
+      x: Math.max(0, Math.min(x, imgEl.clientWidth)),
+      y: Math.max(0, Math.min(y, imgEl.clientHeight)),
+      w: imgEl.clientWidth,
+      h: imgEl.clientHeight,
+    };
+  };
+
+  const hitTestHandle = (x: number, y: number, r: { x: number; y: number; w: number; h: number }) => {
+    const pad = 14;
+    const corners = [
+      { id: 'nw' as const, cx: r.x, cy: r.y },
+      { id: 'ne' as const, cx: r.x + r.w, cy: r.y },
+      { id: 'sw' as const, cx: r.x, cy: r.y + r.h },
+      { id: 'se' as const, cx: r.x + r.w, cy: r.y + r.h },
+    ];
+    for (const c of corners) {
+      if (Math.abs(x - c.cx) <= pad && Math.abs(y - c.cy) <= pad) return c.id;
+    }
+    return null;
+  };
+
+  const onCropPointerDown = (e: React.PointerEvent) => {
+    const imgEl = imageRef.current;
+    if (!imgEl) return;
+    const pt = getPointInImage(e);
+    if (!pt) return;
+
+    e.preventDefault();
+
+    const x = pt.x;
+    const y = pt.y;
+    const imgW = pt.w;
+    const imgH = pt.h;
+
+    const hasRect = cropRect.w > 0 && cropRect.h > 0;
+    const withinRect =
+      hasRect &&
+      x >= cropRect.x &&
+      x <= cropRect.x + cropRect.w &&
+      y >= cropRect.y &&
+      y <= cropRect.y + cropRect.h;
+
+    const handle = hasRect ? hitTestHandle(x, y, cropRect) : null;
+
+    if (handle) {
+      cropDragRef.current = {
+        mode: 'resize',
+        handle,
+        startX: x,
+        startY: y,
+        startRect: { ...cropRect },
+      };
+    } else if (withinRect) {
+      cropDragRef.current = {
+        mode: 'move',
+        startX: x,
+        startY: y,
+        startRect: { ...cropRect },
+      };
+    } else {
+      cropStartRef.current = { x, y };
+      cropDragRef.current = {
+        mode: 'draw',
+        startX: x,
+        startY: y,
+        startRect: { x, y, w: 0, h: 0 },
+      };
+      setCropRect({ x, y, w: 0, h: 0 });
+    }
+
     setIsDraggingCrop(true);
-    setCropRect({ x, y, w: 0, h: 0 });
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
-  const onCropMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingCrop || cropStartRef.current === null) return;
+  const onCropPointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingCrop || !cropDragRef.current) return;
     const imgEl = imageRef.current;
     if (!imgEl) return;
-    const rect = imgEl.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const sx = Math.min(cropStartRef.current.x, x);
-    const sy = Math.min(cropStartRef.current.y, y);
-    const sw = Math.abs(x - cropStartRef.current.x);
-    const sh = Math.abs(y - cropStartRef.current.y);
-    setCropRect({ x: Math.max(0, sx), y: Math.max(0, sy), w: Math.max(0, sw), h: Math.max(0, sh) });
+    const pt = getPointInImage(e);
+    if (!pt) return;
+
+    const x = pt.x;
+    const y = pt.y;
+    const imgW = pt.w;
+    const imgH = pt.h;
+    const drag = cropDragRef.current;
+
+    if (drag.mode === 'draw' && cropStartRef.current) {
+      const sx = Math.min(cropStartRef.current.x, x);
+      const sy = Math.min(cropStartRef.current.y, y);
+      const sw = Math.abs(x - cropStartRef.current.x);
+      const sh = Math.abs(y - cropStartRef.current.y);
+      const next = clampCropRectToImage({ x: sx, y: sy, w: sw, h: sh }, imgW, imgH);
+      setCropRect(next);
+      return;
+    }
+
+    if (drag.mode === 'move') {
+      const dx = x - drag.startX;
+      const dy = y - drag.startY;
+      const next = clampCropRectToImage(
+        { x: drag.startRect.x + dx, y: drag.startRect.y + dy, w: drag.startRect.w, h: drag.startRect.h },
+        imgW,
+        imgH
+      );
+      setCropRect(next);
+      return;
+    }
+
+    if (drag.mode === 'resize' && drag.handle) {
+      const dx = x - drag.startX;
+      const dy = y - drag.startY;
+      let next = { ...drag.startRect };
+
+      if (drag.handle === 'nw') {
+        next.x = drag.startRect.x + dx;
+        next.y = drag.startRect.y + dy;
+        next.w = drag.startRect.w - dx;
+        next.h = drag.startRect.h - dy;
+      } else if (drag.handle === 'ne') {
+        next.y = drag.startRect.y + dy;
+        next.w = drag.startRect.w + dx;
+        next.h = drag.startRect.h - dy;
+      } else if (drag.handle === 'sw') {
+        next.x = drag.startRect.x + dx;
+        next.w = drag.startRect.w - dx;
+        next.h = drag.startRect.h + dy;
+      } else if (drag.handle === 'se') {
+        next.w = drag.startRect.w + dx;
+        next.h = drag.startRect.h + dy;
+      }
+
+      if (next.w < 0) {
+        next.x = next.x + next.w;
+        next.w = Math.abs(next.w);
+      }
+      if (next.h < 0) {
+        next.y = next.y + next.h;
+        next.h = Math.abs(next.h);
+      }
+
+      next = clampCropRectToImage(next, imgW, imgH);
+      setCropRect(next);
+    }
   };
 
-  const onCropMouseUp = () => {
+  const onCropPointerUp = () => {
     if (!isDraggingCrop) return;
     setIsDraggingCrop(false);
     cropStartRef.current = null;
+    cropDragRef.current = null;
+  };
+
+  const resetCropToFullImage = () => {
+    const imgEl = imageRef.current;
+    if (!imgEl) return;
+    setCropRect({ x: 0, y: 0, w: imgEl.clientWidth, h: imgEl.clientHeight });
+  };
+
+  const centerCropToAspect = (aspect: number) => {
+    const imgEl = imageRef.current;
+    if (!imgEl) return;
+    const imgW = imgEl.clientWidth;
+    const imgH = imgEl.clientHeight;
+
+    let w = imgW;
+    let h = Math.round(w / aspect);
+    if (h > imgH) {
+      h = imgH;
+      w = Math.round(h * aspect);
+    }
+
+    const x = Math.round((imgW - w) / 2);
+    const y = Math.round((imgH - h) / 2);
+    setCropRect({ x, y, w, h });
   };
 
   const performCrop = async () => {
@@ -169,10 +357,96 @@ function EditAlbum() {
 
     setIsProcessingCrop(true);
 
-    const imgNaturalW = displayed.naturalWidth;
-    const imgNaturalH = displayed.naturalHeight;
     const dispW = displayed.clientWidth;
     const dispH = displayed.clientHeight;
+    const loadImage = async (): Promise<{ img: HTMLImageElement; revoke?: () => void }> => {
+      if (banner.image instanceof File) {
+        const objectUrl = URL.createObjectURL(banner.image);
+        const img = new Image();
+        img.src = objectUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load local image"));
+        });
+        return { img, revoke: () => URL.revokeObjectURL(objectUrl) };
+      }
+
+      const srcUrl = typeof src === "string" ? src : null;
+      if (!srcUrl) throw new Error("Invalid image source");
+
+      if (srcUrl.startsWith("blob:") || srcUrl.startsWith("data:")) {
+        const img = new Image();
+        img.src = srcUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load image"));
+        });
+        return { img };
+      }
+
+      if (srcUrl.startsWith("/") || !srcUrl.includes("://")) {
+        const img = new Image();
+        img.src = srcUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Failed to load image"));
+        });
+        return { img };
+      }
+
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(srcUrl)}`;
+      const resp = await fetch(proxyUrl, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!resp.ok) {
+        try {
+          const direct = await axiosInstance.get(srcUrl, {
+            responseType: "blob",
+            headers: { "X-No-Loading": "1" },
+          });
+          const objectUrl = URL.createObjectURL(direct.data);
+          const img = new Image();
+          img.src = objectUrl;
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("Failed to load fetched image"));
+          });
+          return { img, revoke: () => URL.revokeObjectURL(objectUrl) };
+        } catch {
+          throw new Error("Failed to fetch image via proxy");
+        }
+      }
+
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.src = objectUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load proxied image"));
+      });
+      return { img, revoke: () => URL.revokeObjectURL(objectUrl) };
+    };
+
+    let sourceImg: HTMLImageElement | null = null;
+    let revokeSource: (() => void) | undefined;
+
+    try {
+      const loaded = await loadImage();
+      sourceImg = loaded.img;
+      revokeSource = loaded.revoke;
+    } catch {
+      setIsProcessingCrop(false);
+      toast.error("Failed to load image for cropping");
+      return;
+    }
+
+    const imgNaturalW = sourceImg.naturalWidth;
+    const imgNaturalH = sourceImg.naturalHeight;
     const ratioX = imgNaturalW / dispW;
     const ratioY = imgNaturalH / dispH;
 
@@ -197,10 +471,11 @@ function EditAlbum() {
     }
 
     try {
-      ctx.drawImage(displayed as CanvasImageSource, sx, sy, sw, sh, 0, 0, sw, sh);
+      ctx.drawImage(sourceImg as CanvasImageSource, sx, sy, sw, sh, 0, 0, sw, sh);
     } catch (err) {
+      revokeSource?.();
       setIsProcessingCrop(false);
-      toast.error("Failed to draw image. Cross-origin image may block cropping.");
+      toast.error("Failed to draw image for crop");
       return;
     }
 
@@ -215,6 +490,8 @@ function EditAlbum() {
     } catch (err) {
       setIsProcessingCrop(false);
       toast.error("Failed to generate cropped image");
+    } finally {
+      revokeSource?.();
     }
   };
 
@@ -410,23 +687,62 @@ function EditAlbum() {
 
       {/* Crop Modal */}
       {editIndex !== null && banners[editIndex] && (
-        <div className="position-fixed top-0 start-0 w-100 h-100" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+        <div className="position-fixed top-0 start-0 w-100 h-100" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 2000 }}>
           <div className="d-flex align-items-center justify-content-center h-100">
             <div className="card" style={{ width: 640 }}>
               <div className="card-body">
-                <h5 className="card-title">Crop Banner Image</h5>
+                <h5 className="card-title">Crop / Resize Banner Image</h5>
                 <div className="mb-3">
-                  <label className="form-label">Crop Area (drag to select)</label>
-                  <div style={{ position: 'relative', border: '1px solid #ddd', display: 'inline-block', maxWidth: '100%' }}
-                    onMouseDown={onCropMouseDown}
-                    onMouseMove={onCropMouseMove}
-                    onMouseUp={onCropMouseUp}
-                    onMouseLeave={onCropMouseUp}
+                  <label className="form-label">Crop Area</label>
+                  <div className="d-flex flex-wrap gap-2 mb-2">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetCropToFullImage}>
+                      Full Image
+                    </button>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => centerCropToAspect(16/9)}>
+                      Center 16:9
+                    </button>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => centerCropToAspect(3)}>
+                      Center 3:1
+                    </button>
+                  </div>
+
+                  <div
+                    className="cms-cropper"
+                    onPointerDown={onCropPointerDown}
+                    onPointerMove={onCropPointerMove}
+                    onPointerUp={onCropPointerUp}
+                    onPointerCancel={onCropPointerUp}
+                    onPointerLeave={onCropPointerUp}
                   >
-                    <img ref={imageRef} src={banners[editIndex].preview} alt="to-crop" style={{ display: 'block', maxWidth: 560, maxHeight: 420, width: '100%', height: 'auto' }} />
+                    <img
+                      ref={imageRef}
+                      src={banners[editIndex].preview}
+                      alt="to-crop"
+                      draggable={false}
+                      onDragStart={(e) => e.preventDefault()}
+                      onLoad={() => {
+                        if (cropRect.w <= 0 || cropRect.h <= 0) {
+                          resetCropToFullImage();
+                        }
+                      }}
+                      className="cms-cropper__image"
+                    />
                     {cropRect.w > 0 && cropRect.h > 0 && (
-                      <div style={{ position: 'absolute', left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h, border: '2px dashed #fff', boxShadow: '0 0 0 10000px rgba(0,0,0,0.4) inset' }} />
+                      <div
+                        className="cms-cropper__rect"
+                        style={{ left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h }}
+                      >
+                        <span className="cms-cropper__handle cms-cropper__handle--nw" />
+                        <span className="cms-cropper__handle cms-cropper__handle--ne" />
+                        <span className="cms-cropper__handle cms-cropper__handle--sw" />
+                        <span className="cms-cropper__handle cms-cropper__handle--se" />
+                      </div>
                     )}
+                  </div>
+
+                  <div className="mt-2">
+                    <small className="text-muted">Tip: drag corners to resize, drag inside to move.</small>
+                    <div><small className="text-muted">Crop: {cropRect.w} x {cropRect.h} px</small></div>
                   </div>
                   <div className="mt-2"><small className="text-muted">Crop: {cropRect.w} x {cropRect.h} px</small></div>
                 </div>

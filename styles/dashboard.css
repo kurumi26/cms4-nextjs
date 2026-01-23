@@ -2,10 +2,10 @@
 
 .cms-dashboard__header {
   border-radius: 16px;
-  background: radial-gradient(1200px 500px at 0% 0%, rgba(13, 110, 253, 0.12) 0%, rgba(13, 110, 253, 0.0) 60%),
-    radial-gradient(800px 400px at 100% 0%, rgba(111, 66, 193, 0.10) 0%, rgba(111, 66, 193, 0.0) 55%);
+  background: #fff;
   padding: 18px 18px;
   border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
 }
 
 .cms-dashboard__kicker {
@@ -59,7 +59,8 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  color: #fff;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.78);
   flex: 0 0 auto;
 }
 
@@ -82,15 +83,18 @@
 }
 
 .cms-stat--pages .cms-stat__icon {
-  background: linear-gradient(135deg, #0d6efd 0%, #2b8cff 100%);
+  background: rgba(13, 110, 253, 0.12);
+  color: #0d6efd;
 }
 
 .cms-stat--albums .cms-stat__icon {
-  background: linear-gradient(135deg, #6f42c1 0%, #8a63d2 100%);
+  background: rgba(111, 66, 193, 0.12);
+  color: #6f42c1;
 }
 
 .cms-stat--news .cms-stat__icon {
-  background: linear-gradient(135deg, #198754 0%, #2fb36e 100%);
+  background: rgba(25, 135, 84, 0.12);
+  color: #198754;
 }
 
 /* Panel header */
@@ -123,7 +127,7 @@
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 14px;
   margin-bottom: 10px;
-  background: #f8fafc;
+  background: #fff;
 }
 
 .cms-activity__item:last-child {
