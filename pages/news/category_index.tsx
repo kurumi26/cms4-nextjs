@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
@@ -21,6 +21,24 @@ function ManageNews() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const sortRowsClientSide = (rows: NewsCategoryRow[], by: string, order: "asc" | "desc") => {
+    const direction = order === "asc" ? 1 : -1;
+    const copy = [...rows];
+    copy.sort((a: any, b: any) => {
+      const av = (a as any)?.[by];
+      const bv = (b as any)?.[by];
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * direction;
+      const as = av == null ? "" : String(av).toLowerCase();
+      const bs = bv == null ? "" : String(bv).toLowerCase();
+      if (as < bs) return -1 * direction;
+      if (as > bs) return 1 * direction;
+      return 0;
+    });
+    return copy;
+  };
 
   /* ======================
    * Fetch Categories
@@ -35,8 +53,9 @@ function ManageNews() {
         per_page: perPage,
       });
 
-      setCategories(res.data);
-      setTotalPages(res.last_page); // ✅ FIX
+      const apiRows: NewsCategoryRow[] = Array.isArray(res?.data) ? res.data : [];
+      setCategories(apiRows);
+      setTotalPages(res?.last_page ?? 1); // ✅ FIX
     } catch (err) {
       console.error("Failed to load categories", err);
     } finally {
@@ -52,6 +71,11 @@ function ManageNews() {
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage]);
 
+  const sortedCategories = useMemo(
+    () => sortRowsClientSide(categories, sortBy, sortOrder),
+    [categories, sortBy, sortOrder]
+  );
+
   /* ======================
    * Columns
    * ====================== */
@@ -64,6 +88,9 @@ function ManageNews() {
     {
       key: "name",
       header: "Category Name",
+      sortable: true,
+      sortField: "name",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className="fw-bold text-primary">{row.name}</span>
       ),
@@ -71,6 +98,9 @@ function ManageNews() {
     {
       key: "slug",
       header: "URL",
+      sortable: true,
+      sortField: "slug",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className="text-muted small">
           /news/{row.slug}
@@ -80,6 +110,9 @@ function ManageNews() {
     {
       key: "articles_count",
       header: "Total News",
+      sortable: true,
+      sortField: "articles_count",
+      defaultSortOrder: "desc",
       render: (row) => row.articles_count ?? 0,
     },
     {
@@ -134,11 +167,18 @@ function ManageNews() {
 
       <DataTable<NewsCategoryRow>
         columns={columns}
-        data={categories}
+        data={sortedCategories}
         loading={loading}
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={(nextBy, nextOrder) => {
+          setSortBy(nextBy);
+          setSortOrder(nextOrder);
+          setCurrentPage(1);
+        }}
       />
     </div>
   );

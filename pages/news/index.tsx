@@ -348,6 +348,9 @@ function ManageNews() {
     {
       key: "title",
       header: "Title",
+      sortable: true,
+      sortField: "title",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className={showDeleted ? "fw-bold text-decoration-line-through text-muted" : "fw-bold text-primary"}>{row.title}</span>
       ),
@@ -377,6 +380,10 @@ function ManageNews() {
     {
       key: "updated",
       header: "Updated",
+      sortable: true,
+      sortField: "updated_at",
+      sortLabel: "Updated",
+      defaultSortOrder: "desc",
     },
     {
       key: "options",
@@ -499,6 +506,13 @@ function ManageNews() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortBy={sortBy}
+        sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
+        onSortChange={(nextBy, nextOrder) => {
+          setSortBy(nextBy);
+          setSortOrder(nextOrder);
+          setCurrentPage(1);
+        }}
       />
 
       <ConfirmModal

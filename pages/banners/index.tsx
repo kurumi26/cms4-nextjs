@@ -149,6 +149,9 @@ function ManageAlbums() {
     {
       key: "name",
       header: "Album Name",
+      sortable: true,
+      sortField: "name",
+      defaultSortOrder: "asc",
       render: (row) => (
         <span className="fw-bold text-primary">{row.name}</span>
       ),
@@ -156,10 +159,16 @@ function ManageAlbums() {
     {
       key: "total_images",
       header: "Total Images",
+      sortable: true,
+      sortField: "total_images",
+      defaultSortOrder: "desc",
     },
     {
       key: "updated_at",
       header: "Date Updated",
+      sortable: true,
+      sortField: "updated_at",
+      defaultSortOrder: "desc",
     },
     {
       key: "options",
@@ -339,6 +348,13 @@ function ManageAlbums() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortBy={sortBy}
+        sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
+        onSortChange={(nextBy, nextOrder) => {
+          setSortBy(nextBy);
+          setSortOrder(nextOrder);
+          setCurrentPage(1);
+        }}
       />
 
       {/* Quick Settings Modal */}

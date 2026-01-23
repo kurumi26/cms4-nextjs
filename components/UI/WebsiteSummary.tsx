@@ -143,8 +143,15 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
       let lastPage = 1;
       while (page <= lastPage && page <= maxPages) {
         const payload: any = await getUsers({ ...paramsBase, page, per_page: perPage } as any);
-        const rows: any[] = Array.isArray(payload?.data) ? payload.data : [];
-        lastPage = Number(payload?.meta?.last_page ?? payload?.last_page ?? 1) || 1;
+        // getUsers() returns the raw axios payload (commonly { data: { data: [...], meta: {...} } })
+        const rows: any[] = Array.isArray(payload?.data?.data)
+          ? payload.data.data
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+        const meta = payload?.meta ?? payload?.data?.meta;
+        lastPage = Number(meta?.last_page ?? meta?.lastPage ?? payload?.last_page ?? 1) || 1;
         all.push(...rows);
         page++;
 
@@ -188,10 +195,21 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
         const deletedNewsByQuery = newsDeletedRows.filter(isRowDeleted).length;
         if (deletedNewsByQuery > 0) newsCounts.deleted = deletedNewsByQuery;
 
+        const isUserActive = (u: any) => {
+          const statusRaw = (u?.status ?? u?.state ?? u?.user_status ?? "").toString().trim().toLowerCase();
+          if (statusRaw === "active") return true;
+          if (statusRaw === "inactive" || statusRaw === "disabled") return false;
+
+          const flag = u?.is_active ?? u?.active ?? u?.enabled;
+          if (flag === true || flag === 1 || flag === "1") return true;
+          if (flag === false || flag === 0 || flag === "0") return false;
+
+          return false;
+        };
+
         const usersCounts = { active: 0, inactive: 0 };
         for (const u of userRows) {
-          const raw = (u?.status ?? "").toString().trim().toLowerCase();
-          if (raw === "active") usersCounts.active++;
+          if (isUserActive(u)) usersCounts.active++;
           else usersCounts.inactive++;
         }
 
