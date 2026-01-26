@@ -16,7 +16,7 @@ export default function Menu() {
   if (!menu) return null;
 
   return (
-    <ul className="menu-container navbar-nav ms-auto mb-2 mb-lg-0">
+    <>
       {menu.items.map((item) => (
         <MenuItem
           key={item.id}
@@ -24,6 +24,6 @@ export default function Menu() {
           currentPath={router.asPath}
         />
       ))}
-    </ul>
+    </>
   );
 }

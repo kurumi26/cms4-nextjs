@@ -19,7 +19,14 @@ export default function TinyEditor({ value, onChange }: TinyEditorProps) {
       init={{
         height: 1000,
         menubar: true,
-        content_css: ["/css/custom.css"], // load multiple css files
+        content_css: ["/css/custom.css", "/css/all.min.css",
+          "/css/bootstrap.min.css",
+          "/css/flatpickr.min.css",
+          "/css/glightbox.min.css",
+          "/css/main.css",
+          "/css/swiper-bundle.min.css",
+          "/css/util.css",
+        ], // load multiple css files
         plugins: [
           "directionality",
           "advlist",
