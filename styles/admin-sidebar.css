@@ -149,3 +149,29 @@
     display: none !important;
   }
 }
+
+/* Admin form input styles: restore visible textbox underline inside admin layout */
+.cms-admin-layout .form-control {
+     border: 1px solid rgba(0,0,0,0.12) !important;
+     border-radius: 6px !important;
+     background: transparent !important;
+     padding: 8px 10px !important;
+}
+
+.cms-admin-layout textarea.form-control {
+     border: 1px solid rgba(0,0,0,0.12) !important;
+     border-radius: 6px !important;
+     padding: 8px 10px !important;
+}
+
+.cms-admin-layout .form-select {
+     border: 1px solid rgba(0,0,0,0.12) !important;
+     border-radius: 6px !important;
+     padding: 6px 10px !important;
+}
+
+/* Compact variant */
+.cms-admin-layout .form-control.form-control-sm {
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+}

@@ -42,6 +42,20 @@ axiosInstance.interceptors.response.use(
       window.location.href = "/";
     }
 
+    // Log helpful debug information for 5xx/4xx responses
+    try {
+      console.error("Axios error:", {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        responseData: error.response?.data,
+        headers: error.response?.headers,
+        message: error.message,
+      });
+    } catch (e) {
+      console.error("Error logging axios error", e);
+    }
+
     return Promise.reject(error);
   }
 );
