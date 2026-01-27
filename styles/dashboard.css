@@ -173,3 +173,13 @@
     background-position: -200% 0;
   }
 }
+
+/* Data table header controls */
+.cms-page-size {
+  font-size: 0.95rem;
+  color: rgba(33, 37, 41, 0.75);
+}
+
+.cms-page-size .form-select {
+  min-height: 34px;
+}

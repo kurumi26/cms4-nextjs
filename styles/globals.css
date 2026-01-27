@@ -64,11 +64,13 @@ body {
   display: none;
   position: absolute;
   top: 100%;
+  /* align under the left edge of the parent menu-item */
   left: 0;
   background: #fff;
   min-width: 200px;
   z-index: 1000;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(0);
 }
 
 /* Show submenu on hover */

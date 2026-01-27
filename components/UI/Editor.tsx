@@ -19,7 +19,7 @@ export default function TinyEditor({ value, onChange }: TinyEditorProps) {
       init={{
         height: 1000,
         menubar: true,
-        content_css: ["/css/custom.css", "/css/all.min.css",
+        content_css: ["/css/custom.css",
           "/css/bootstrap.min.css",
           "/css/flatpickr.min.css",
           "/css/glightbox.min.css",

@@ -36,7 +36,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     >
       <div className="cms-sidebar-overlay" onClick={closeSidebar} />
 
-      <Sidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={closeSidebar} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        isMobile={isMobile}
+        onClose={closeSidebar}
+        width={300}
+      />
 
       <div className="flex-grow-1 d-flex flex-column">
         <Topbar onToggleSidebar={toggleSidebar} sidebarToggleRef={sidebarToggleRef} />

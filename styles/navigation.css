@@ -37,6 +37,7 @@
 .sub-menu-container {
   position: absolute;
   top: calc(100% - 1px);
+  /* align dropdown to the left edge of its parent menu item */
   left: 0;
   min-width: 200px;
   background: #fff;
@@ -44,7 +45,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(10px);
-  transition: all 0.25s ease;
+  transition: all 0.22s ease;
   z-index: 1000;
 }
 

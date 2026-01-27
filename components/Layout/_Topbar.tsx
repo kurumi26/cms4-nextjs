@@ -6,6 +6,7 @@ import styles from "@/styles/_topbar.module.css";
 
 export default function LandingTopbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     // compute threshold: if there's a banner, stay transparent until user scrolls
@@ -26,19 +27,57 @@ export default function LandingTopbar() {
     };
   }, []);
 
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 991) setMobileOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  const closeMobileMenu = () => setMobileOpen(false);
+
   return (
     <header className={`${styles['topbar-dark']} ${scrolled ? styles.scrolled : ''}`}>
       <div className={styles['topbar-inner']}>
         <div className="left">
           <Link href="/" className={styles.brand}>
             <span className={styles['logo-box']}>
-              <img src="/images/logo.png" alt="ECOHO" className={styles['logo-img']} />
+              <img src="/images/logo-light.png" alt="ECOHO" className={styles['logo-img']} />
             </span>
 
           </Link>
         </div>
 
         <div className={styles.right}>
+          <button
+            type="button"
+            className={styles["mobile-toggle"]}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="landing-topbar-nav"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            <span className={styles["mobile-toggle-bar"]} />
+            <span className={styles["mobile-toggle-bar"]} />
+            <span className={styles["mobile-toggle-bar"]} />
+          </button>
+
           <div className={styles.socials}>
             <a
               href="https://facebook.com/"
@@ -71,8 +110,22 @@ export default function LandingTopbar() {
             </a>
           </div>
 
-          <nav className={styles['nav-wrap']}>
-            <ul className={styles['nav-list']}><Menu /></ul>
+          {mobileOpen && (
+            <button
+              type="button"
+              className={styles.backdrop}
+              aria-label="Close menu"
+              onClick={closeMobileMenu}
+            />
+          )}
+
+          <nav
+            id="landing-topbar-nav"
+            className={`${styles["nav-wrap"]} ${mobileOpen ? styles["nav-wrap-open"] : ""}`}
+          >
+            <ul className={styles["nav-list"]}>
+              <Menu isMobile={mobileOpen} onNavigate={closeMobileMenu} />
+            </ul>
           </nav>
         </div>
       </div>

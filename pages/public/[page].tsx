@@ -9,7 +9,10 @@ export default function PublicPageView({ pageData }: PublicPageViewProps) {
   if (!pageData) return <div>Page not found</div>;
 
   return (
-    <div dangerouslySetInnerHTML={{ __html: pageData.content }} />
+    <div
+      className="public-page-content"
+      dangerouslySetInnerHTML={{ __html: pageData.content }}
+    />
   );
 }
 
@@ -18,7 +21,7 @@ export async function getServerSideProps(context: any) {
 
   try {
     const res = await getPublicPageBySlug(page);
-    return { props: { pageData: res.data } };
+    return { props: { pageData: res.data, layout: { fullWidth: true } } };
   } catch {
     return { notFound: true };
   }

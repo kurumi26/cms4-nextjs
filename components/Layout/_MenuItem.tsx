@@ -5,9 +5,13 @@ import { PublicMenuItem } from "@/services/publicPageService";
 export default function MenuItem({
   item,
   currentPath,
+  isMobile = false,
+  onNavigate,
 }: {
   item: PublicMenuItem;
   currentPath: string;
+  isMobile?: boolean;
+  onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -29,11 +33,14 @@ export default function MenuItem({
     (currentPath === hrefPath ||
       currentPath.startsWith(hrefPath + "/"));
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (hasChildren) {
-      //e.preventDefault(); // stop navigation
-      setOpen((prev) => !prev);
-    }
+  const handleLinkClick = () => {
+    if (isMobile) onNavigate?.();
+  };
+
+  const handleToggleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen((prev) => !prev);
   };
 
   return (
@@ -42,21 +49,33 @@ export default function MenuItem({
         open ? "open" : ""
       }`}
     >
-      {isInternal ? (
-        <Link href={href} className="menu-link" onClick={handleClick}>
-          <span>{item.label}</span>
-        </Link>
-      ) : (
-        <a
-          href={href}
-          className="menu-link"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleClick}
-        >
-          <span>{item.label}</span>
-        </a>
-      )}
+      <div className="menu-row">
+        {isInternal ? (
+          <Link href={href} className="menu-link" onClick={handleLinkClick}>
+            <span>{item.label}</span>
+          </Link>
+        ) : (
+          <a
+            href={href}
+            className="menu-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleLinkClick}
+          >
+            <span>{item.label}</span>
+          </a>
+        )}
+
+        {hasChildren && isMobile && (
+          <button
+            type="button"
+            className="submenu-toggle"
+            aria-label={open ? "Collapse submenu" : "Expand submenu"}
+            aria-expanded={open}
+            onClick={handleToggleClick}
+          />
+        )}
+      </div>
 
       {hasChildren && (
         <ul className="sub-menu-container">
@@ -65,6 +84,8 @@ export default function MenuItem({
               key={child.id}
               item={child}
               currentPath={currentPath}
+              isMobile={isMobile}
+              onNavigate={onNavigate}
             />
           ))}
         </ul>

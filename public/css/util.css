@@ -1050,12 +1050,12 @@ EFFECT   EFFECT   EFFECT   EFFECT   EFFECT   EFFECT  EFFECT
 -----------------------------------------------------------
 */
 .bg1-pattern {
-	background-image: url(../images/icons/pattern1.png);
+	background-color: rgba(0,0,0,0.02);
   	background-repeat: repeat;
 }
 
 .bg2-pattern {
-	background-image: url(../images/icons/pattern2.png);
+	background-color: rgba(0,0,0,0.02);
   	background-repeat: repeat;
 }
 

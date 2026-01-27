@@ -6,9 +6,10 @@ type SidebarProps = {
   isOpen?: boolean;
   isMobile?: boolean;
   onClose?: () => void;
+  width?: number | string;
 };
 
-export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarProps) {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -113,6 +114,14 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
       className={`cms-sidebar d-flex flex-column flex-shrink-0 p-3 ${
         isOpen ? "cms-sidebar--open" : ""
       }`}
+      style={
+        width != null
+          ? ({
+              ["--cms-sidebar-width" as any]:
+                typeof width === "number" ? `${width}px` : width,
+            } as React.CSSProperties)
+          : undefined
+      }
       aria-hidden={isMobile && isOpen === false ? true : undefined}
     >
       <div className="d-flex align-items-center justify-content-between mb-4">
@@ -171,10 +180,10 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                     pathname?.startsWith(item.href) ? "active" : ""
                   }`}
                 >
-                  <span className="d-flex align-items-center justify-content-between">
-                    <span>{item.label}</span>
+                  <span className="cms-sidebar__item-row d-flex align-items-center justify-content-between">
+                    <span className="cms-sidebar__item-label">{item.label}</span>
                     <i
-                      className={`fa-solid fa-chevron-down ms-2 ${
+                      className={`cms-sidebar__chevron fa-solid fa-chevron-down ms-2 ${
                         openMenus[item.href] ? "fa-rotate-180" : ""
                       }`}
                       style={{ fontSize: "0.75rem", opacity: 0.85 }}

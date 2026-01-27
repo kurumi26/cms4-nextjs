@@ -1,5 +1,4 @@
 /* Wrapper to import CSS files from /public/css so they can be imported in _app.tsx */
-@import url('/css/all.min.css');
 @import url('/css/bootstrap.min.css');
 @import url('/css/flatpickr.min.css');
 @import url('/css/glightbox.min.css');

@@ -9,12 +9,20 @@ interface LandingPageLayoutProps {
     title?: string;
     album?: PublicAlbum | null;
   };
+  layout?: {
+    fullWidth?: boolean;
+  };
 }
 
 export default function LandingPageLayout({
   children,
   pageData,
+  layout,
 }: LandingPageLayoutProps) {
+  const contentWrapperClassName = layout?.fullWidth
+    ? "container-fluid px-0"
+    : "container";
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <LandingTopbar />
@@ -25,7 +33,7 @@ export default function LandingPageLayout({
       />
 
       <main className="flex-grow-1 py-5">
-        <div className="container">{children}</div>
+        <div className={contentWrapperClassName}>{children}</div>
       </main>
 
       <LandingFooter />

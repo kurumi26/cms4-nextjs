@@ -147,6 +147,31 @@
   }
 }
 
+/* ===============================
+   TinyMCE Public Page Rendering
+   (Break out of GuestLayout .container)
+=============================== */
+
+.public-page-content {
+  /* Public CMS content wrapper (layout renders full-width). */
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@supports (overflow: clip) {
+  .public-page-content {
+    overflow-x: clip;
+  }
+}
+
+/* Prevent accidental horizontal overflow from wide media */
+.public-page-content img,
+.public-page-content video,
+.public-page-content iframe {
+  max-width: 100%;
+}
+
 
 /* ===============================
    STEPS / PROCESS
