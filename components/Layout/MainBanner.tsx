@@ -28,6 +28,7 @@ export default function MainBanner({ album }: MainBannerProps) {
   if (!banners.length) return null;
 
   const banner = banners[current];
+  const scriptText = banner.description?.trim() || "Welcome to";
 
   return (
     <>
@@ -57,21 +58,22 @@ export default function MainBanner({ album }: MainBannerProps) {
 
       {/* 🧾 CONTENT (STATIC) */}
       <div className={`container text-center text-white ${styles.content}`}>
-        {banner.title && (
-          <h1 className="banner-title fw-bold mb-3">{banner.title}</h1>
-        )}
+        <div className={styles.inner}>
+          <div className={styles.script}>{scriptText}</div>
 
-        {banner.description && (
-          <p className="banner-desc lead mb-4">{banner.description}</p>
-        )}
+          {banner.title && <h1 className={styles.title}>{banner.title}</h1>}
 
-        {banner.button_text && banner.url && (
-          <a href={banner.url} target="_blank" className="banner-cta">
-            {banner.button_text}
-          </a>
-        )}
-
-        {/* styles moved to MainBanner.module.css */}
+          {banner.button_text && banner.url && (
+            <a
+              href={banner.url}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.cta}
+            >
+              {banner.button_text}
+            </a>
+          )}
+        </div>
       </div>
 
       {/* ● dots */}

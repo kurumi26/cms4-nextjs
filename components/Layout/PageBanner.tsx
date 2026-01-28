@@ -9,7 +9,7 @@ interface PageBannerProps {
 
 export default function PageBanner({
   title = "Build Your Future With Us",
-  subtitle = "Cms5.",
+  subtitle = "",
   album,
 }: PageBannerProps) {
   const banners = album?.banners || [];

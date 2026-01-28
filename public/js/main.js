@@ -7,8 +7,17 @@
 (function() {
     'use strict';
 
-    // Wait for DOM to be ready
-    document.addEventListener('DOMContentLoaded', init);
+    let glightboxInstance = null;
+    let glightboxRefreshTimer = null;
+    let isUpdatingLightbox = false;
+
+    // In Next.js we load scripts with strategy=afterInteractive, which can run
+    // after DOMContentLoaded. Run init immediately if the DOM is already ready.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 
     function init() {
         initWebPDetection();
@@ -20,6 +29,7 @@
         initSidebar();
         initGalleryFilter();
         initGLightbox();
+        initDynamicContentObserver();
         initParallax();
         initCopyrightYear();
     }
@@ -93,8 +103,13 @@
         document.body.classList.add('page-loaded');
 
         // Add fade-out on internal link clicks
-        document.querySelectorAll('a:not([target="_blank"]):not([href^="#"]):not([href^="mailto"]):not([href^="tel"])').forEach(link => {
+        document
+            .querySelectorAll(
+                'a:not([target="_blank"]):not([href^="#"]):not([href^="mailto"]):not([href^="tel"]):not(.glightbox):not([data-lightbox])'
+            )
+            .forEach(link => {
             link.addEventListener('click', function(e) {
+                if (this.classList && this.classList.contains('glightbox')) return;
                 const href = this.getAttribute('href');
                 if (href && !href.startsWith('http') && !href.startsWith('javascript')) {
                     e.preventDefault();
@@ -290,6 +305,10 @@
     function initGLightbox() {
         if (typeof GLightbox === 'undefined') return;
 
+        // Pato CMS gallery markup sometimes uses a <div class="overlay-item-gallery">
+        // instead of an <a> link. Convert overlays to anchors so clicking zooms.
+        ensureGalleryLightboxLinks(document);
+
         // Convert data-lightbox to glightbox format
         document.querySelectorAll('[data-lightbox]').forEach(el => {
             const gallery = el.dataset.lightbox;
@@ -298,11 +317,80 @@
             delete el.dataset.lightbox;
         });
 
-        GLightbox({
+        // Recreate instance so newly injected links (client-side navigation) work.
+        if (glightboxInstance && typeof glightboxInstance.destroy === 'function') {
+            glightboxInstance.destroy();
+        }
+        glightboxInstance = GLightbox({
             selector: '.glightbox',
             touchNavigation: true,
             loop: true,
+            zoomable: true,
         });
+    }
+
+    function ensureGalleryLightboxLinks(root) {
+        if (!root || !root.querySelectorAll) return;
+
+        const items = root.querySelectorAll(
+            '.public-page-content .item-gallery, .section-gallery .item-gallery'
+        );
+
+        isUpdatingLightbox = true;
+        try {
+            items.forEach(item => {
+                const img = item.querySelector('img');
+                if (!img) return;
+
+                const src = img.getAttribute('src') || img.currentSrc || img.src;
+                if (!src) return;
+
+                const overlay = item.querySelector('.overlay-item-gallery');
+                if (!overlay) return;
+
+                // If already a link, just ensure glightbox attrs exist.
+                if (overlay.tagName && overlay.tagName.toLowerCase() === 'a') {
+                    overlay.classList.add('glightbox');
+                    if (!overlay.getAttribute('href')) overlay.setAttribute('href', src);
+                    if (!overlay.dataset.gallery) overlay.dataset.gallery = 'pato-gallery';
+                    if (!overlay.getAttribute('aria-label')) overlay.setAttribute('aria-label', 'Zoom image');
+                    return;
+                }
+
+                // Replace div overlay with anchor overlay to enable click-to-zoom.
+                const link = document.createElement('a');
+                link.className = overlay.className;
+                link.classList.add('glightbox');
+                link.setAttribute('href', src);
+                link.setAttribute('aria-label', 'Zoom image');
+                link.dataset.gallery = 'pato-gallery';
+                link.innerHTML = overlay.innerHTML;
+
+                overlay.parentNode.replaceChild(link, overlay);
+            });
+        } finally {
+            isUpdatingLightbox = false;
+        }
+    }
+
+    function initDynamicContentObserver() {
+        // Re-run lightbox wiring when Next.js client-side navigation swaps page content.
+        if (typeof MutationObserver === 'undefined') return;
+        if (document.body && document.body.dataset.patoObserverInit === '1') return;
+        if (document.body) document.body.dataset.patoObserverInit = '1';
+
+        const obs = new MutationObserver(() => {
+            if (isUpdatingLightbox) return;
+            // GLightbox injects DOM nodes into <body> when opened.
+            // Our observer would otherwise re-init (destroy) and instantly close it.
+            if (document.body && document.body.classList.contains('glightbox-open')) return;
+            clearTimeout(glightboxRefreshTimer);
+            glightboxRefreshTimer = setTimeout(() => {
+                initGLightbox();
+            }, 100);
+        });
+
+        obs.observe(document.body, { childList: true, subtree: true });
     }
 
     /**

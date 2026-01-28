@@ -7,7 +7,13 @@
 (function() {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', init);
+    // In Next.js we load scripts with strategy=afterInteractive, which can run
+    // after DOMContentLoaded. Run init immediately if the DOM is already ready.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 
     function init() {
         initHeroSlider();
@@ -22,7 +28,15 @@
         const container = document.querySelector('.wrap-slick1');
         if (!container || typeof Swiper === 'undefined') return;
 
-        const swiper = new Swiper('.swiper-hero', {
+        const swiperEl = container.querySelector('.swiper-hero');
+        if (!swiperEl || container.dataset.swiperHeroInit === '1') return;
+        container.dataset.swiperHeroInit = '1';
+
+        const paginationEl = container.querySelector('.wrap-slick1-dots');
+        const nextEl = container.querySelector('.next-slick1');
+        const prevEl = container.querySelector('.prev-slick1');
+
+        const swiper = new Swiper(swiperEl, {
             slidesPerView: 1,
             effect: 'fade',
             fadeEffect: {
@@ -34,14 +48,14 @@
                 disableOnInteraction: false,
             },
             pagination: {
-                el: '.wrap-slick1-dots',
+                el: paginationEl,
                 clickable: true,
                 bulletClass: 'swiper-pagination-bullet',
                 bulletActiveClass: 'swiper-pagination-bullet-active',
             },
             navigation: {
-                nextEl: '.next-slick1',
-                prevEl: '.prev-slick1',
+                nextEl,
+                prevEl,
             },
             on: {
                 init: function() {
@@ -67,7 +81,15 @@
         const container = document.querySelector('.wrap-slick2');
         if (!container || typeof Swiper === 'undefined') return;
 
-        const swiper = new Swiper('.swiper-event', {
+        const swiperEl = container.querySelector('.swiper-event');
+        if (!swiperEl || container.dataset.swiperEventInit === '1') return;
+        container.dataset.swiperEventInit = '1';
+
+        const paginationEl = container.querySelector('.wrap-slick2-dots');
+        const nextEl = container.querySelector('.next-slick2');
+        const prevEl = container.querySelector('.prev-slick2');
+
+        const swiper = new Swiper(swiperEl, {
             slidesPerView: 1,
             effect: 'fade',
             fadeEffect: {
@@ -79,12 +101,12 @@
                 disableOnInteraction: false,
             },
             pagination: {
-                el: '.wrap-slick2-dots',
+                el: paginationEl,
                 clickable: true,
             },
             navigation: {
-                nextEl: '.next-slick2',
-                prevEl: '.prev-slick2',
+                nextEl,
+                prevEl,
             },
             on: {
                 init: function() {
@@ -109,7 +131,15 @@
         const container = document.querySelector('.wrap-slick3');
         if (!container || typeof Swiper === 'undefined') return;
 
-        const swiper = new Swiper('.swiper-review', {
+        const swiperEl = container.querySelector('.swiper-review');
+        if (!swiperEl || container.dataset.swiperReviewInit === '1') return;
+        container.dataset.swiperReviewInit = '1';
+
+        const paginationEl = container.querySelector('.wrap-slick3-dots');
+        const nextEl = container.querySelector('.next-slick3');
+        const prevEl = container.querySelector('.prev-slick3');
+
+        const swiper = new Swiper(swiperEl, {
             slidesPerView: 1,
             loop: true,
             autoplay: {
@@ -117,12 +147,12 @@
                 disableOnInteraction: false,
             },
             pagination: {
-                el: '.wrap-slick3-dots',
+                el: paginationEl,
                 clickable: true,
             },
             navigation: {
-                nextEl: '.next-slick3',
-                prevEl: '.prev-slick3',
+                nextEl,
+                prevEl,
             },
             on: {
                 init: function() {
