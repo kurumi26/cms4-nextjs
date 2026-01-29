@@ -202,7 +202,8 @@
 .cms-admin-layout .form-select {
      border: 1px solid rgba(0,0,0,0.12) !important;
      border-radius: 6px !important;
-     padding: 6px 10px !important;
+  /* Keep space for Bootstrap's built-in dropdown arrow */
+  padding: 6px 2.25rem 6px 10px !important;
 }
 
 /* Compact variant */

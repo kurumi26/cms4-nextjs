@@ -12,6 +12,32 @@ type TopbarProps = {
 export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProps) {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const dropdownRef = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const init = async () => {
+      try {
+        const mod = await import('bootstrap');
+        const Dropdown = (mod as any).Dropdown;
+        const el = document.getElementById('userDropdown');
+        if (el && Dropdown) {
+          dropdownRef.current = new Dropdown(el);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    init();
+
+    return () => {
+      try {
+        dropdownRef.current && dropdownRef.current.dispose && dropdownRef.current.dispose();
+      } catch (e) {}
+    };
+  }, []);
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -27,9 +53,9 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
             className="btn btn-dark rounded-circle text-white d-flex align-items-center justify-content-center"
             type="button"
             id="userDropdown"
-            data-bs-toggle="dropdown"
             aria-expanded="false"
             style={{ width: '40px', height: '40px', fontSize: '0.875rem', fontWeight: 'bold' }}
+            onClick={() => dropdownRef.current?.toggle && dropdownRef.current.toggle()}
           >
             T
           </button>
