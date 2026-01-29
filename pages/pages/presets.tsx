@@ -162,13 +162,34 @@ export default function FileManagerPage() {
     modal.show();
   };
 
+  const openAddModal = async () => {
+    setEditingId(null);
+    setIsEditMode(false);
+    setThumbnailPreview(null);
+
+    setForm({
+      name: "",
+      category: "",
+      thumbnail: null,
+      content: "",
+      is_active: true,
+    });
+
+    const el = document.getElementById("addPresetModal");
+    if (!el) return;
+
+    const Modal = await getModal();
+    if (!Modal) return;
+
+    const modal = new Modal(el);
+    modal.show();
+  };
+
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3>Layout Presets</h3>
-        <button
-          className="btn btn-primary"
-        >
+        <button className="btn btn-primary" onClick={openAddModal}>
           + Add Preset
         </button>
       </div>
@@ -276,7 +297,7 @@ export default function FileManagerPage() {
                   }
                 />
               </div>
-              
+
               <div className="mb-3">
                 <label className="form-label">Thumbnail Image</label>
                 <input
