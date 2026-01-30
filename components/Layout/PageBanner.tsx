@@ -8,7 +8,7 @@ interface PageBannerProps {
 }
 
 export default function PageBanner({
-  title = "Build Your Future With Us",
+  title = "Search Results",
   subtitle = "",
   album,
 }: PageBannerProps) {
@@ -114,7 +114,7 @@ export default function PageBanner({
       className="text-white"
       style={{
         background:
-          "linear-gradient(135deg, #0d6efd 0%, #084298 100%)",
+          "linear-gradient(135deg, #000000 0%, #102f5f 100%)",
         padding: "5rem 0",
       }}
     >

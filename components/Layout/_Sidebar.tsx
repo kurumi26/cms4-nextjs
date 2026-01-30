@@ -107,6 +107,16 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
         { label: "Access Rights", href: "/account-management/access_rights" },
       ]
     }
+    ,
+    {
+      label: <MenuLabel icon="fa-solid fa-boxes-stacked" text="Products" />,
+      href: "/products",
+      children: [
+        { label: "Manage Products", href: "/products" },
+        { label: "Create Product", href: "/products/create" },
+        { label: "Create Category", href: "/products/category_create" }
+      ]
+    }
   ];
 
   return (

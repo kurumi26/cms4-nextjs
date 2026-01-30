@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Menu from "./_Menu";
 import styles from "@/styles/_topbar.module.css";
@@ -7,6 +7,9 @@ import styles from "@/styles/_topbar.module.css";
 export default function LandingTopbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     // compute threshold: if there's a banner, stay transparent until user scrolls
@@ -65,6 +68,42 @@ export default function LandingTopbar() {
         </div>
 
         <div className={styles.right}>
+          <div className={styles['search-wrapper']}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!searchQuery) return;
+                // Navigate to a search results page if available
+                try {
+                  window.location.href = `/public/search?q=${encodeURIComponent(searchQuery)}`;
+                } catch (err) {
+                  // fallback
+                  console.log('search:', searchQuery);
+                }
+              }}
+            >
+              <input
+                ref={inputRef}
+                className={styles['search-input']}
+                aria-label="Search"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => setSearchOpen(false)}
+              />
+              <button
+                type="button"
+                className={styles['search-icon']}
+                aria-label="Open search"
+                onClick={() => {
+                  setSearchOpen((v) => !v);
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+              >
+                <i className="fa fa-search" aria-hidden="true"></i>
+              </button>
+            </form>
+          </div>
           <button
             type="button"
             className={styles["mobile-toggle"]}

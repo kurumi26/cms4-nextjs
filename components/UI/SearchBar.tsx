@@ -16,6 +16,7 @@ interface SearchBarProps {
   // optional show-deleted toggle control
   showDeletedToggle?: boolean;
   showDeletedLabel?: string;
+  showSearchInput?: boolean;
 }
 
 export default function SearchBar({
@@ -30,6 +31,7 @@ export default function SearchBar({
   initialPerPage,
   showDeletedToggle = true,
   showDeletedLabel = "Show deleted only (Trash)",
+  showSearchInput = true,
 }: SearchBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -198,14 +200,16 @@ export default function SearchBar({
         )}
       </div>
 
-      <input
-        type="text"
-        className="form-control"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        style={{ maxWidth: 260 }}
-      />
+      {showSearchInput && (
+        <input
+          type="text"
+          className="form-control"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          style={{ maxWidth: 260 }}
+        />
+      )}
     </div>
   );
 }

@@ -38,8 +38,11 @@ axiosInstance.interceptors.response.use(
     loading.finish();
 
     if (error.response?.status === 401) {
-      localStorage.removeItem("auth_token");
-      window.location.href = "/";
+      // SSR-safe: window/localStorage do not exist on the server
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        window.location.href = "/";
+      }
     }
 
     // Log helpful debug information for 5xx/4xx responses
