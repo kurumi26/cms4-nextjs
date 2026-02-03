@@ -1,17 +1,13 @@
-import "bootstrap/dist/css/bootstrap.min.css";
-import "@fortawesome/fontawesome-free/css/all.min.css";
+import "bootstrap/dist/css/bootstrap.min.css"; //AdminLayout
+import "@fortawesome/fontawesome-free/css/all.min.css"; //AdminLayout
 
-import "@/styles/globals.css";
-import "@/styles/navigation.css";
-import "@/styles/topbar.css";
-import "@/styles/banner.css";
-import "@/styles/animations.css";
-import "@/styles/dashboard.css";
-import "@/styles/admin-sidebar.css";
-import "@/styles/admin-banners.css";
+import "@/styles/navigation.css"; // GuestLayout
+import "@/styles/banner.css"; // GuestLayout
+import "@/styles/dashboard.css"; // AdminLayout
+import "@/styles/admin-sidebar.css"; // AdminLayout
+import "@/styles/admin-banners.css"; // AdminLayout
 
-
-import "@/public/css/custom.css";
+import "@/public/css/custom.css"; //AdminLayout
 
 import type { AppProps } from "next/app";
 import React from "react";

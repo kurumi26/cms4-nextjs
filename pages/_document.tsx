@@ -5,6 +5,7 @@ export default function Document() {
     <Html lang="en">
       <Head>
         {/* Template / public-site styles (avoid next/head warnings) */}
+        {/** CSS files for GuestLayout */}
         <link rel="stylesheet" href="/css/flatpickr.min.css" />
         <link rel="stylesheet" href="/css/glightbox.min.css" />
         <link rel="stylesheet" href="/css/swiper-bundle.min.css" />
