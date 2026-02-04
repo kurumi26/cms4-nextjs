@@ -20,12 +20,16 @@ export default function BlogImageSlider({ images, alt }: Props) {
   }, [images]);
 
   return (
-    <div className="pic-blo4 hov-img-zoom bo-rad-10 pos-relative">
+    <div
+      className="pic-blo4 hov-img-zoom bo-rad-10 pos-relative"
+      style={{ position: "relative", width: "100%", aspectRatio: "2 / 1" }}
+    >
       <Image
         src={`/images/${images[index]}`}
         alt={alt}
-        width={900}
-        height={600}
+        fill
+        sizes="(max-width: 768px) 100vw, 75vw"
+        style={{ objectFit: "cover" }}
         priority={index === 0}
       />
 
