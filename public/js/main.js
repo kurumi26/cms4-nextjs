@@ -10,6 +10,7 @@
     let glightboxInstance = null;
     let glightboxRefreshTimer = null;
     let isUpdatingLightbox = false;
+    let isLightboxOpen = false;
 
     // In Next.js we load scripts with strategy=afterInteractive, which can run
     // after DOMContentLoaded. Run init immediately if the DOM is already ready.
@@ -394,6 +395,8 @@
      */
     function initGLightbox() {
         if (typeof GLightbox === 'undefined') return;
+        // Never destroy/recreate while open; it will instantly close.
+        if (isLightboxOpen) return;
 
         // Pato CMS gallery markup sometimes uses a <div class="overlay-item-gallery">
         // instead of an <a> link. Convert overlays to anchors so clicking zooms.
@@ -411,12 +414,27 @@
         if (glightboxInstance && typeof glightboxInstance.destroy === 'function') {
             glightboxInstance.destroy();
         }
+        isLightboxOpen = false;
         glightboxInstance = GLightbox({
             selector: '.glightbox',
             touchNavigation: true,
             loop: true,
             zoomable: true,
         });
+
+        // Track open/close state so the MutationObserver won't re-init and close it.
+        try {
+            if (glightboxInstance && typeof glightboxInstance.on === 'function') {
+                glightboxInstance.on('open', () => {
+                    isLightboxOpen = true;
+                });
+                glightboxInstance.on('close', () => {
+                    isLightboxOpen = false;
+                });
+            }
+        } catch (e) {
+            // ignore; older GLightbox builds may not support event API
+        }
     }
 
     function ensureGalleryLightboxLinks(root) {
@@ -473,7 +491,14 @@
             if (isUpdatingLightbox) return;
             // GLightbox injects DOM nodes into <body> when opened.
             // Our observer would otherwise re-init (destroy) and instantly close it.
-            if (document.body && document.body.classList.contains('glightbox-open')) return;
+            if (isLightboxOpen) return;
+            if (
+                (document.documentElement && document.documentElement.classList.contains('glightbox-open')) ||
+                (document.body && document.body.classList.contains('glightbox-open')) ||
+                document.querySelector('.glightbox-container')
+            ) {
+                return;
+            }
             clearTimeout(glightboxRefreshTimer);
             glightboxRefreshTimer = setTimeout(() => {
                 initGalleryFilter();
