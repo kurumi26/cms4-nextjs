@@ -8,11 +8,132 @@ type Props = {
 	pageData: any;
 	products: any[];
 	categories: any[];
-	layout?: {
-		fullWidth?: boolean;
-		hideBanner?: boolean;
-	};
 };
+
+const USE_DUMMY_PRODUCTS = true;
+
+const DUMMY_PRODUCTS: any[] = [
+	{
+		id: 101,
+		slug: "calamari-rings",
+		name: "Calamari Rings",
+		price: 8.99,
+		serving_size: "1 pc",
+		description: "Lightly battered squid rings, crispy and tender.",
+		image_url: "/images/calamarirings.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 102,
+		slug: "garlic-bread",
+		name: "Garlic Bread",
+		price: 7.49,
+		serving_size: "1 pc",
+		description: "Toasted bread with garlic butter and herbs.",
+		image_url: "/images/garlicbread.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+
+    {
+		id: 103,
+		slug: "cheesy-sticks",
+		name: "Cheesy Sticks",
+		price: 7.49,
+		serving_size: "1 pc",
+		description: "Golden-fried mozzarella sticks served with marinara sauce.",
+		image_url: "/images/cheesesticks.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+
+    {
+		id: 104,
+		slug: "spring-rolls",
+		name: "Spring Rolls",
+		price: 2.04,
+		serving_size: "1 pc",
+		description: "Crispy rolls filled with seasoned vegetables, served with sweet chili sauce.",
+		image_url: "/images/springrolls.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 201,
+		slug: "chicken-inasal",
+		name: "Chicken Inasal",
+		price: 10.5,
+		serving_size: "1 bowl",
+		description: "Grilled chicken marinated in inasal spices.",
+		image_url: "/images/chickeninasal.jpg",
+		category_id: 2,
+		category: { id: 2, name: "Chicken Dishes" },
+	},
+	{
+		id: 202,
+		slug: "fried-chicken",
+		name: "Fried Chicken",
+		price: 3.32,
+		serving_size: "1 bowl",
+		description: "Crispy fried chicken, juicy inside.",
+		image_url: "/images/friedchicken.jpg",
+		category_id: 2,
+		category: { id: 2, name: "Chicken Dishes" },
+	},
+	{
+		id: 301,
+		slug: "chicken-alfredo-pasta",
+		name: "Chicken Alfredo Pasta",
+		price: 3.95,
+		serving_size: "1 plate",
+		description: "Pasta in creamy alfredo sauce with grilled chicken.",
+		image_url: "/images/chickenalfredo.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+	{
+		id: 302,
+		slug: "carbonara-pasta",
+		name: "Carbonara Pasta",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Classic Italian pasta dish made with eggs, cheese, pancetta, and pepper.",
+		image_url: "/images/carbonara.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+    {
+		id: 303,
+		slug: "spaghetti-bolognese",
+		name: "Spaghetti Bolognese",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Classic Italian pasta dish made with eggs, cheese, pancetta, and pepper.",
+		image_url: "/images/spaghetti.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+
+    {
+		id: 401,
+		slug: "butter-garlic-shrimp",
+		name: "Butter Garlic Shrimp",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Shrimp sautéed in a rich butter and garlic sauce.",
+		image_url: "/images/butteredshrimp.jpg",
+		category_id: 4,
+		category: { id: 4, name: "Seafoods" },
+	},
+];
+
+const DUMMY_CATEGORIES: any[] = [
+	{ id: 1, name: "Appetizers" },
+	{ id: 2, name: "Chicken Dishes" },
+	{ id: 3, name: "Pasta & Noodles" },
+    { id: 4, name: "Seafoods" }
+];
 
 function groupByCategory(products: any[]) {
 	const map: Record<string, any[]> = {};
@@ -27,6 +148,7 @@ function groupByCategory(products: any[]) {
 function extractArray(payload: any): any[] {
 	if (!payload) return [];
 	let data: any = payload?.data ?? payload;
+	// Common nesting: { data: { data: [...] } }
 	if (data && typeof data === "object" && !Array.isArray(data) && "data" in data) {
 		data = (data as any).data;
 		if (data && typeof data === "object" && !Array.isArray(data) && "data" in data) {
@@ -68,45 +190,11 @@ function getProductCategoryId(p: any): string {
 	);
 }
 
-function getCategoryLabel(c: any): string {
-	return String(c?.name ?? c?.title ?? c?.slug ?? "Category");
-}
-
-function normalizeNumber(value: any): number | undefined {
-	if (value === null || value === undefined || value === "") return undefined;
-	const num = Number(value);
-	return Number.isFinite(num) ? num : undefined;
-}
-
-function getCategorySortKey(c: any): number | undefined {
-	return (
-		normalizeNumber(c?.order) ??
-		normalizeNumber(c?.sort_order) ??
-		normalizeNumber(c?.position) ??
-		normalizeNumber(c?.display_order) ??
-		normalizeNumber(c?.rank) ??
-		undefined
-	);
-}
-
-function resolveImageUrl(src: any): string | undefined {
-	if (!src) return undefined;
-	const s = String(src);
-	if (!s) return undefined;
-	if (/^(https?:)?\/\//i.test(s) || s.startsWith("data:") || s.startsWith("blob:")) return s;
-	const base = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
-	if (!base) return s;
-	if (s.startsWith("/storage/")) return `${base}${s}`;
-	if (s.startsWith("storage/")) return `${base}/${s}`;
-	if (s.startsWith("/")) return `${base}${s}`;
-	return `${base}/storage/${s.replace(/^\.\/?/, "")}`;
-}
-
 export default function ProductsPublicPage({ products, categories, pageData }: Props) {
 	const [clientProducts, setClientProducts] = useState<any[]>(products || []);
 	const [clientCategories, setClientCategories] = useState<any[]>(categories || []);
-	const [categoryQuery, setCategoryQuery] = useState<string>("");
 	const [activeCategory, setActiveCategory] = useState<string>("*");
+	const [search, setSearch] = useState<string>("");
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
 	useEffect(() => {
@@ -115,21 +203,21 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 	}, [products, categories]);
 
 	useEffect(() => {
+		if (USE_DUMMY_PRODUCTS) return;
+		// If SSR couldn't fetch (often due to auth token only available in localStorage), try in the browser.
 		if ((products && products.length) || (categories && categories.length)) return;
 
 		let cancelled = false;
 		const run = async () => {
 			const tryInstance = async (ep: string, params?: any) => {
-				const resp = await axiosInstance.get(ep, {
-					params,
-					headers: { "X-No-Loading": true, "X-No-Auth-Redirect": true },
-				});
+				const resp = await axiosInstance.get(ep, { params, headers: { "X-No-Loading": true } });
 				return resp.data;
 			};
 
 			try {
+				// Products
 				let nextProducts: any[] = [];
-				const productEndpoints = ["/products"];
+				const productEndpoints = ["/public-products", "/public/products", "/products", "/api/products"];
 				for (const ep of productEndpoints) {
 					try {
 						const payload = await tryInstance(ep, { per_page: 1000 });
@@ -140,8 +228,9 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 					}
 				}
 
+				// Categories
 				let nextCategories: any[] = [];
-				const catEndpoints = ["/fetch-product-categories", "/product-categories", "/categories?type=product", "/categories"];
+				const catEndpoints = ["/public-product-categories", "/fetch-product-categories", "/product-categories", "/categories?type=product", "/categories"];
 				for (const ep of catEndpoints) {
 					try {
 						const payload = await tryInstance(ep, { per_page: 1000 });
@@ -166,286 +255,251 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 		};
 	}, [products, categories]);
 
-	const effectiveProducts = clientProducts || [];
-	const effectiveCategories = clientCategories || [];
-	const byCat = useMemo(() => groupByCategory(effectiveProducts), [effectiveProducts]);
+	const effectiveProducts = (USE_DUMMY_PRODUCTS ? DUMMY_PRODUCTS : clientProducts) || [];
+	const effectiveCategories = (USE_DUMMY_PRODUCTS ? DUMMY_CATEGORIES : clientCategories) || [];
 
-	const sortedCategories = useMemo(() => {
-		const list = [...effectiveCategories];
-		const hasAnyOrder = list.some((c: any) => typeof getCategorySortKey(c) === "number");
-		if (!hasAnyOrder) return list;
-		return list.sort((a: any, b: any) => (getCategorySortKey(a) ?? 0) - (getCategorySortKey(b) ?? 0));
-	}, [effectiveCategories]);
-
-	const navCategories = useMemo(() => {
-		const query = categoryQuery.trim().toLowerCase();
-		if (!query) return sortedCategories;
-		return sortedCategories.filter((c: any) => {
-			const label = getCategoryLabel(c).toLowerCase();
-			return label.includes(query);
+	const searchedProducts = useMemo(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return effectiveProducts;
+		return effectiveProducts.filter((p: any) => {
+			const hay = [
+				p?.name,
+				p?.title,
+				p?.slug,
+				p?.description,
+				p?.teaser,
+				p?.summary,
+				p?.category?.name,
+				p?.category_name,
+			]
+				.filter(Boolean)
+				.join(" ")
+				.toLowerCase();
+			return hay.includes(q);
 		});
-	}, [sortedCategories, categoryQuery]);
+	}, [search, effectiveProducts]);
 
-	const formatPrice = (value: any) => {
-		if (value === null || value === undefined || value === "") return "";
-		const num = typeof value === "number" ? value : Number(value);
-		if (!Number.isFinite(num)) return String(value);
-		return `$${num.toFixed(2)}`;
-	};
+	const byCat = useMemo(() => groupByCategory(searchedProducts), [searchedProducts]);
+
+	const filteredProducts = useMemo(() => {
+		if (activeCategory === "*") return searchedProducts;
+		return (byCat[activeCategory] || []) as any[];
+	}, [activeCategory, searchedProducts, byCat]);
 
 	return (
-		<div className="products-section">
-			<div className="row g-4 mx-0">
-				<div className="col-lg-3 mb-4">
-					<div className="sidebar-card">
-						<div className="sidebar-header">
-							<h5 className="sidebar-title">Categories</h5>
-						</div>
-
-						<div className="sidebar-search">
+		<div className="container-fluid px-0">
+			<div className="row">
+				{/* SIDEBAR */}
+				<div className="col-md-4 col-lg-3">
+					<div className="sidebar2 p-t-80 p-b-80 p-r-20 p-r-0-md p-t-0-md">
+						<div className="search-sidebar2 size12 bo2 pos-relative" style={{ marginBottom: 24 }}>
 							<input
-								type="search"
-								value={categoryQuery}
-								onChange={(e) => setCategoryQuery(e.target.value)}
-								placeholder="Search..."
-								aria-label="Search categories"
-								className="search-input"
+								className="input-search-sidebar2 txt10 p-l-20 p-r-55"
+								type="text"
+								placeholder="Search products"
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Escape") setSearch("");
+								}}
+							/>
+							<button
+								type="button"
+								className="btn-search-sidebar2 flex-c-m ti-search trans-0-4"
+								aria-label="Search"
+								onClick={() => {
+									// Search is applied live as the user types.
+								}}
 							/>
 						</div>
 
-						{effectiveCategories && effectiveCategories.length ? (
-							<nav className="category-nav" aria-label="Category quick links">
-								<button
-									className={`category-link ${activeCategory === "*" ? "active" : ""}`}
-									onClick={(e) => {
-										e.preventDefault();
-										setActiveCategory("*");
-										document.getElementById("products-top")?.scrollIntoView({ behavior: "smooth" });
-									}}
-								>
-									<span className="category-name">All Products</span>
-									<span className="category-count">{effectiveProducts.length}</span>
-								</button>
+						<div className="categories">
+							<h4 className="txt33 bo5-b p-b-35 p-t-58">Categories</h4>
 
-								{navCategories.map((c: any) => {
+							<ul>
+								<li className="flex-sb-m bo5-b p-t-8 p-b-8">
+									<a
+										className={`txt27 ${activeCategory === "*" ? "color0" : "color1"} color0-hov`}
+										style={{ cursor: "pointer", textDecoration: "none" }}
+										onClick={() => setActiveCategory("*")}
+									>
+										All Products
+									</a>
+									<span className="txt29">({searchedProducts.length})</span>
+								</li>
+
+								{effectiveCategories?.map((c: any) => {
 									const catId = getCategoryId(c);
+									const label = c?.name ?? c?.title ?? c?.slug ?? "Category";
 									return (
-										<button
-											key={catId}
-											className={`category-link ${activeCategory === catId ? "active" : ""}`}
-											onClick={(e) => {
-												e.preventDefault();
-												setActiveCategory(catId);
-												document.getElementById(`cat-${catId}`)?.scrollIntoView({ behavior: "smooth" });
-											}}
-										>
-											<span className="category-name">{getCategoryLabel(c)}</span>
-											<span className="category-count">{(byCat[catId] || []).length}</span>
-										</button>
+										<li key={catId} className="flex-sb-m bo5-b p-t-8 p-b-8">
+											<a
+												className={`txt27 ${activeCategory === catId ? "color0" : "color1"} color0-hov`}
+												style={{ cursor: "pointer", textDecoration: "none" }}
+												onClick={() => setActiveCategory(catId)}
+											>
+												{label}
+											</a>
+											<span className="txt29">({(byCat[catId] || []).length})</span>
+										</li>
 									);
 								})}
-							</nav>
-						) : (
-							<div className="sidebar-empty">
-								<p>No categories available</p>
-							</div>
-						)}
+							</ul>
+						</div>
 					</div>
 				</div>
 
-				<div id="products-top" className="col-lg-9">
-					{/* View Controls */}
-					<div className="content-controls">
-						<div className="control-left">
-							<span className="result-count">{effectiveProducts.length} Products</span>
-						</div>
-						<div className="control-right">
-							<button
-								className={`view-btn ${viewMode === "grid" ? "active" : ""}`}
-								onClick={() => setViewMode("grid")}
-								aria-label="Grid view"
-								title="Grid view"
-							>
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<rect x="3" y="3" width="5" height="5" stroke="currentColor" strokeWidth="1.5"/>
-									<rect x="12" y="3" width="5" height="5" stroke="currentColor" strokeWidth="1.5"/>
-									<rect x="3" y="12" width="5" height="5" stroke="currentColor" strokeWidth="1.5"/>
-									<rect x="12" y="12" width="5" height="5" stroke="currentColor" strokeWidth="1.5"/>
-								</svg>
-							</button>
-							<button
-								className={`view-btn ${viewMode === "list" ? "active" : ""}`}
-								onClick={() => setViewMode("list")}
-								aria-label="List view"
-								title="List view"
-							>
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<line x1="3" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-									<line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-									<line x1="3" y1="15" x2="17" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-								</svg>
-							</button>
-						</div>
-					</div>
+				{/* MAIN */}
+				<div className="col-md-8 col-lg-9">
+					<div className="p-t-80 p-b-80">
+						<div className="p-b-50 d-flex align-items-start justify-content-between flex-wrap" style={{ gap: 12 }}>
+							<div>
+								<h3 className="txt33">Products</h3>
+								<p className="txt14 m-t-10">
+									{pageData?.title ? `Explore ${pageData.title}` : "Explore our latest items"}
+								</p>
+							</div>
 
-					{sortedCategories && sortedCategories.length ? (
-						sortedCategories.map((c: any, idx: any) => {
-							const catId = getCategoryId(c);
-							return (
-								<div
-									key={c.id ?? c.slug}
-									id={`cat-${catId}`}
-									className="mb-5 category-section"
-									style={{ animationDelay: `${idx * 0.1}s` }}
-								>
-									<div className="category-title-wrap">
-										<h2 className="category-title">{getCategoryLabel(c)}</h2>
-									</div>
-									<div className={`product-grid ${viewMode === "list" ? "list-view" : ""}`}>
-										{(byCat[catId] || []).map((p: any, pIdx: any) => (
-											<article
-												key={p.id ?? p.slug}
-												className="product-item"
-												style={{ animationDelay: `${pIdx * 0.05}s` }}
-											>
-												<a
-													href={`/public/product/${p.slug ?? p.id}`}
-													className="product-link-wrapper"
-													aria-label={`View ${(p.name ?? p.title ?? p.slug ?? "product").toString()}`}
+							<div className="d-flex align-items-center" style={{ gap: 8 }}>
+								<span className="txt27" style={{ margin: 0 }}>View</span>
+								<div className="btn-group" role="group" aria-label="Products view mode">
+									<button
+										type="button"
+										onClick={() => setViewMode("grid")}
+										className={`btn btn-sm ${viewMode === "grid" ? "btn-secondary" : "btn-outline-secondary"}`}
+										aria-pressed={viewMode === "grid"}
+										title="Grid view"
+									>
+										<svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+											<rect x="3" y="3" width="5" height="5" stroke="currentColor" strokeWidth="1.5" />
+											<rect x="12" y="3" width="5" height="5" stroke="currentColor" strokeWidth="1.5" />
+											<rect x="3" y="12" width="5" height="5" stroke="currentColor" strokeWidth="1.5" />
+											<rect x="12" y="12" width="5" height="5" stroke="currentColor" strokeWidth="1.5" />
+										</svg>
+									</button>
+									<button
+										type="button"
+										onClick={() => setViewMode("list")}
+										className={`btn btn-sm ${viewMode === "list" ? "btn-secondary" : "btn-outline-secondary"}`}
+										aria-pressed={viewMode === "list"}
+										title="List view"
+									>
+										<svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+											<line x1="3" y1="5" x2="17" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+											<line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+											<line x1="3" y1="15" x2="17" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+
+						{filteredProducts.length ? (
+							<div className="row">
+								{filteredProducts.map((p: any) => {
+									const href = `/public/product/${p.slug ?? p.id}`;
+									const imageSrc = p.image_url ?? p.image;
+									const colClass = viewMode === "grid" ? "col-sm-6 col-lg-4" : "col-12";
+									return (
+										<div key={p.id ?? p.slug} className={`${colClass} p-b-40`}>
+											<a href={href} className="dis-block link-reset" style={{ width: "100%" }}>
+												<div
+													className="blo4 bo-rad-10 of-hidden"
+													style={{ width: "100%", display: "flex", flexDirection: "column" }}
 												>
-													<div className="product-image-container">
-														{p.image_url || p.image ? (
-															// eslint-disable-next-line @next/next/no-img-element
-															<img
-																className="product-img"
-																src={resolveImageUrl(p.image_url ?? p.image)}
-																alt={p.name}
-																loading="lazy"
-																decoding="async"
-															/>
-														) : (
-															<div className="product-img-placeholder">
-																<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.5">
-																	<rect x="5" y="5" width="30" height="30" rx="2"/>
-																	<circle cx="14" cy="14" r="3"/>
-																	<path d="M5 27L13 19L20 26L27 19L35 27" strokeLinecap="round" strokeLinejoin="round"/>
-																</svg>
+													{viewMode === "grid" ? (
+														<>
+															<div className="hov-img-zoom" style={{ aspectRatio: "4 / 3", width: "100%", overflow: "hidden" }}>
+																{/* eslint-disable-next-line @next/next/no-img-element */}
+																<img
+																	src={imageSrc || "/images/blog-01.jpg"}
+																	alt={p.name ?? p.title ?? "Product"}
+																	style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
+																/>
 															</div>
-														)}
-													</div>
 
-													<div className="product-content">
-														<div className="product-header">
-															<h3 className="product-name">{p.name ?? p.title ?? p.slug}</h3>
-															{p.price && (
-																<span className="product-price">{formatPrice(p.price)}</span>
-															)}
-														</div>
+															<div className="p-20" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+																<h4 className="p-b-10" style={{ marginTop: 8 }}>
+																	{p.name ?? p.title ?? p.slug}
+																</h4>
 
-														{(p.description || p.teaser || p.summary) && (
-															<p className="product-description">
-																{(p.description ?? p.teaser ?? p.summary ?? "").toString()}
-															</p>
-														)}
+																<div className="txt32 flex-w p-b-10">
+																	{p.price ? <span className="color0">${Number(p.price).toFixed(2)}</span> : null}
+																	{p.price && (p.serving_size || p.category_name || p.category?.name) ? (
+																		<span className="m-r-6 m-l-4">|</span>
+																	) : null}
+																	{p.serving_size ? <span>{p.serving_size}</span> : null}
+																</div>
 
-														<div className="product-meta-row">
-															{(p.category && (p.category.name ?? p.category.title)) ?? p.category_name ? (
-																<span className="product-tag">
-																	{(p.category && (p.category.name ?? p.category.title)) ?? p.category_name}
+																<p
+																	className="txt14"
+																	style={{
+																		display: "-webkit-box",
+																		WebkitLineClamp: 3,
+																		WebkitBoxOrient: "vertical",
+																		overflow: "hidden",
+																	}}
+																>
+																	{(p.description ?? p.teaser ?? p.summary ?? "").toString()}
+																</p>
+																<span className="txt4 m-t-15 color0-hov" style={{ marginTop: "auto" }}>
+																	View Details →
 																</span>
-															) : null}
-															{p.serving_size && (
-																<span className="product-detail">{p.serving_size}</span>
-															)}
-														</div>
-													</div>
-												</a>
-											</article>
-										))}
-									</div>
-								</div>
-							);
-						})
-					) : (
-						effectiveProducts && effectiveProducts.length ? (
-							<div className="mb-4">
-								<div className="category-title-wrap">
-									<h2 className="category-title">All Products</h2>
-								</div>
-								<div className={`product-grid ${viewMode === "list" ? "list-view" : ""}`}>
-									{effectiveProducts.map((p: any, pIdx: any) => (
-										<article
-											key={p.id ?? p.slug}
-											className="product-item"
-											style={{ animationDelay: `${pIdx * 0.05}s` }}
-										>
-											<a
-												href={`/public/product/${p.slug ?? p.id}`}
-												className="product-link-wrapper"
-												aria-label={`View ${(p.name ?? p.title ?? p.slug ?? "product").toString()}`}
-											>
-												<div className="product-image-container">
-													{p.image_url || p.image ? (
-														// eslint-disable-next-line @next/next/no-img-element
-														<img
-															className="product-img"
-															src={resolveImageUrl(p.image_url ?? p.image)}
-															alt={p.name}
-															loading="lazy"
-															decoding="async"
-														/>
+															</div>
+														</>
 													) : (
-														<div className="product-img-placeholder">
-															<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.5">
-																<rect x="5" y="5" width="30" height="30" rx="2"/>
-																<circle cx="14" cy="14" r="3"/>
-																<path d="M5 27L13 19L20 26L27 19L35 27" strokeLinecap="round" strokeLinejoin="round"/>
-															</svg>
+														<div className="row g-0">
+															<div className="col-md-5">
+																<div className="hov-img-zoom" style={{ height: 220, overflow: "hidden" }}>
+																	{/* eslint-disable-next-line @next/next/no-img-element */}
+																	<img
+																		src={imageSrc || "/images/blog-01.jpg"}
+																		alt={p.name ?? p.title ?? "Product"}
+																		style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+																	/>
+																</div>
+															</div>
+
+															<div className="col-md-7 ps-md-4">
+																<div className="p-20" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+																	<h4 className="p-b-10" style={{ marginTop: 8 }}>
+																		{p.name ?? p.title ?? p.slug}
+																	</h4>
+																	<div className="txt32 flex-w p-b-10">
+																		{p.price ? <span className="color0">${Number(p.price).toFixed(2)}</span> : null}
+																		{p.price && (p.serving_size || p.category_name || p.category?.name) ? (
+																			<span className="m-r-6 m-l-4">|</span>
+																		) : null}
+																		{p.serving_size ? <span>{p.serving_size}</span> : null}
+																	</div>
+																	<p
+																		className="txt14"
+																		style={{
+																			display: "-webkit-box",
+																			WebkitLineClamp: 4,
+																			WebkitBoxOrient: "vertical",
+																			overflow: "hidden",
+																		}}
+																	>
+																		{(p.description ?? p.teaser ?? p.summary ?? "").toString()}
+																	</p>
+																	<span className="txt4 m-t-15 color0-hov" style={{ marginTop: "auto" }}>
+																		View Details →
+																	</span>
+																</div>
+															</div>
 														</div>
 													)}
-												</div>
-
-												<div className="product-content">
-													<div className="product-header">
-														<h3 className="product-name">{p.name ?? p.title ?? p.slug}</h3>
-														{p.price && (
-															<span className="product-price">{formatPrice(p.price)}</span>
-														)}
-													</div>
-
-													{(p.description || p.teaser || p.summary) && (
-														<p className="product-description">
-															{(p.description ?? p.teaser ?? p.summary ?? "").toString()}
-														</p>
-													)}
-
-													<div className="product-meta-row">
-														{(p.category && (p.category.name ?? p.category.title)) ?? p.category_name ? (
-															<span className="product-tag">
-																{(p.category && (p.category.name ?? p.category.title)) ?? p.category_name}
-															</span>
-														) : null}
-														{p.serving_size && (
-															<span className="product-detail">{p.serving_size}</span>
-														)}
-													</div>
 												</div>
 											</a>
-										</article>
-									))}
-								</div>
+										</div>
+									);
+								})}
 							</div>
 						) : (
-							<div className="empty-content">
-								<svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
-									<circle cx="32" cy="32" r="24"/>
-									<path d="M32 24v16M32 44h.01" strokeLinecap="round"/>
-								</svg>
-								<h3>No products found</h3>
-								<p>Check back later for new items</p>
-							</div>
-						)
-					)}
+							<p className="txt14">No products found.</p>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
@@ -453,20 +507,40 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 }
 
 export async function getServerSideProps() {
+	if (USE_DUMMY_PRODUCTS) {
+		let pageData: any = null;
+		try {
+			const pageRes = await getPublicPageBySlug("products");
+			pageData = pageRes.data;
+		} catch {
+			pageData = null;
+		}
+
+		return {
+			props: {
+				pageData,
+				products: DUMMY_PRODUCTS,
+				categories: DUMMY_CATEGORIES,
+			},
+		};
+	}
+
 	try {
+		// Attempt to fetch a public page config (optional)
 		const pageRes = await getPublicPageBySlug("products");
 
+		// Fetch products via productService (robust client used by admin) and fall back to common public endpoints
 		let products: any[] = [];
 		try {
 			const res = await productService.getProducts({ per_page: 1000 });
 			const data = res?.data ?? res ?? [];
 			products = Array.isArray(data) ? data : data?.items ?? data?.rows ?? data?.data ?? [];
 		} catch (e: any) {
-			// ignore
+			// ignore and fall back to endpoint tries
 		}
 
 		if (!products || products.length === 0) {
-			const productEndpoints = ["/products"];
+			const productEndpoints = ["/public-products", "/public/products", "/products", "/api/products"];
 			for (const ep of productEndpoints) {
 				try {
 					const resp = await axiosInstance.get(ep, { params: { per_page: 1000 }, headers: { "X-No-Loading": true } });
@@ -479,16 +553,14 @@ export async function getServerSideProps() {
 			}
 		}
 
+		// Categories: try several endpoints and absolute fallbacks
 		let categories: any[] = [];
-		const catEndpoints = ["/fetch-product-categories", "/product-categories", "/categories?type=product", "/categories"];
+		const catEndpoints = ["/public-product-categories", "/fetch-product-categories", "/product-categories", "/categories?type=product", "/categories"];
 		for (const ep of catEndpoints) {
 			try {
 				const cresp = await axiosInstance.get(ep, { params: { per_page: 1000 }, headers: { "X-No-Loading": true } });
 				const cdata = cresp.data?.data ?? cresp.data ?? [];
-				if (Array.isArray(cdata) && cdata.length) {
-					categories = cdata;
-					break;
-				}
+				if (Array.isArray(cdata) && cdata.length) { categories = cdata; break; }
 			} catch {
 				// try next
 			}
@@ -499,7 +571,6 @@ export async function getServerSideProps() {
 				pageData: pageRes.data,
 				products,
 				categories,
-				layout: { fullWidth: true },
 			},
 		};
 	} catch (error: any) {
@@ -509,10 +580,10 @@ export async function getServerSideProps() {
 				pageData: null,
 				products: [],
 				categories: [],
-				layout: { fullWidth: true },
 			},
 		};
 	}
 }
 
 ProductsPublicPage.Layout = LandingPageLayout;
+

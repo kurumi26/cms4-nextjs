@@ -30,13 +30,15 @@ const archives = blogPosts.reduce<Record<string, number>>((acc, post) => {
 
 export default function BlogSidebar() {
   const router = useRouter();
+  const view = typeof router.query.view === "string" ? router.query.view : undefined;
 
   const onSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const value = (e.currentTarget.search as HTMLInputElement).value;
     if (!value) return;
 
-    router.push(`/public/blog?search=${encodeURIComponent(value)}`);
+    const viewSuffix = view ? `&view=${encodeURIComponent(view)}` : "";
+    router.push(`/public/blog?search=${encodeURIComponent(value)}${viewSuffix}`);
   };
 
   return (
@@ -62,8 +64,15 @@ export default function BlogSidebar() {
           {categories.map((cat) => (
             <li key={cat} className="bo5-b p-t-8 p-b-8">
               <Link
-                href={`/public/blog?category=${encodeURIComponent(cat)}`}
+                href={{
+                  pathname: "/public/blog",
+                  query: {
+                    category: cat,
+                    ...(view ? { view } : {}),
+                  },
+                }}
                 className="txt27"
+                style={{ textDecoration: "none" }}
               >
                 {cat}
               </Link>
@@ -78,13 +87,17 @@ export default function BlogSidebar() {
         <ul>
           {popularPosts.map((post) => (
             <li key={post.id} className="flex-w m-b-25">
-              <div className="size16 bo-rad-10 wrap-pic-w of-hidden m-r-18">
-                <Link href={`/public/blog/${post.slug}`}>
+              <div
+                className="size16 bo-rad-10 wrap-pic-w of-hidden m-r-18"
+                style={{ position: "relative" }}
+              >
+                <Link href={`/public/blog/${post.slug}`} style={{ textDecoration: "none" }}>
                   <Image
                     src={`/images/${post.images[0]}`}
                     alt={post.title}
-                    width={90}
-                    height={90}
+                    fill
+                    sizes="70px"
+                    style={{ objectFit: "cover", objectPosition: "center" }}
                   />
                 </Link>
               </div>
@@ -93,6 +106,7 @@ export default function BlogSidebar() {
                 <Link
                   href={`/public/blog/${post.slug}`}
                   className="dis-block txt28 m-b-8"
+                  style={{ textDecoration: "none" }}
                 >
                   {post.title}
                 </Link>
@@ -110,8 +124,15 @@ export default function BlogSidebar() {
           {Object.entries(archives).map(([month, count]) => (
             <li key={month} className="flex-sb-m p-t-8 p-b-8">
               <Link
-                href={`/public/blog?month=${encodeURIComponent(month)}`}
+                href={{
+                  pathname: "/public/blog",
+                  query: {
+                    month,
+                    ...(view ? { view } : {}),
+                  },
+                }}
                 className="txt27"
+                style={{ textDecoration: "none" }}
               >
                 {month}
               </Link>

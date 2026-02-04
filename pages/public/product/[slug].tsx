@@ -12,6 +12,134 @@ type Props = {
 	};
 };
 
+export const USE_DUMMY_PRODUCTS = true;
+
+export const DUMMY_PRODUCTS: any[] = [
+	{
+		id: 101,
+		slug: "calamari-rings",
+		name: "Calamari Rings",
+		price: 8.99,
+		serving_size: "1 pc",
+		description: "Lightly battered squid rings, crispy and tender.",
+		image_url: "/images/calamarirings.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 102,
+		slug: "garlic-bread",
+		name: "Garlic Bread",
+		price: 7.49,
+		serving_size: "1 pc",
+		description: "Toasted bread with garlic butter and herbs.",
+		image_url: "/images/garlicbread.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 103,
+		slug: "cheesy-sticks",
+		name: "Cheesy Sticks",
+		price: 7.49,
+		serving_size: "1 pc",
+		description: "Golden-fried mozzarella sticks served with marinara sauce.",
+		image_url: "/images/cheesesticks.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 104,
+		slug: "spring-rolls",
+		name: "Spring Rolls",
+		price: 2.04,
+		serving_size: "1 pc",
+		description: "Crispy rolls filled with seasoned vegetables, served with sweet chili sauce.",
+		image_url: "/images/springrolls.jpg",
+		category_id: 1,
+		category: { id: 1, name: "Appetizers" },
+	},
+	{
+		id: 201,
+		slug: "chicken-inasal",
+		name: "Chicken Inasal",
+		price: 10.5,
+		serving_size: "1 bowl",
+		description: "Grilled chicken marinated in inasal spices.",
+		image_url: "/images/chickeninasal.jpg",
+		category_id: 2,
+		category: { id: 2, name: "Chicken Dishes" },
+	},
+	{
+		id: 202,
+		slug: "fried-chicken",
+		name: "Fried Chicken",
+		price: 3.32,
+		serving_size: "1 bowl",
+		description: "Crispy fried chicken, juicy inside.",
+		image_url: "/images/friedchicken.jpg",
+		category_id: 2,
+		category: { id: 2, name: "Chicken Dishes" },
+	},
+	{
+		id: 301,
+		slug: "chicken-alfredo-pasta",
+		name: "Chicken Alfredo Pasta",
+		price: 3.95,
+		serving_size: "1 plate",
+		description: "Pasta in creamy alfredo sauce with grilled chicken.",
+		image_url: "/images/chickenalfredo.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+	{
+		id: 302,
+		slug: "carbonara-pasta",
+		name: "Carbonara Pasta",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Classic Italian pasta dish made with eggs, cheese, pancetta, and pepper.",
+		image_url: "/images/carbonara.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+	{
+		id: 303,
+		slug: "spaghetti-bolognese",
+		name: "Spaghetti Bolognese",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Classic Italian pasta dish made with eggs, cheese, pancetta, and pepper.",
+		image_url: "/images/spaghetti.jpg",
+		category_id: 3,
+		category: { id: 3, name: "Pasta & Noodles" },
+	},
+	{
+		id: 401,
+		slug: "butter-garlic-shrimp",
+		name: "Butter Garlic Shrimp",
+		price: 3.5,
+		serving_size: "1 plate",
+		description: "Shrimp saut in a rich butter and garlic sauce.",
+		image_url: "/images/butteredshrimp.jpg",
+		category_id: 4,
+		category: { id: 4, name: "Seafoods" },
+	},
+];
+
+export const DUMMY_CATEGORIES: any[] = [
+	{ id: 1, name: "Appetizers" },
+	{ id: 2, name: "Chicken Dishes" },
+	{ id: 3, name: "Pasta & Noodles" },
+	{ id: 4, name: "Seafoods" },
+];
+
+export function getDummyProduct(slugOrId: string): any | null {
+	const needle = String(slugOrId || "");
+	if (!needle) return null;
+	return DUMMY_PRODUCTS.find((p) => String(p?.id) === needle || String(p?.slug) === needle) ?? null;
+}
+
 function unwrapPayload(payload: any): any {
 	if (!payload) return null;
 	let data: any = payload?.data ?? payload;
@@ -101,8 +229,9 @@ async function fetchProductBySlugOrId(slugOrId: string): Promise<any | null> {
 }
 
 export default function PublicProductDetail({ product, slugOrId }: Props) {
-	const [clientProduct, setClientProduct] = useState<any | null>(product ?? null);
-	const [loading, setLoading] = useState<boolean>(!product);
+	const initial = USE_DUMMY_PRODUCTS ? (getDummyProduct(slugOrId) ?? product ?? null) : (product ?? null);
+	const [clientProduct, setClientProduct] = useState<any | null>(initial);
+	const [loading, setLoading] = useState<boolean>(!initial);
 	const [didTryFetch, setDidTryFetch] = useState<boolean>(false);
 
 	const title = useMemo(() => {
@@ -111,12 +240,14 @@ export default function PublicProductDetail({ product, slugOrId }: Props) {
 	}, [clientProduct]);
 
 	useEffect(() => {
-		setClientProduct(product ?? null);
-		setLoading(!product);
+		const next = USE_DUMMY_PRODUCTS ? (getDummyProduct(slugOrId) ?? product ?? null) : (product ?? null);
+		setClientProduct(next);
+		setLoading(!next);
 		setDidTryFetch(false);
-	}, [product]);
+	}, [product, slugOrId]);
 
 	useEffect(() => {
+		if (USE_DUMMY_PRODUCTS) return;
 		if (clientProduct) return;
 		if (!slugOrId) return;
 
@@ -146,25 +277,22 @@ export default function PublicProductDetail({ product, slugOrId }: Props) {
 
 	if (loading) {
 		return (
-			<section className="products-section product-detail">
-				<div className="container">
-					<div className="card border-0 shadow-sm">
-						<div className="card-body">Loading product…</div>
-					</div>
+			<div className="container">
+				<div className="p-t-80 p-b-80">
+					<p className="txt14">Loading product…</p>
 				</div>
-			</section>
+			</div>
 		);
 	}
 
 	if (!clientProduct) {
 		return (
-			<section className="products-section">
-				<div className="container">
-					<div className="card border-0 shadow-sm">
-						<div className="card-body">{didTryFetch ? "Product not found." : "Unable to load product."}</div>
-					</div>
+			<div className="container">
+				<div className="p-t-80 p-b-80">
+					<p className="txt14">{didTryFetch ? "Product not found." : "Unable to load product."}</p>
+					<a href="/public/products" className="txt4 color0-hov link-reset">← Back to products</a>
 				</div>
-			</section>
+			</div>
 		);
 	}
 
@@ -178,53 +306,73 @@ export default function PublicProductDetail({ product, slugOrId }: Props) {
 	const description = (clientProduct.description ?? clientProduct.teaser ?? clientProduct.summary ?? "").toString();
 
 	return (
-		<section className="products-section product-detail">
-			<div className="container">
-				<div className="product-detail__top">
-					<a href="/public/products" className="product-detail__back">
-						← Back to products
-					</a>
+		<div className="container">
+			<div className="p-t-80 p-b-80">
+				<div className="p-b-30">
+					<a href="/public/products" className="txt4 color0-hov link-reset">← Back to products</a>
 				</div>
 
-				<div className="row g-4 align-items-start">
-					<div className="col-lg-6">
-						<div className="product-detail__media shadow-sm">
-							{imageUrl ? (
-								// eslint-disable-next-line @next/next/no-img-element
-								<img src={imageUrl} alt={title} className="product-detail__image" />
-							) : (
-								<div className="product-detail__placeholder" />
-							)}
-							{price ? <span className="badge bg-primary product-detail__price">{price}</span> : null}
+				<div className="row">
+					<div className="col-lg-6 p-b-40">
+						<div className="blo4 bo-rad-10 of-hidden">
+							<div className="hov-img-zoom">
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img
+									src={imageUrl || "/images/blog-01.jpg"}
+									alt={title}
+									style={{ width: "100%", height: "auto" }}
+								/>
+							</div>
 						</div>
 					</div>
 
 					<div className="col-lg-6">
-						<div className="product-detail__card shadow-sm">
-							<h1 className="product-detail__title">{title}</h1>
-							<div className="product-detail__meta">
-								{category ? <span className="product-detail__chip">{category}</span> : null}
-								{clientProduct.serving_size ? (
-									<span className="product-detail__chip product-detail__chip--muted">{clientProduct.serving_size}</span>
-								) : null}
-							</div>
+						<h3 className="txt33 p-b-10">{title}</h3>
 
+						<div className="txt32 flex-w p-b-20">
+							{price ? <span className="color0">{price}</span> : null}
+							{price && (category || clientProduct.serving_size) ? <span className="m-r-6 m-l-4">|</span> : null}
+							{category ? <span>{category}</span> : null}
+							{(category && clientProduct.serving_size) ? <span className="m-r-6 m-l-4">|</span> : null}
+							{clientProduct.serving_size ? <span>{clientProduct.serving_size}</span> : null}
+						</div>
+
+						<div className="blo4 bo-rad-10 p-30">
 							{description ? (
-								<p className="product-detail__desc">{description}</p>
+								<p className="txt14" style={{ whiteSpace: "pre-line" }}>{description}</p>
 							) : (
-								<p className="product-detail__desc text-muted">No description.</p>
+								<p className="txt14">No description.</p>
 							)}
 						</div>
 					</div>
 				</div>
 			</div>
-		</section>
+		</div>
 	);
 }
 
 export async function getServerSideProps(context: any) {
 	const slugOrId = String(context?.params?.slug ?? "");
 	if (!slugOrId) return { notFound: true };
+
+	if (USE_DUMMY_PRODUCTS) {
+		let productsPageData: any = null;
+		try {
+			const pageRes = await getPublicPageBySlug("products");
+			productsPageData = pageRes.data;
+		} catch {
+			productsPageData = null;
+		}
+
+		return {
+			props: {
+				product: getDummyProduct(slugOrId),
+				slugOrId,
+				pageData: productsPageData ?? { title: "Products", album: null },
+				layout: { fullWidth: true },
+			},
+		};
+	}
 
 	try {
 		// Match the Products page banner (title + album)
