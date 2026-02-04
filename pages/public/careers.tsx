@@ -14,6 +14,7 @@ type Filters = {
 };
 
 type FacetItem = { label: string; count: number };
+import { getPublicPageBySlug } from "@/services/publicPageService";
 
 type Props = {
   jobs: Job[];
@@ -403,6 +404,8 @@ export async function getServerSideProps({ query }: any) {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([label, count]) => ({ label, count }));
 
+  const res = await getPublicPageBySlug("careers");
+
   return {
     props: {
       jobs: paginatedJobs,
@@ -415,9 +418,7 @@ export async function getServerSideProps({ query }: any) {
         types: mapToFacetItems(facetCounts.types),
         locations: mapToFacetItems(facetCounts.locations),
       },
-      pageData: {
-        title: "Careers",
-      },
+      pageData: res.data
     },
   };
 }

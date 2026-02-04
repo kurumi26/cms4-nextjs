@@ -115,17 +115,20 @@ export default function PageBanner({
       style={{
         background:
           "linear-gradient(135deg, #000000 0%, #102f5f 100%)",
-        padding: "5rem 0",
       }}
     >
-      <div className="container text-center">
-        <h1 className="fw-bold mb-3">{title}</h1>
-        <p
-          className="lead mb-0"
-          style={{ maxWidth: 680, margin: "0 auto", opacity: 0.9 }}
+      <div
+          className="container text-center text-white"
+          style={{
+            position: "relative",
+            zIndex: 2,
+            minHeight: 420,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
         >
-          {subtitle}
-        </p>
+        <h1 className="fw-bold">{title}</h1>
       </div>
     </section>
   );

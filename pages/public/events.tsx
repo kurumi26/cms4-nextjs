@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import LandingPageLayout from "@/components/Layout/GuestLayout";
 import { events, Event } from "@/data/events";
 import EventModal from "@/components/events/EventModal";
+import { getPublicPageBySlug } from "@/services/publicPageService";
 
 function getDateParts(dateStr: string) {
   const d = new Date(dateStr);
@@ -333,11 +334,10 @@ export default function EventsPage() {
 EventsPage.Layout = LandingPageLayout;
 
 export async function getServerSideProps() {
-  return {
-    props: {
-      pageData: {
-        title: "Events",
-      },
-    },
-  };
+  try {
+    const res = await getPublicPageBySlug("events");
+    return { props: { pageData: res.data } };
+  } catch {
+    return { notFound: true };
+  }
 }

@@ -6,6 +6,7 @@ import { blogPosts } from "@/data/blogPosts";
 import BlogImageSlider from "@/components/blog/BlogImageSlider";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { getPublicPageBySlug } from "@/services/publicPageService";
 
 type Props = {
   posts: typeof blogPosts;
@@ -292,15 +293,15 @@ export async function getServerSideProps({ query }: any) {
   const paginatedPosts = filteredPosts.slice(start, end);
   const totalPages = Math.ceil(filteredPosts.length / PER_PAGE);
 
+  const res = await getPublicPageBySlug("blog");
+
   return {
     props: {
       posts: paginatedPosts,
       currentPage,
       totalPages,
       viewMode,
-      pageData: {
-        title: "Blog",
-      },
+      pageData: res.data
     },
   };
 }
