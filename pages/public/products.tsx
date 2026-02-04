@@ -120,7 +120,10 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 		let cancelled = false;
 		const run = async () => {
 			const tryInstance = async (ep: string, params?: any) => {
-				const resp = await axiosInstance.get(ep, { params, headers: { "X-No-Loading": true } });
+				const resp = await axiosInstance.get(ep, {
+					params,
+					headers: { "X-No-Loading": true, "X-No-Auth-Redirect": true },
+				});
 				return resp.data;
 			};
 

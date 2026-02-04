@@ -40,8 +40,17 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       // SSR-safe: window/localStorage do not exist on the server
       if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token");
-        window.location.href = "/";
+        const headerVal: any = (error.config as any)?.headers?.["X-No-Auth-Redirect"] ?? (error.config as any)?.headers?.["x-no-auth-redirect"];
+        const noRedirect = headerVal === true || headerVal === "true" || headerVal === 1 || headerVal === "1";
+        const path = window.location?.pathname || "";
+        const isPublicPage = path.startsWith("/public");
+
+        // On public pages, a 401 can happen if an endpoint is protected.
+        // Do not force-navigate to login (/) unless we're in the admin area.
+        if (!noRedirect && !isPublicPage) {
+          localStorage.removeItem("auth_token");
+          window.location.href = "/";
+        }
       }
     }
 
