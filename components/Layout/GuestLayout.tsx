@@ -2,6 +2,7 @@ import LandingTopbar from "./_Topbar";
 import LandingFooter from "./_Footer";
 import Banner from "./_Banner";
 import { PublicAlbum } from "@/services/publicPageService";
+import ToastHost from "@/components/UI/ToastHost";
 import Head from "next/head";
 import Script from "next/script";
 
@@ -49,6 +50,8 @@ export default function LandingPageLayout({
       </main>
 
       <LandingFooter />
+
+      <ToastHost />
 
       {/* Public template scripts (no jQuery) */}
       <Script src="/js/main.js" strategy="afterInteractive" />
