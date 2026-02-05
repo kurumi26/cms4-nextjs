@@ -7,6 +7,20 @@ import { getAlbum, updateAlbum } from "@/services/albumService";
 import { toast } from "@/lib/toast";
 import { axiosInstance } from "@/services/axios";
 
+const FONT_FAMILY_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: "Default", value: "" },
+  { label: "Great Vibes", value: "Great Vibes, cursive" },
+  { label: "Poppins", value: "Poppins, sans-serif" },
+  { label: "Montserrat", value: "Montserrat, sans-serif" },
+  { label: "Noto Sans", value: "Noto Sans, sans-serif" },
+  { label: "Courgette", value: "Courgette, cursive" },
+  {
+    label: "System UI",
+    value:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+];
+
 function EditAlbum() {
   const router = useRouter();
   const { id } = router.query;
@@ -80,8 +94,39 @@ function EditAlbum() {
           id: b.id,
           preview: toProxiedImageUrl(`${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`),
           title: b.title,
+          title_font: b.title_font ?? b.titleFont ?? b.title_font_family ?? b.titleFontFamily,
+          title_font_size:
+            typeof (b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize) === "number"
+              ? (b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize)
+              : typeof (b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize) === "string" && String((b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize)).trim() !== ""
+                ? Number(b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize)
+                : undefined,
+          title_bold:
+            typeof (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === "boolean"
+              ? (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold)
+              : (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === 1 || (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === "1" || (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === "true"
+                ? true
+                : (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === 0 || (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === "0" || (b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold) === "false"
+                  ? false
+                  : undefined,
           description: b.description,
+          description_font: b.description_font ?? b.descriptionFont ?? b.description_font_family ?? b.descriptionFontFamily,
+          description_font_size:
+            typeof (b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize) === "number"
+              ? (b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize)
+              : typeof (b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize) === "string" && String((b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize)).trim() !== ""
+                ? Number(b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize)
+                : undefined,
+          description_bold:
+            typeof (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === "boolean"
+              ? (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold)
+              : (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === 1 || (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === "1" || (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === "true"
+                ? true
+                : (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === 0 || (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === "0" || (b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold) === "false"
+                  ? false
+                  : undefined,
           button_text: b.button_text,
+          button_font: b.button_font ?? b.buttonFont ?? b.button_font_family ?? b.buttonFontFamily,
           url: b.url,
           alt: b.alt,
         }))
@@ -523,8 +568,15 @@ function EditAlbum() {
       banners: banners.map((b, i) => ({
         id: b.id,
         title: b.title,
+        title_font: b.title_font,
+        title_font_size: b.title_font_size,
+        title_bold: b.title_bold,
         description: b.description,
+        description_font: b.description_font,
+        description_font_size: b.description_font_size,
+        description_bold: b.description_bold,
         button_text: b.button_text,
+        button_font: b.button_font,
         url: b.url,
         alt: b.alt,
         order: i,
@@ -645,6 +697,53 @@ function EditAlbum() {
               />
 
               <div className="card-body">
+                {/* Simple font preview (title + description) */}
+                <div
+                  className="mb-3"
+                  style={{
+                    border: "1px dashed rgba(0,0,0,0.18)",
+                    background: "rgba(248,249,250,0.9)",
+                    borderRadius: 10,
+                    padding: 12,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      ...(banner.title_font ? ({ fontFamily: banner.title_font } as const) : {}),
+                      ...(typeof banner.title_font_size === "number" && Number.isFinite(banner.title_font_size)
+                        ? ({ fontSize: Math.max(14, Math.min(34, banner.title_font_size)) } as const)
+                        : ({ fontSize: 22 } as const)),
+                      ...(typeof banner.title_bold === "boolean"
+                        ? ({ fontWeight: banner.title_bold ? 900 : 400 } as const)
+                        : ({ fontWeight: 900 } as const)),
+                      color: "#222",
+                      lineHeight: 1.1,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {(banner.title || "Title preview").toString()}
+                  </div>
+
+                  <div
+                    style={{
+                      ...(banner.description_font ? ({ fontFamily: banner.description_font } as const) : {}),
+                      ...(typeof banner.description_font_size === "number" && Number.isFinite(banner.description_font_size)
+                        ? ({ fontSize: Math.max(10, Math.min(18, banner.description_font_size)) } as const)
+                        : ({ fontSize: 12 } as const)),
+                      ...(typeof banner.description_bold === "boolean"
+                        ? ({ fontWeight: banner.description_bold ? 700 : 400 } as const)
+                        : ({ fontWeight: 400 } as const)),
+                      color: "#555",
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {(banner.description || "Description preview").toString()}
+                  </div>
+                </div>
+
                 <div className="mb-2">
                   <label className="form-label">Title</label>
                   <input
@@ -657,6 +756,78 @@ function EditAlbum() {
                 </div>
 
                 <div className="mb-2">
+                  <label className="form-label">Title Font</label>
+                  <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
+                    <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <select
+                        className="form-control pe-5"
+                        value={banner.title_font || ""}
+                        onChange={(e) => updateBanner(index, "title_font", e.target.value || undefined)}
+                      >
+                        {FONT_FAMILY_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <i
+                        className="fa-solid fa-chevron-down"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                          color: "#6c757d",
+                          fontSize: 12,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: 140, flex: "0 0 auto" }}>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min={10}
+                          max={120}
+                          step={1}
+                          className="form-control"
+                          placeholder="Size"
+                          value={typeof banner.title_font_size === "number" ? String(banner.title_font_size) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw) {
+                              updateBanner(index, "title_font_size", undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) {
+                              const clamped = Math.max(10, Math.min(120, Math.round(n)));
+                              updateBanner(index, "title_font_size", clamped);
+                            }
+                          }}
+                        />
+                        <span className="input-group-text">px</span>
+                      </div>
+                    </div>
+
+                    <div className="form-check mb-0" style={{ flex: "0 0 auto" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`titleBold-${banner.id ?? index}`}
+                        checked={banner.title_bold !== false}
+                        onChange={(e) => updateBanner(index, "title_bold", e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor={`titleBold-${banner.id ?? index}`}>
+                        Bold
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-2">
                   <label className="form-label">Description</label>
                   <textarea
                     className="form-control"
@@ -665,6 +836,78 @@ function EditAlbum() {
                       updateBanner(index, "description", e.target.value)
                     }
                   />
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label">Description Font</label>
+                  <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
+                    <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <select
+                        className="form-control pe-5"
+                        value={banner.description_font || ""}
+                        onChange={(e) => updateBanner(index, "description_font", e.target.value || undefined)}
+                      >
+                        {FONT_FAMILY_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <i
+                        className="fa-solid fa-chevron-down"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                          color: "#6c757d",
+                          fontSize: 12,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: 140, flex: "0 0 auto" }}>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min={10}
+                          max={120}
+                          step={1}
+                          className="form-control"
+                          placeholder="Size"
+                          value={typeof banner.description_font_size === "number" ? String(banner.description_font_size) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw) {
+                              updateBanner(index, "description_font_size", undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) {
+                              const clamped = Math.max(10, Math.min(120, Math.round(n)));
+                              updateBanner(index, "description_font_size", clamped);
+                            }
+                          }}
+                        />
+                        <span className="input-group-text">px</span>
+                      </div>
+                    </div>
+
+                    <div className="form-check mb-0" style={{ flex: "0 0 auto" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`descBold-${banner.id ?? index}`}
+                        checked={banner.description_bold === true}
+                        onChange={(e) => updateBanner(index, "description_bold", e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor={`descBold-${banner.id ?? index}`}>
+                        Bold
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <button

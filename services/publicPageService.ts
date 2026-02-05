@@ -3,10 +3,19 @@ import { axiosInstance } from "./axios";
 export interface PublicBanner {
   id: number;
   title?: string;
+  title_font?: string;
+  title_font_size?: number;
+  title_bold?: boolean;
   description?: string;
+  description_font?: string;
+  description_font_size?: number;
+  description_bold?: boolean;
   alt?: string;
   image_url: string;
   button_text?: string;
+  button_font?: string;
+  button_font_size?: number;
+  button_bold?: boolean;
   url?: string;
   order: number;
 }

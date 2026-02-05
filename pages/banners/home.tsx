@@ -17,8 +17,87 @@ interface BannerForm extends BaseBannerForm {
 
 const HOME_ALBUM_ID = 1;
 
+const HOME_BANNER_FONT_STORAGE_KEY = "cms4.homeBanner.fonts.v1";
+
+type StoredFontEntry = {
+  title_font?: string;
+  title_font_size?: number;
+  title_bold?: boolean;
+  description_font?: string;
+  description_font_size?: number;
+  description_bold?: boolean;
+  button_font?: string;
+  button_font_size?: number;
+  button_bold?: boolean;
+};
+
+const readStoredHomeBannerFonts = (): Record<string, StoredFontEntry> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(HOME_BANNER_FONT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Record<string, StoredFontEntry>;
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredHomeBannerFonts = (fonts: Record<string, StoredFontEntry>) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HOME_BANNER_FONT_STORAGE_KEY, JSON.stringify(fonts));
+  } catch {
+    // ignore storage quota / private mode
+  }
+};
+
+const bannerFontStorageKey = (banner: BannerForm, index: number) => {
+  if (banner.id) return `id:${banner.id}`;
+  if (typeof banner.order === "number") return `order:${banner.order}`;
+  return `index:${index}`;
+};
+
+const persistHomeBannerFonts = (nextBanners: BannerForm[]) => {
+  const existing = readStoredHomeBannerFonts();
+  const updated: Record<string, StoredFontEntry> = { ...existing };
+
+  nextBanners.forEach((b, i) => {
+    const key = bannerFontStorageKey(b, i);
+    updated[key] = {
+      title_font: b.title_font,
+      title_font_size: b.title_font_size,
+      title_bold: b.title_bold,
+      description_font: b.description_font,
+      description_font_size: b.description_font_size,
+      description_bold: b.description_bold,
+      button_font: b.button_font,
+      button_font_size: b.button_font_size,
+      button_bold: b.button_bold,
+    };
+  });
+
+  writeStoredHomeBannerFonts(updated);
+};
+
+const FONT_FAMILY_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: "Default", value: "" },
+  { label: "Great Vibes", value: "Great Vibes, cursive" },
+  { label: "Poppins", value: "Poppins, sans-serif" },
+  { label: "Montserrat", value: "Montserrat, sans-serif" },
+  { label: "Noto Sans", value: "Noto Sans, sans-serif" },
+  { label: "Courgette", value: "Courgette, cursive" },
+  {
+    label: "System UI",
+    value:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+];
+
 function HomeBanner() {
   const [albumExists, setAlbumExists] = useState(true);
+  const [showPublicPreview, setShowPublicPreview] = useState<boolean>(false);
 
   const [transitionIn, setTransitionIn] = useState("Fade In");
   const [transitionOut, setTransitionOut] = useState("Fade Out");
@@ -74,6 +153,8 @@ function HomeBanner() {
       const res = await getAlbum(HOME_ALBUM_ID);
       const album = res.data;
 
+      const storedFonts = readStoredHomeBannerFonts();
+
       setTransitionIn(album.transition_in);
       setTransitionOut(album.transition_out);
       setDuration(album.transition);
@@ -82,12 +163,104 @@ function HomeBanner() {
         album.banners.map((b: any, i: number) => {
           const rawServerUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`;
           const serverPreview = toProxiedImageUrl(rawServerUrl);
+
+          const keyById = b?.id ? `id:${b.id}` : undefined;
+          const keyByOrder = typeof b?.order !== "undefined" ? `order:${b.order}` : undefined;
+          const stored =
+            (keyById ? storedFonts[keyById] : undefined) ||
+            (keyByOrder ? storedFonts[keyByOrder] : undefined);
+
+          const apiTitleFont = b.title_font ?? b.titleFont ?? b.title_font_family ?? b.titleFontFamily;
+          const apiDescriptionFont = b.description_font ?? b.descriptionFont ?? b.description_font_family ?? b.descriptionFontFamily;
+          const apiButtonFont = b.button_font ?? b.buttonFont ?? b.button_font_family ?? b.buttonFontFamily;
+
+          const apiDescriptionFontSizeRaw = b.description_font_size ?? b.descriptionFontSize ?? b.description_size ?? b.descriptionSize;
+          const apiDescriptionFontSize =
+            typeof apiDescriptionFontSizeRaw === "number"
+              ? apiDescriptionFontSizeRaw
+              : typeof apiDescriptionFontSizeRaw === "string" && apiDescriptionFontSizeRaw.trim() !== ""
+                ? Number(apiDescriptionFontSizeRaw)
+                : undefined;
+
+          const apiDescriptionBoldRaw = b.description_bold ?? b.descriptionBold ?? b.is_description_bold ?? b.isDescriptionBold;
+          const apiDescriptionBold =
+            typeof apiDescriptionBoldRaw === "boolean"
+              ? apiDescriptionBoldRaw
+              : apiDescriptionBoldRaw === 1 || apiDescriptionBoldRaw === "1" || apiDescriptionBoldRaw === "true"
+                ? true
+                : apiDescriptionBoldRaw === 0 || apiDescriptionBoldRaw === "0" || apiDescriptionBoldRaw === "false"
+                  ? false
+                  : undefined;
+
+          const apiButtonFontSizeRaw = b.button_font_size ?? b.buttonFontSize ?? b.button_size ?? b.buttonSize;
+          const apiButtonFontSize =
+            typeof apiButtonFontSizeRaw === "number"
+              ? apiButtonFontSizeRaw
+              : typeof apiButtonFontSizeRaw === "string" && apiButtonFontSizeRaw.trim() !== ""
+                ? Number(apiButtonFontSizeRaw)
+                : undefined;
+
+          const apiButtonBoldRaw = b.button_bold ?? b.buttonBold ?? b.is_button_bold ?? b.isButtonBold;
+          const apiButtonBold =
+            typeof apiButtonBoldRaw === "boolean"
+              ? apiButtonBoldRaw
+              : apiButtonBoldRaw === 1 || apiButtonBoldRaw === "1" || apiButtonBoldRaw === "true"
+                ? true
+                : apiButtonBoldRaw === 0 || apiButtonBoldRaw === "0" || apiButtonBoldRaw === "false"
+                  ? false
+                  : undefined;
+
+          const apiTitleFontSizeRaw = b.title_font_size ?? b.titleFontSize ?? b.title_size ?? b.titleSize;
+          const apiTitleFontSize =
+            typeof apiTitleFontSizeRaw === "number"
+              ? apiTitleFontSizeRaw
+              : typeof apiTitleFontSizeRaw === "string" && apiTitleFontSizeRaw.trim() !== ""
+                ? Number(apiTitleFontSizeRaw)
+                : undefined;
+
+          const apiTitleBoldRaw = b.title_bold ?? b.titleBold ?? b.is_title_bold ?? b.isTitleBold;
+          const apiTitleBold =
+            typeof apiTitleBoldRaw === "boolean"
+              ? apiTitleBoldRaw
+              : apiTitleBoldRaw === 1 || apiTitleBoldRaw === "1" || apiTitleBoldRaw === "true"
+                ? true
+                : apiTitleBoldRaw === 0 || apiTitleBoldRaw === "0" || apiTitleBoldRaw === "false"
+                  ? false
+                  : undefined;
+
           return {
             id: b.id,
             preview: (b.id && localPreviews[b.id]) ? localPreviews[b.id] : serverPreview,
             title: b.title,
+            title_font: apiTitleFont ?? stored?.title_font,
+            title_font_size:
+              (typeof apiTitleFontSize === "number" && Number.isFinite(apiTitleFontSize))
+                ? apiTitleFontSize
+                : stored?.title_font_size,
+            // Default to bold (matches current frontend styling) if unset.
+            title_bold: typeof apiTitleBold === "boolean" ? apiTitleBold : (typeof stored?.title_bold === "boolean" ? stored?.title_bold : true),
             description: b.description,
+            description_font: apiDescriptionFont ?? stored?.description_font,
+            description_font_size:
+              (typeof apiDescriptionFontSize === "number" && Number.isFinite(apiDescriptionFontSize))
+                ? apiDescriptionFontSize
+                : stored?.description_font_size,
+            // Default to non-bold (matches current frontend styling) if unset.
+            description_bold:
+              typeof apiDescriptionBold === "boolean"
+                ? apiDescriptionBold
+                : (typeof stored?.description_bold === "boolean" ? stored?.description_bold : false),
             button_text: b.button_text,
+            button_font: apiButtonFont ?? stored?.button_font,
+            button_font_size:
+              (typeof apiButtonFontSize === "number" && Number.isFinite(apiButtonFontSize))
+                ? apiButtonFontSize
+                : stored?.button_font_size,
+            // Default to bold (matches current CTA styling) if unset.
+            button_bold:
+              typeof apiButtonBold === "boolean"
+                ? apiButtonBold
+                : (typeof stored?.button_bold === "boolean" ? stored?.button_bold : true),
             url: b.url,
             alt: b.alt,
             order: typeof b.order !== 'undefined' ? b.order : i,
@@ -195,6 +368,21 @@ function HomeBanner() {
           if (prevUrl && prevUrl !== value) URL.revokeObjectURL(prevUrl);
           return { ...mp, [updated.id as number]: value };
         });
+      }
+
+      if (
+        field === "title_font" ||
+        field === "title_font_size" ||
+        field === "title_bold" ||
+        field === "description_font" ||
+        field === "description_font_size" ||
+        field === "description_bold" ||
+        field === "button_font"
+        || field === "button_font_size"
+        || field === "button_bold"
+      ) {
+        // persist immediately so it won't reset after save/reload
+        persistHomeBannerFonts(next);
       }
       return next;
     });
@@ -689,6 +877,9 @@ function HomeBanner() {
    * Save
    * ====================== */
   const handleSave = async () => {
+    // Keep a local fallback in case API doesn't persist these fields yet.
+    persistHomeBannerFonts(banners);
+
     const payload: any = {
       name: "Home Banner",
       transition_in: transitionIn,
@@ -698,8 +889,17 @@ function HomeBanner() {
       banners: banners.map((b, i) => ({
         id: b.id,
         title: b.title,
+        title_font: b.title_font,
+        title_font_size: b.title_font_size,
+        title_bold: b.title_bold,
         description: b.description,
+        description_font: b.description_font,
+        description_font_size: b.description_font_size,
+        description_bold: b.description_bold,
         button_text: b.button_text,
+        button_font: b.button_font,
+        button_font_size: b.button_font_size,
+        button_bold: b.button_bold,
         url: b.url,
         alt: b.alt,
         order: typeof b.order !== 'undefined' ? b.order : i,
@@ -794,13 +994,24 @@ function HomeBanner() {
       {/* Upload Images */}
       <div className="mb-4">
         <label className="form-label">Banner Images</label>
-        <button
-          type="button"
-          className="btn btn-outline-secondary d-block"
-          onClick={() => document.getElementById("imageUpload")?.click()}
-        >
-          Upload Images
-        </button>
+        <div className="d-flex gap-2 align-items-center justify-content-between flex-wrap">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => document.getElementById("imageUpload")?.click()}
+          >
+            Upload Images
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => setShowPublicPreview((s) => !s)}
+            title="Toggle public homepage preview"
+          >
+            {showPublicPreview ? "Hide public view" : "Show public view"}
+          </button>
+        </div>
 
         <input
           id="imageUpload"
@@ -811,6 +1022,18 @@ function HomeBanner() {
           onChange={handleImageUpload}
         />
       </div>
+
+      {showPublicPreview && (
+        <div className="card mb-4">
+          <div className="card-body" style={{ padding: 0 }}>
+            <iframe
+              src="/public/home"
+              style={{ width: "100%", height: 650, border: 0 }}
+              title="Public homepage preview"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Banners */}
       <div className="row mb-4">
@@ -844,6 +1067,78 @@ function HomeBanner() {
               />
 
               <div className="card-body">
+                {/* Simple font preview (family/size/bold) */}
+                <div
+                  className="mb-3"
+                  style={{
+                    border: "1px dashed rgba(0,0,0,0.18)",
+                    background: "rgba(248,249,250,0.9)",
+                    borderRadius: 10,
+                    padding: 12,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      ...(banner.description_font ? ({ fontFamily: banner.description_font } as const) : {}),
+                      ...(typeof banner.description_font_size === "number" && Number.isFinite(banner.description_font_size)
+                        ? ({ fontSize: Math.max(10, Math.min(18, banner.description_font_size)) } as const)
+                        : ({ fontSize: 12 } as const)),
+                      ...(typeof banner.description_bold === "boolean"
+                        ? ({ fontWeight: banner.description_bold ? 700 : 400 } as const)
+                        : ({ fontWeight: 400 } as const)),
+                      color: "#555",
+                      lineHeight: 1.2,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {(banner.description || "Description preview").toString()}
+                  </div>
+
+                  <div
+                    style={{
+                      ...(banner.title_font ? ({ fontFamily: banner.title_font } as const) : {}),
+                      ...(typeof banner.title_font_size === "number" && Number.isFinite(banner.title_font_size)
+                        ? ({ fontSize: Math.max(14, Math.min(34, banner.title_font_size)) } as const)
+                        : ({ fontSize: 22 } as const)),
+                      ...(typeof banner.title_bold === "boolean"
+                        ? ({ fontWeight: banner.title_bold ? 900 : 400 } as const)
+                        : ({ fontWeight: 900 } as const)),
+                      color: "#222",
+                      lineHeight: 1.1,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
+                    {(banner.title || "Title preview").toString()}
+                  </div>
+
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "6px 14px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(0,0,0,0.08)",
+                      background: "#fff",
+                      color: "#ec1d25",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      ...(banner.button_font ? ({ fontFamily: banner.button_font } as const) : {}),
+                      ...(typeof banner.button_font_size === "number" && Number.isFinite(banner.button_font_size)
+                        ? ({ fontSize: Math.max(10, Math.min(16, banner.button_font_size)) } as const)
+                        : ({ fontSize: 11 } as const)),
+                      ...(typeof banner.button_bold === "boolean"
+                        ? ({ fontWeight: banner.button_bold ? 800 : 400 } as const)
+                        : ({ fontWeight: 800 } as const)),
+                    }}
+                  >
+                    {(banner.button_text || "Button").toString()}
+                  </span>
+                </div>
+
                 <div className="mb-2">
                   <label className="form-label">Title</label>
                   <input
@@ -853,6 +1148,83 @@ function HomeBanner() {
                       updateBanner(index, "title", e.target.value)
                     }
                   />
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label">Title Font</label>
+                  <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
+                    <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <select
+                        className="form-control pe-5"
+                        value={banner.title_font || ""}
+                        onChange={(e) =>
+                          updateBanner(index, "title_font", e.target.value || undefined)
+                        }
+                      >
+                        {FONT_FAMILY_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <i
+                        className="fa-solid fa-chevron-down"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                          color: "#6c757d",
+                          fontSize: 12,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: 140, flex: "0 0 auto" }}>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min={10}
+                          max={120}
+                          step={1}
+                          className="form-control"
+                          placeholder="Size"
+                          value={typeof banner.title_font_size === "number" ? String(banner.title_font_size) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw) {
+                              updateBanner(index, "title_font_size", undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) {
+                              const clamped = Math.max(10, Math.min(120, Math.round(n)));
+                              updateBanner(index, "title_font_size", clamped);
+                            }
+                          }}
+                        />
+                        <span className="input-group-text">px</span>
+                      </div>
+                    </div>
+
+                    <div className="form-check mb-0" style={{ flex: "0 0 auto" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`titleBold-${banner.id ?? index}`}
+                        checked={banner.title_bold !== false}
+                        onChange={(e) => updateBanner(index, "title_bold", e.target.checked)}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor={`titleBold-${banner.id ?? index}`}
+                      >
+                        Bold
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mb-2">
@@ -867,6 +1239,84 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
+                  <label className="form-label">Description Font</label>
+                  <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
+                    <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <select
+                        className="form-control pe-5"
+                        value={banner.description_font || ""}
+                        onChange={(e) =>
+                          updateBanner(
+                            index,
+                            "description_font",
+                            e.target.value || undefined
+                          )
+                        }
+                      >
+                        {FONT_FAMILY_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <i
+                        className="fa-solid fa-chevron-down"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                          color: "#6c757d",
+                          fontSize: 12,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: 140, flex: "0 0 auto" }}>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min={10}
+                          max={120}
+                          step={1}
+                          className="form-control"
+                          placeholder="Size"
+                          value={typeof banner.description_font_size === "number" ? String(banner.description_font_size) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw) {
+                              updateBanner(index, "description_font_size", undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) {
+                              const clamped = Math.max(10, Math.min(120, Math.round(n)));
+                              updateBanner(index, "description_font_size", clamped);
+                            }
+                          }}
+                        />
+                        <span className="input-group-text">px</span>
+                      </div>
+                    </div>
+
+                    <div className="form-check mb-0" style={{ flex: "0 0 auto" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`descBold-${banner.id ?? index}`}
+                        checked={banner.description_bold === true}
+                        onChange={(e) => updateBanner(index, "description_bold", e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor={`descBold-${banner.id ?? index}`}>
+                        Bold
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-2">
                   <label className="form-label">Button Text</label>
                   <input
                     className="form-control"
@@ -875,6 +1325,80 @@ function HomeBanner() {
                       updateBanner(index, "button_text", e.target.value)
                     }
                   />
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label">Button Font</label>
+                  <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
+                    <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
+                      <select
+                        className="form-control pe-5"
+                        value={banner.button_font || ""}
+                        onChange={(e) =>
+                          updateBanner(index, "button_font", e.target.value || undefined)
+                        }
+                      >
+                        {FONT_FAMILY_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <i
+                        className="fa-solid fa-chevron-down"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          pointerEvents: "none",
+                          color: "#6c757d",
+                          fontSize: 12,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: 140, flex: "0 0 auto" }}>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min={10}
+                          max={120}
+                          step={1}
+                          className="form-control"
+                          placeholder="Size"
+                          value={typeof banner.button_font_size === "number" ? String(banner.button_font_size) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!raw) {
+                              updateBanner(index, "button_font_size", undefined);
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (Number.isFinite(n)) {
+                              const clamped = Math.max(10, Math.min(120, Math.round(n)));
+                              updateBanner(index, "button_font_size", clamped);
+                            }
+                          }}
+                        />
+                        <span className="input-group-text">px</span>
+                      </div>
+                    </div>
+
+                    <div className="form-check mb-0" style={{ flex: "0 0 auto" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`btnBold-${banner.id ?? index}`}
+                        checked={banner.button_bold !== false}
+                        onChange={(e) => updateBanner(index, "button_bold", e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor={`btnBold-${banner.id ?? index}`}>
+                        Bold
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mb-2">

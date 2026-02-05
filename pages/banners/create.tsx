@@ -88,8 +88,11 @@ function CreateAlbum() {
       banner_type: "image",
       banners: banners.map((b, i) => ({
         title: b.title,
+        title_font: b.title_font,
         description: b.description,
+        description_font: b.description_font,
         button_text: b.button_text,
+        button_font: b.button_font,
         url: b.url,
         alt: b.alt,
         order: i,
