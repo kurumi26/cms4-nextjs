@@ -4,7 +4,6 @@ import Banner from "./_Banner";
 import { PublicAlbum } from "@/services/publicPageService";
 import ToastHost from "@/components/UI/ToastHost";
 import Head from "next/head";
-import Script from "next/script";
 
 interface LandingPageLayoutProps {
   children: React.ReactNode;
@@ -52,9 +51,6 @@ export default function LandingPageLayout({
       <LandingFooter />
 
       <ToastHost />
-
-      {/* Public template scripts (no jQuery) */}
-      <Script src="/js/main.js" strategy="afterInteractive" />
     </div>
   );
 }

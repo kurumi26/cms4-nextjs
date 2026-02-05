@@ -21,19 +21,27 @@
     }
 
     function init() {
+        const path = (window.location && window.location.pathname) ? window.location.pathname : '';
+        const isProductsPage = /^\/public\/(products|product)(\/|$)/.test(path);
+
         initWebPDetection();
         initPageTransitions();
         initBackToTop();
-        initFlatpickr();
-        initVideoModal();
         initFixedHeader();
         initSidebar();
+        initCopyrightYear();
+
+        // Products pages don't use gallery/lightbox/parallax/video/datepicker features.
+        // Skipping them reduces CPU work and avoids extra observers/timeouts.
+        if (isProductsPage) return;
+
+        initFlatpickr();
+        initVideoModal();
         initGalleryFilter();
         initGalleryPagination();
         initGLightbox();
         initDynamicContentObserver();
         initParallax();
-        initCopyrightYear();
     }
 
     function applyGalleryItemVisibility(item) {
