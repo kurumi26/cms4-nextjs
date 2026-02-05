@@ -71,7 +71,12 @@
 
             if (supportsWebP) {
                 document.documentElement.classList.add('webp');
-                convertImagesToWebP();
+                // NOTE:
+                // This template used to rewrite all .jpg URLs to .webp.
+                // In this Next.js project, the /public/images folder ships mostly .jpg files,
+                // and the corresponding .webp files do not exist, causing lots of 404s.
+                // If you add real .webp assets later, you can re-enable this.
+                // convertImagesToWebP();
             } else {
                 document.documentElement.classList.add('no-webp');
             }

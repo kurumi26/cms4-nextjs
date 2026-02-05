@@ -1,7 +1,6 @@
 import LandingPageLayout from "@/components/Layout/GuestLayout";
 import { getPublicPageBySlug } from "@/services/publicPageService";
 import { axiosInstance } from "@/services/axios";
-import productService from "@/services/productService";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -188,6 +187,61 @@ function getProductCategoryId(p: any): string {
 		p?.category?.product_category_id ??
 		"_uncategorized"
 	);
+}
+
+function resolveProductImageUrl(src: any): string {
+	if (!src) return "/images/logo.png";
+	let s = String(src).trim();
+	if (!s) return "/images/logo.png";
+	// Normalize Windows paths/backslashes
+	s = s.replace(/\\/g, "/");
+
+	if (/^(https?:)?\/\//i.test(s) || s.startsWith("data:") || s.startsWith("blob:")) return s;
+
+	// If a Windows absolute path leaks in (e.g. C:/.../public/images/x.jpg)
+	if (/^[a-zA-Z]:\//.test(s)) {
+		const lowered = s.toLowerCase();
+		const idx = lowered.lastIndexOf("/public/images/");
+		if (idx >= 0) return `/images/${s.slice(idx + "/public/images/".length)}`;
+		const basename = s.split("/").pop() || "";
+		if (basename) return `/images/${basename}`;
+	}
+
+	if (s.includes("/public/images/")) return `/images/${s.split("/public/images/").pop()}`;
+
+	// Normalize common relative public paths
+	if (s.startsWith("images/") || s.startsWith("img/") || s.startsWith("icons/") || s.startsWith("favicon")) return `/${s}`;
+	if (s.startsWith("./images/") || s.startsWith("./img/") || s.startsWith("./icons/")) return s.slice(1);
+
+	// Public Next.js assets should stay local
+	if (s.startsWith("/images/") || s.startsWith("/img/") || s.startsWith("/icons/") || s.startsWith("/favicon") || s.startsWith("/_next/")) {
+		return s;
+	}
+
+	const base = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+	if (s.startsWith("/storage/")) return base ? `${base}${s}` : s;
+	if (s.startsWith("storage/")) return base ? `${base}/${s}` : `/${s}`;
+	if (s.startsWith("/uploads/")) return base ? `${base}${s}` : s;
+	if (s.startsWith("uploads/")) return base ? `${base}/${s}` : `/${s}`;
+
+	// Filename-only: use public images for dummy/dev datasets
+	if (!s.includes("/") && /\.(png|jpe?g|webp|gif|svg)$/i.test(s)) {
+		// Many of our bundled public images are .jpg, but some payloads may send .webp.
+		// Prefer the same name with .jpg to avoid 404s (works on refresh/SSR).
+		if (/\.webp$/i.test(s)) return `/images/${s.replace(/\.webp$/i, ".jpg")}`;
+		return `/images/${s}`;
+	}
+
+	// If it's a bare filename without extension, also treat it as a public image key.
+	if (!s.includes("/") && /^[a-z0-9._-]+$/i.test(s)) {
+		return `/images/${s}`;
+	}
+
+	// Root-relative URLs are assumed local
+	if (s.startsWith("/")) return s;
+
+	// Last resort: treat as storage key
+	return base ? `${base}/storage/${s.replace(/^\.\/?/, "")}` : s;
 }
 
 export default function ProductsPublicPage({ products, categories, pageData }: Props) {
@@ -398,7 +452,7 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 							<div className="row">
 								{filteredProducts.map((p: any) => {
 									const href = `/public/product/${p.slug ?? p.id}`;
-									const imageSrc = p.image_url ?? p.image;
+									const imageSrc = resolveProductImageUrl(p.image_url ?? p.image);
 									const colClass = viewMode === "grid" ? "col-sm-6 col-lg-4" : "col-12";
 									return (
 										<div key={p.id ?? p.slug} className={`${colClass} p-b-40`}>
@@ -412,7 +466,7 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 															<div className="hov-img-zoom" style={{ aspectRatio: "4 / 3", width: "100%", overflow: "hidden" }}>
 																{/* eslint-disable-next-line @next/next/no-img-element */}
 																<img
-																	src={imageSrc || "/images/blog-01.jpg"}
+																	src={imageSrc || "/images/logo.png"}
 																	alt={p.name ?? p.title ?? "Product"}
 																	style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
 																/>
@@ -453,7 +507,7 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 																<div className="hov-img-zoom" style={{ height: 220, overflow: "hidden" }}>
 																	{/* eslint-disable-next-line @next/next/no-img-element */}
 																	<img
-																		src={imageSrc || "/images/blog-01.jpg"}
+																		src={imageSrc || "/images/logo.png"}
 																		alt={p.name ?? p.title ?? "Product"}
 																		style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
 																	/>
@@ -529,27 +583,17 @@ export async function getServerSideProps() {
 		// Attempt to fetch a public page config (optional)
 		const pageRes = await getPublicPageBySlug("products");
 
-		// Fetch products via productService (robust client used by admin) and fall back to common public endpoints
+		// Fetch products from common public endpoints
 		let products: any[] = [];
-		try {
-			const res = await productService.getProducts({ per_page: 1000 });
-			const data = res?.data ?? res ?? [];
-			products = Array.isArray(data) ? data : data?.items ?? data?.rows ?? data?.data ?? [];
-		} catch (e: any) {
-			// ignore and fall back to endpoint tries
-		}
-
-		if (!products || products.length === 0) {
-			const productEndpoints = ["/public-products", "/public/products", "/products", "/api/products"];
-			for (const ep of productEndpoints) {
-				try {
-					const resp = await axiosInstance.get(ep, { params: { per_page: 1000 }, headers: { "X-No-Loading": true } });
-					const data = resp.data?.data ?? resp.data ?? [];
-					products = Array.isArray(data) ? data : data?.items ?? data?.rows ?? [];
-					if (products && products.length) break;
-				} catch {
-					// try next
-				}
+		const productEndpoints = ["/public-products", "/public/products", "/products", "/api/products"];
+		for (const ep of productEndpoints) {
+			try {
+				const resp = await axiosInstance.get(ep, { params: { per_page: 1000 }, headers: { "X-No-Loading": true } });
+				const data = resp.data?.data ?? resp.data ?? [];
+				products = Array.isArray(data) ? data : data?.items ?? data?.rows ?? [];
+				if (products && products.length) break;
+			} catch {
+				// try next
 			}
 		}
 
