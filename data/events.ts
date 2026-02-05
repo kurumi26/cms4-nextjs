@@ -71,7 +71,7 @@ Our design team attended a regional UX conference to learn from industry experts
 
 The event featured keynote talks, design critiques, and networking sessions.
     `,
-    images: ["blog-04.jpg", "blog-10.jpg", "blog-11.jpg"],
+    images: ["blog-04.jpg", "blog-10.jpg", "blog-07.jpg"],
   },
 
   {
@@ -110,7 +110,7 @@ A full-day training session focused on upskilling team members.
 
 Topics included leadership, technical best practices, and communication skills.
     `,
-    images: ["blog-05.jpg", "blog-11.jpg", "blog-12.jpg"],
+    images: ["blog-05.jpg", "blog-06.jpg", "blog-10.jpg"],
   },
 
   {
@@ -123,7 +123,7 @@ A casual networking event bringing together founders, developers, and designers.
 
 The goal was to foster connections and idea sharing across the startup community.
     `,
-    images: ["blog-06.jpg", "blog-13.jpg", "blog-15.jpg"],
+    images: ["blog-06.jpg", "blog-07.jpg", "blog-10.jpg"],
   },
 
   {
@@ -136,6 +136,6 @@ Our year-end party celebrated team achievements and milestones.
 
 The event included awards, performances, and a festive dinner.
     `,
-    images: ["blog-07.jpg", "blog-10.jpg", "blog-14.jpg"],
+    images: ["blog-07.jpg", "blog-10.jpg", "blog-05.jpg"],
   },
 ];
