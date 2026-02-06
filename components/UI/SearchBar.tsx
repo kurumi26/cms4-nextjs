@@ -4,6 +4,8 @@ interface SearchBarProps {
   placeholder?: string;
   value?: string;
   onChange?: (value: string) => void;
+  // optional extra controls to render inline on the left (e.g., page size selector)
+  leftExtras?: React.ReactNode;
   // optional actions menu to render when Actions is clicked
   actionsMenu?: React.ReactNode;
   // optional callback when filters are applied
@@ -23,6 +25,7 @@ export default function SearchBar({
   placeholder = "Search...",
   value = "",
   onChange,
+  leftExtras,
   actionsMenu,
   onApplyFilters,
   initialSortBy,
@@ -102,28 +105,32 @@ export default function SearchBar({
   };
 
   return (
-    <div className="d-flex justify-content-between mb-3">
-      <div style={{ position: "relative" }}>
-        <button
-          className={`btn btn-outline-secondary me-2 dropdown-toggle${showFilters ? " show" : ""}`}
-          onClick={handleFiltersClick}
-          aria-expanded={showFilters}
-          aria-haspopup="true"
-          type="button"
-        >
-          Filters
-        </button>
-        <button
-          ref={btnRef}
-          className={`btn btn-outline-secondary dropdown-toggle${showMenu ? " show" : ""}`}
-          onClick={handleActionsClick}
-          aria-expanded={showMenu}
-          aria-haspopup="true"
-          type="button"
-          disabled={!actionsMenu}
-        >
-          Actions
-        </button>
+    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <div className="d-flex align-items-center flex-wrap gap-2" style={{ position: "relative" }}>
+        <div>
+          <button
+            className={`btn btn-outline-secondary me-2 dropdown-toggle${showFilters ? " show" : ""}`}
+            onClick={handleFiltersClick}
+            aria-expanded={showFilters}
+            aria-haspopup="true"
+            type="button"
+          >
+            Filters
+          </button>
+          <button
+            ref={btnRef}
+            className={`btn btn-outline-secondary dropdown-toggle${showMenu ? " show" : ""}`}
+            onClick={handleActionsClick}
+            aria-expanded={showMenu}
+            aria-haspopup="true"
+            type="button"
+            disabled={!actionsMenu}
+          >
+            Actions
+          </button>
+        </div>
+
+        {leftExtras}
 
         {showFilters && filtersPos && (
           <div>

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 import { useRouter } from "next/router";
 import {
   getArticleCategories,
@@ -155,14 +154,27 @@ function ManageNews() {
           setSearch(value);
           setCurrentPage(1);
         }}
-      />
-
-      <PageSizeSelector
-        value={perPage}
-        onChange={(value) => {
-          setPerPage(value);
-          setCurrentPage(1);
-        }}
+        leftExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-muted small">Show</span>
+            <select
+              className="form-select form-select-sm w-auto"
+              value={perPage}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setPerPage(value);
+                setCurrentPage(1);
+              }}
+            >
+              {[5, 10, 25, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted small">entries</span>
+          </div>
+        )}
       />
 
       <DataTable<NewsCategoryRow>

@@ -89,7 +89,7 @@ export default function RecentActivity() {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<AuditEventFilter>("all");
 
-  const perPage = 10;
+  const perPage = 5;
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -134,7 +134,6 @@ export default function RecentActivity() {
   useEffect(() => {
     const t = setTimeout(() => {
       setCurrentPage(1);
-      fetchActivity({ page: 1 });
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,14 +141,8 @@ export default function RecentActivity() {
 
   useEffect(() => {
     setCurrentPage(1);
-    fetchActivity({ page: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventFilter]);
-
-  useEffect(() => {
-    fetchActivity();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     fetchActivity({ page: currentPage, silent: false });
@@ -164,9 +157,11 @@ export default function RecentActivity() {
     });
   }, [rows, eventFilter]);
 
+  const limited = filtered;
+
   const grouped = useMemo(() => {
     const m = new Map<string, AuditRow[]>();
-    for (const r of filtered) {
+    for (const r of limited) {
       const key = dayBucketLabel(r.created_at);
       const list = m.get(key) ?? [];
       list.push(r);
@@ -174,7 +169,7 @@ export default function RecentActivity() {
     }
     // preserve insertion order (audits are usually newest-first)
     return Array.from(m.entries());
-  }, [filtered]);
+  }, [limited]);
 
   const pageNumbers = useMemo(() => {
     const pages: number[] = [];
@@ -265,7 +260,7 @@ export default function RecentActivity() {
 
         {loading ? (
           <ul className="list-group list-group-flush cms-activity">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <li key={i} className="list-group-item cms-activity__item">
                 <div className="d-flex align-items-start justify-content-between gap-3">
                   <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
@@ -282,7 +277,7 @@ export default function RecentActivity() {
               </li>
             ))}
           </ul>
-        ) : filtered.length === 0 ? (
+        ) : limited.length === 0 ? (
           <div className="text-center py-4">
             <div className="fw-semibold">No activity found</div>
             <div className="text-muted small">Try clearing search or changing the filter.</div>

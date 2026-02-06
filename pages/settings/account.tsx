@@ -4,6 +4,7 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import { useEffect } from "react";
 import { accountService } from "@/services/accountService";
 import { toast } from "@/lib/toast";
+import { notifyCurrentUserUpdated, storeCurrentUser } from "@/lib/currentUser";
 
 type TabKey = "personal" | "account";
 
@@ -51,6 +52,15 @@ function AccountSettingsPage() {
         lname: lastName,
         avatar: avatarFile,
       });
+
+      // Refresh the cached current user so other UI (sidebar/topbar) updates immediately.
+      try {
+        const user = await accountService.getCurrentUser();
+        storeCurrentUser(user);
+        notifyCurrentUserUpdated();
+      } catch {
+        // ignore
+      }
 
       toast.success("Profile updated successfully");
     } catch (err: any) {

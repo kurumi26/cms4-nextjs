@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getCurrentUserCached, initialsForUser, resolveAvatarUrl, subscribeCurrentUserUpdated } from "@/lib/currentUser";
+import type { User } from "@/services/accountService";
 
 type SidebarProps = {
   isOpen?: boolean;
@@ -32,11 +34,29 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
     });
   };
 
-  const user = {
-    name: "Thugtech97",
-    role: "Admin",
-    avatar: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRTokZliYkKkA5G-4WfbuaNpKj5f9PYnTUPLA&s"
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userLoaded, setUserLoaded] = useState(false);
+
+  const refreshUser = async (opts?: { force?: boolean }) => {
+    try {
+      const u = await getCurrentUserCached({ force: opts?.force === true });
+      setCurrentUser(u);
+    } catch {
+      // ignore; keep fallback UI
+    } finally {
+      setUserLoaded(true);
+    }
   };
+
+  useEffect(() => {
+    refreshUser({ force: false });
+    const unsub = subscribeCurrentUserUpdated(() => refreshUser({ force: true }));
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const userInitials = useMemo(() => initialsForUser(currentUser), [currentUser]);
+  const avatarUrl = useMemo(() => resolveAvatarUrl(currentUser?.avatar), [currentUser?.avatar]);
 
   const isActive = (href: string) => pathname === href;
 
@@ -134,12 +154,12 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
       }
       aria-hidden={isMobile && isOpen === false ? true : undefined}
     >
-      <div className="d-flex align-items-center justify-content-between mb-4">
-        <h1 className="cms-sidebar__brand fs-5 fw-bold m-0">Admin Portal</h1>
+      <div className="position-relative mb-4 text-center">
+        <h1 className="cms-sidebar__brand fs-4 fw-bold m-0">Admin Portal</h1>
 
         <button
           type="button"
-          className="btn btn-sm btn-outline-light d-lg-none"
+          className="btn btn-sm btn-outline-light d-lg-none position-absolute end-0 top-50 translate-middle-y"
           onClick={onClose}
           aria-label="Close sidebar"
         >
@@ -147,16 +167,26 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
         </button>
       </div>
 
-      <div className="cms-sidebar__user d-flex align-items-center mb-4">
-        <img
-          src={user.avatar}
-          alt="Avatar"
-          className="rounded-circle me-2"
-          style={{ width: "40px", height: "40px", objectFit: "cover" }}
-        />
-        <div>
-          <div className="fw-bold">{user.name}</div>
-          <div className="text-white small">{user.role}</div>
+      <div className="cms-sidebar__user d-flex flex-column align-items-center text-center mb-4">
+        <div
+          className="rounded-circle d-flex align-items-center justify-content-center"
+          style={{ width: "72px", height: "72px", overflow: "hidden", background: "rgba(255,255,255,0.08)" }}
+          aria-label="User avatar"
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ fontWeight: 800, fontSize: "1.35rem", letterSpacing: 0.5 }}>{userInitials}</span>
+          )}
+        </div>
+
+        <div className="mt-2">
+          <div className="fw-bold" style={{ fontSize: "1.05rem", lineHeight: 1.15 }}>
+            {currentUser ? `${currentUser.fname} ${currentUser.lname}`.trim() : userLoaded ? "User" : "Loading..."}
+          </div>
+          <div className="text-white" style={{ fontSize: "0.9rem" }}>
+            Admin
+          </div>
         </div>
       </div>
 
@@ -165,10 +195,11 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
           href="/public/home"
           target="_blank"
           rel="noopener noreferrer"
-          className="nav-link text-white p-0 text-decoration-none d-flex align-items-center"
+          className="nav-link text-white p-0 text-decoration-none d-flex align-items-center justify-content-center gap-2 fw-semibold"
+          style={{ fontSize: "1rem" }}
         >
           <span className="cms-sidebar__icon" aria-hidden="true">
-            <i className="fa-solid fa-globe" />
+            <i className="fa-solid fa-globe" style={{ fontSize: "1.05rem" }} />
           </span>
           <span>View Website</span>
         </Link>

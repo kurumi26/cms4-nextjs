@@ -3,6 +3,9 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import ConfirmModal from "@/components/UI/ConfirmModal";
+import { getCurrentUserCached, initialsForUser, resolveAvatarUrl, subscribeCurrentUserUpdated } from "@/lib/currentUser";
+import { getWebsiteSettingsCached, resolveWebsiteAssetUrl, subscribeWebsiteSettingsUpdated } from "@/lib/websiteSettings";
+import type { User } from "@/services/accountService";
 
 type TopbarProps = {
   onToggleSidebar?: () => void;
@@ -13,6 +16,41 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
   const dropdownRef = React.useRef<any>(null);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+  const [logoUrl, setLogoUrl] = React.useState<string | undefined>(undefined);
+
+  const refreshUser = React.useCallback(async (opts?: { force?: boolean }) => {
+    try {
+      const u = await getCurrentUserCached({ force: opts?.force === true });
+      setCurrentUser(u);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refreshUser({ force: false });
+    const unsub = subscribeCurrentUserUpdated(() => refreshUser({ force: true }));
+    return () => unsub();
+  }, [refreshUser]);
+
+  const refreshLogo = React.useCallback(async (opts?: { force?: boolean }) => {
+    try {
+      const s = await getWebsiteSettingsCached({ force: opts?.force === true });
+      setLogoUrl(resolveWebsiteAssetUrl((s as any)?.company_logo));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refreshLogo({ force: false });
+    const unsub = subscribeWebsiteSettingsUpdated(() => refreshLogo({ force: true }));
+    return () => unsub();
+  }, [refreshLogo]);
+
+  const avatarUrl = React.useMemo(() => resolveAvatarUrl(currentUser?.avatar), [currentUser?.avatar]);
+  const initials = React.useMemo(() => initialsForUser(currentUser), [currentUser]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -47,17 +85,38 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
   return (
     <>
       <nav className="navbar navbar-light bg-white shadow-sm px-4" style={{ height: '64px' }}>
-        <div className="container-fluid w-100 flex-grow-1 d-flex justify-content-end align-items-center gap-2">
+        <div className="container-fluid w-100 flex-grow-1 d-flex justify-content-between align-items-center gap-2">
+        <div className="d-flex align-items-center" style={{ minWidth: 0 }}>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              style={{ height: 34, width: "auto", objectFit: "contain", display: "block" }}
+            />
+          ) : null}
+        </div>
+
+        <div className="d-flex align-items-center gap-2">
         <div className="dropdown">
           <button
-            className="btn btn-dark rounded-circle text-white d-flex align-items-center justify-content-center"
+            className="btn p-0 border-0 rounded-circle overflow-hidden d-flex align-items-center justify-content-center"
             type="button"
             id="userDropdown"
             aria-expanded="false"
-            style={{ width: '40px', height: '40px', fontSize: '0.875rem', fontWeight: 'bold' }}
+            style={{ width: "40px", height: "40px", background: "#0b1220", lineHeight: 0 }}
             onClick={() => dropdownRef.current?.toggle && dropdownRef.current.toggle()}
           >
-            T
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.85rem", letterSpacing: 0.5 }}>
+                {initials}
+              </span>
+            )}
           </button>
 
           <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -91,6 +150,7 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
         >
           <i className="fa-solid fa-bars" />
         </button>
+        </div>
         </div>
       </nav>
 
