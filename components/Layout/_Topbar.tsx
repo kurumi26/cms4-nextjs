@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Menu from "./_Menu";
 import styles from "@/styles/_topbar.module.css";
+import { getWebsiteSettingsCached, resolveWebsiteAssetUrl, subscribeWebsiteSettingsUpdated } from "@/lib/websiteSettings";
 
 export default function LandingTopbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -10,6 +11,32 @@ export default function LandingTopbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoAlt, setLogoAlt] = useState<string>("Logo");
+
+  useEffect(() => {
+    let alive = true;
+
+    const refresh = async (opts?: { force?: boolean }) => {
+      try {
+        const s = await getWebsiteSettingsCached({ force: opts?.force === true });
+        if (!alive) return;
+
+        const url = resolveWebsiteAssetUrl((s as any)?.company_logo) ?? null;
+        setLogoUrl(url);
+        setLogoAlt((s as any)?.website_name || (s as any)?.company_name || "Logo");
+      } catch {
+        // ignore
+      }
+    };
+
+    refresh({ force: false });
+    const unsub = subscribeWebsiteSettingsUpdated(() => refresh({ force: true }));
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
 
   useEffect(() => {
     // compute threshold: if there's a banner, stay transparent until user scrolls
@@ -61,7 +88,11 @@ export default function LandingTopbar() {
         <div className="left">
           <Link href="/" className={styles.brand}>
             <span className={styles['logo-box']}>
-              <img src="/images/logo-light.png" alt="ECOHO" className={styles['logo-img']} />
+              <img
+                src={logoUrl || "/images/logo-light.png"}
+                alt={logoAlt}
+                className={styles['logo-img']}
+              />
             </span>
 
           </Link>

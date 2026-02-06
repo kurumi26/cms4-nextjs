@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import { deleteMenu, getMenus, MenuRow, activateMenu, postMethodDeleteMenu, updateMenuName, restoreMenu, setMenuInactive } from "@/services/menuService";
 import { useRouter } from "next/router";
@@ -446,6 +445,27 @@ function ManageMenus() {
           setSearch(value);
           setCurrentPage(1);
         }}
+        leftExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-muted">Show</span>
+            <select
+              className="form-select form-select-sm w-auto"
+              value={perPage}
+              onChange={(e) => {
+                setPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              aria-label="Show entries"
+            >
+              {[5, 10, 25, 50].map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted">entries</span>
+          </div>
+        )}
         actionsMenu={(
           <>
             <button
@@ -477,14 +497,6 @@ function ManageMenus() {
         initialSortOrder={sortOrder}
         initialPerPage={perPage}
         initialShowDeleted={showDeleted}
-      />
-
-      <PageSizeSelector
-        value={perPage}
-        onChange={(value) => {
-          setPerPage(value);
-          setCurrentPage(1);
-        }}
       />
 
       <DataTable<MenuRow>

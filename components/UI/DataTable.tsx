@@ -1,4 +1,5 @@
 import { ReactNode, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 
 type SortOrder = "asc" | "desc";
 
@@ -6,6 +7,17 @@ export interface Column<T> {
   key: string;
   header: ReactNode;
   render?: (row: T) => ReactNode;
+
+  // Optional per-column styling
+  thClassName?: string;
+  tdClassName?: string;
+
+  // Optional per-column sizing/styling
+  width?: number | string;
+  minWidth?: number | string;
+  maxWidth?: number | string;
+  thStyle?: CSSProperties;
+  tdStyle?: CSSProperties;
 
   // Optional: enable click-to-sort header UI
   sortable?: boolean;
@@ -18,6 +30,16 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   loading?: boolean;
+
+  // Optional styling hooks
+  wrapperClassName?: string;
+  wrapperStyle?: CSSProperties;
+  tableClassName?: string;
+  tableStyle?: CSSProperties;
+
+  // Layout helpers
+  fixedLayout?: boolean;
+  stickyHeader?: boolean;
 
   // Server-side pagination (optional)
   currentPage?: number;
@@ -44,6 +66,12 @@ export default function DataTable<T>({
   sortBy,
   sortOrder,
   onSortChange,
+  wrapperClassName,
+  wrapperStyle,
+  tableClassName,
+  tableStyle,
+  fixedLayout = false,
+  stickyHeader = false,
 }: DataTableProps<T>) {
   const isServerPaginated =
     typeof currentPage === "number" &&
@@ -150,110 +178,216 @@ export default function DataTable<T>({
       .map((x) => x.row);
   }, [columns, data, effectiveSortBy, effectiveSortOrder, onSortChange]);
 
-  // Client-side fallback
-  const localCurrentPage = currentPage || 1;
-  const localTotalPages = isServerPaginated
-    ? totalPages
-    : Math.ceil(sortedData.length / itemsPerPage);
+  // Client-side pagination state (when not server-paginated)
+  const [clientPage, setClientPage] = useState(1);
+
+  const effectiveCurrentPage = isServerPaginated ? (currentPage || 1) : clientPage;
+  const effectiveTotalPages = isServerPaginated
+    ? (totalPages || 1)
+    : Math.max(1, Math.ceil(sortedData.length / itemsPerPage));
+
+  const clampPage = (p: number) => Math.min(Math.max(1, p), effectiveTotalPages);
+
+  const handlePageChange = (p: number) => {
+    const next = clampPage(p);
+    if (isServerPaginated) onPageChange?.(next);
+    else setClientPage(next);
+  };
 
   const pageData = isServerPaginated
     ? data
     : sortedData.slice(
-        (localCurrentPage - 1) * itemsPerPage,
-        localCurrentPage * itemsPerPage
+        (effectiveCurrentPage - 1) * itemsPerPage,
+        effectiveCurrentPage * itemsPerPage
       );
+
+  const pageButtons = useMemo(() => {
+    const safeTotal = Math.max(1, effectiveTotalPages);
+    const safeCurrent = Math.min(Math.max(1, effectiveCurrentPage), safeTotal);
+
+    // show all if small
+    if (safeTotal <= 7) {
+      return {
+        safeTotal,
+        safeCurrent,
+        showFirst: false,
+        showLast: false,
+        leftEllipsis: false,
+        rightEllipsis: false,
+        middle: Array.from({ length: safeTotal }, (_, i) => i + 1).slice(1, -1),
+      };
+    }
+
+    const maxMiddle = 5; // buttons between first/last
+    let start = Math.max(2, safeCurrent - Math.floor(maxMiddle / 2));
+    let end = Math.min(safeTotal - 1, start + maxMiddle - 1);
+    start = Math.max(2, end - maxMiddle + 1);
+
+    const middle: number[] = [];
+    for (let p = start; p <= end; p++) middle.push(p);
+
+    return {
+      safeTotal,
+      safeCurrent,
+      showFirst: true,
+      showLast: true,
+      leftEllipsis: start > 2,
+      rightEllipsis: end < safeTotal - 1,
+      middle,
+    };
+  }, [effectiveCurrentPage, effectiveTotalPages]);
 
   return (
     <div>
       {/* TABLE */}
-      <table className="table table-bordered table-hover mb-3">
-        <thead style={{ backgroundColor: "#f5f7fb" }}>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.key} style={{ fontWeight: 600 }}>
-                {col.sortable ? renderSortableHeader(col) : col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody>
-          {loading && (
+      <div
+        className={wrapperClassName ?? "table-responsive"}
+        style={wrapperStyle}
+      >
+        <table
+          className={`table table-bordered table-hover mb-3 ${tableClassName ?? ""}`.trim()}
+          style={{
+            ...(fixedLayout ? { tableLayout: "fixed" } : null),
+            ...tableStyle,
+          }}
+        >
+          <thead>
             <tr>
-              <td colSpan={columns.length} className="text-center py-4">
-                Loading...
-              </td>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={col.thClassName}
+                  style={{
+                    fontWeight: 600,
+                    backgroundColor: "#f5f7fb",
+                    ...(stickyHeader
+                      ? { position: "sticky", top: 0, zIndex: 2 }
+                      : null),
+                    ...(col.width != null ? { width: col.width } : null),
+                    ...(col.minWidth != null ? { minWidth: col.minWidth } : null),
+                    ...(col.maxWidth != null ? { maxWidth: col.maxWidth } : null),
+                    ...col.thStyle,
+                  }}
+                >
+                  {col.sortable ? renderSortableHeader(col) : col.header}
+                </th>
+              ))}
             </tr>
-          )}
+          </thead>
 
-          {!loading && pageData.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-4">
-                No records found.
-              </td>
-            </tr>
-          )}
-
-          {!loading &&
-            pageData.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {columns.map((col) => (
-                  <td key={col.key}>
-                    {col.render ? col.render(row) : (row as any)[col.key]}
-                  </td>
-                ))}
+          <tbody>
+            {loading && (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-4">
+                  Loading...
+                </td>
               </tr>
-            ))}
-        </tbody>
-      </table>
+            )}
+
+            {!loading && pageData.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-4">
+                  No records found.
+                </td>
+              </tr>
+            )}
+
+            {!loading &&
+              pageData.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={col.tdClassName}
+                      style={{
+                        ...(col.width != null ? { width: col.width } : null),
+                        ...(col.minWidth != null ? { minWidth: col.minWidth } : null),
+                        ...(col.maxWidth != null ? { maxWidth: col.maxWidth } : null),
+                        ...col.tdStyle,
+                      }}
+                    >
+                      {col.render ? col.render(row) : (row as any)[col.key]}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* PAGINATION */}
-      {localTotalPages > 1 && (
+      {effectiveTotalPages > 1 && (
         <nav>
           <ul className="pagination justify-content-end mb-0">
-            <li
-              className={`page-item ${
-                localCurrentPage === 1 ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() =>
-                  onPageChange?.(localCurrentPage - 1)
-                }
-              >
-                &laquo;
+            <li className={`page-item ${pageButtons.safeCurrent <= 1 ? "disabled" : ""}`}>
+              <button className="page-link" onClick={() => handlePageChange(1)} disabled={pageButtons.safeCurrent <= 1}>
+                «
               </button>
             </li>
 
-            {Array.from({ length: localTotalPages }).map((_, index) => (
-              <li
-                key={index}
-                className={`page-item ${
-                  localCurrentPage === index + 1 ? "active" : ""
-                }`}
+            <li className={`page-item ${pageButtons.safeCurrent <= 1 ? "disabled" : ""}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(pageButtons.safeCurrent - 1)}
+                disabled={pageButtons.safeCurrent <= 1}
               >
-                <button
-                  className="page-link"
-                  onClick={() => onPageChange?.(index + 1)}
-                >
-                  {index + 1}
+                Prev
+              </button>
+            </li>
+
+            {pageButtons.showFirst && (
+              <li className={`page-item ${pageButtons.safeCurrent === 1 ? "active" : ""}`}>
+                <button className="page-link" onClick={() => handlePageChange(1)}>
+                  1
+                </button>
+              </li>
+            )}
+
+            {pageButtons.leftEllipsis && (
+              <li className="page-item disabled">
+                <span className="page-link">…</span>
+              </li>
+            )}
+
+            {pageButtons.middle.map((p) => (
+              <li key={p} className={`page-item ${pageButtons.safeCurrent === p ? "active" : ""}`}>
+                <button className="page-link" onClick={() => handlePageChange(p)}>
+                  {p}
                 </button>
               </li>
             ))}
 
-            <li
-              className={`page-item ${
-                localCurrentPage === localTotalPages ? "disabled" : ""
-              }`}
-            >
+            {pageButtons.rightEllipsis && (
+              <li className="page-item disabled">
+                <span className="page-link">…</span>
+              </li>
+            )}
+
+            {pageButtons.showLast && (
+              <li className={`page-item ${pageButtons.safeCurrent === pageButtons.safeTotal ? "active" : ""}`}>
+                <button className="page-link" onClick={() => handlePageChange(pageButtons.safeTotal)}>
+                  {pageButtons.safeTotal}
+                </button>
+              </li>
+            )}
+
+            <li className={`page-item ${pageButtons.safeCurrent >= pageButtons.safeTotal ? "disabled" : ""}`}>
               <button
                 className="page-link"
-                onClick={() =>
-                  onPageChange?.(localCurrentPage + 1)
-                }
+                onClick={() => handlePageChange(pageButtons.safeCurrent + 1)}
+                disabled={pageButtons.safeCurrent >= pageButtons.safeTotal}
               >
-                &raquo;
+                Next
+              </button>
+            </li>
+
+            <li className={`page-item ${pageButtons.safeCurrent >= pageButtons.safeTotal ? "disabled" : ""}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(pageButtons.safeTotal)}
+                disabled={pageButtons.safeCurrent >= pageButtons.safeTotal}
+              >
+                »
               </button>
             </li>
           </ul>

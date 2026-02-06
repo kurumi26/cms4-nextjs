@@ -6,7 +6,6 @@ import { axiosInstance } from "@/services/axios";
 import { toast } from "@/lib/toast";
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import SearchBar from "@/components/UI/SearchBar";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 import DataTable, { Column } from "@/components/UI/DataTable";
 
 export default function ManageProducts() {
@@ -221,6 +220,27 @@ export default function ManageProducts() {
           placeholder="Search products"
           value={search}
           onChange={(v) => { setSearch(v); setCurrentPage(1); }}
+          leftExtras={(
+            <div className="d-flex align-items-center gap-2">
+              <span className="text-muted small">Show</span>
+              <select
+                className="form-select form-select-sm w-auto"
+                value={perPage}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setPerPage(value);
+                  setCurrentPage(1);
+                }}
+              >
+                {[5, 10, 25, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <span className="text-muted small">entries</span>
+            </div>
+          )}
           actionsMenu={(
             <>
               <button
@@ -262,10 +282,6 @@ export default function ManageProducts() {
           initialPerPage={perPage}
           initialShowDeleted={showDeleted}
         />
-
-        <div className="d-flex align-items-center gap-3 mb-2">
-          <PageSizeSelector value={perPage} onChange={(v) => { setPerPage(v); setCurrentPage(1); }} />
-        </div>
 
         {showPublicPreview && (
           <div className="card mb-3">
@@ -337,6 +353,45 @@ function getColumns(categoriesMap: Record<string, string>, router: any, handleDe
     return false;
   };
 
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+
+  const toProductImageSrc = (rawUrl: any) => {
+    if (!rawUrl) return "";
+    const s = String(rawUrl).trim();
+    if (!s) return "";
+
+    // Already absolute / special URLs
+    if (s.startsWith("blob:") || s.startsWith("data:")) return s;
+    if (s.startsWith("//")) return s;
+    if (/^https?:\/\//i.test(s)) return s;
+
+    // Backend absolute path
+    if (s.startsWith("/")) {
+      return apiBase ? `${apiBase}${s}` : s;
+    }
+
+    // Backend relative paths
+    if (apiBase) {
+      // If the backend returns something like: storage/foo.jpg, uploads/foo.jpg, images/foo.jpg
+      if (/^(storage|uploads|images)\//i.test(s)) return `${apiBase}/${s}`;
+
+      // If the backend returns just: foo.jpg or products/foo.jpg, assume Laravel-style /storage
+      return `${apiBase}/storage/${s.replace(/^\/+/, "")}`;
+    }
+
+    // Fallback: treat as local public path
+    return `/${s.replace(/^\/+/, "")}`;
+  };
+
+  const imageFallbackSvg =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      `<svg xmlns='http://www.w3.org/2000/svg' width='90' height='60' viewBox='0 0 90 60'>` +
+        `<rect width='90' height='60' fill='%23f3f3f3'/>` +
+        `<text x='45' y='34' font-family='Arial' font-size='10' text-anchor='middle' fill='%23999'>No image</text>` +
+      `</svg>`
+    );
+
   return [
     {
       key: "select",
@@ -370,17 +425,22 @@ function getColumns(categoriesMap: Record<string, string>, router: any, handleDe
     {
       key: "image",
       header: "",
+      thClassName: "text-center",
+      tdClassName: "text-center align-middle",
       render: (p: any) => (
-        <div style={{ width: 90 }}>
+        <div style={{ width: "100%", height: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {p.image_url || p.image ? (
-            <img src={(() => {
-              const u = p.image_url ?? p.image;
-              if (!u) return "";
-              const s = String(u).trim();
-              if (s.startsWith("http:") || s.startsWith("https:") || s.startsWith("data:") || s.startsWith("//")) return s;
-              if (s.startsWith("/")) return s;
-              return `/${s.replace(/^\/+/, "")}`;
-            })()} alt={p.name} style={{ maxWidth: 90 }} />
+            <img
+              src={toProductImageSrc(p.image_url ?? p.image)}
+              alt={p.name}
+              style={{ maxWidth: 90, maxHeight: 60, objectFit: "cover", display: "block" }}
+              loading="lazy"
+              onError={(e) => {
+                // prevent infinite loop
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = imageFallbackSvg;
+              }}
+            />
           ) : (
             <div style={{ width: 90, height: 60, background: "#f3f3f3" }} />
           )}

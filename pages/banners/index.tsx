@@ -8,7 +8,6 @@ import { OptionItem, getOptions } from "@/services/optionService";
 import { toast } from "@/lib/toast";
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import { useRouter } from "next/router";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 
 function ManageAlbums() {
   const router = useRouter();
@@ -309,6 +308,27 @@ function ManageAlbums() {
           setSearch(value);
           setCurrentPage(1);
         }}
+        leftExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-muted">Show</span>
+            <select
+              className="form-select form-select-sm w-auto"
+              value={perPage}
+              onChange={(e) => {
+                setPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              aria-label="Show entries"
+            >
+              {[5, 10, 25, 50].map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted">entries</span>
+          </div>
+        )}
         actionsMenu={(
           <>
             <button
@@ -328,15 +348,6 @@ function ManageAlbums() {
           setSortOrder(sOrder);
           setShowDeleted(sDeleted);
           setPerPage(sPerPage);
-          setCurrentPage(1);
-        }}
-      />
-
-      {/* Page size selector */}
-      <PageSizeSelector
-        value={perPage}
-        onChange={(value) => {
-          setPerPage(value);
           setCurrentPage(1);
         }}
       />

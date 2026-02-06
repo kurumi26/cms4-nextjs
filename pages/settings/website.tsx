@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { websiteService } from "@/services/websiteService";
 import { toast } from "@/lib/toast";
 import TinyEditor from "@/components/UI/Editor";
+import { notifyWebsiteSettingsUpdated, storeWebsiteSettings } from "@/lib/websiteSettings";
 
 type TabKey = "website" | "contact" | "social" | "privacy";
 
@@ -155,6 +156,15 @@ function WebsiteSettingsPage() {
       if (faviconFile) fd.append("website_favicon", faviconFile);
 
       await websiteService.updateWebsite(fd);
+
+      // Refresh cached settings so other UI (topbar, etc.) updates immediately.
+      try {
+        const s = await websiteService.getSettings();
+        storeWebsiteSettings(s);
+        notifyWebsiteSettingsUpdated();
+      } catch {
+        // ignore
+      }
 
       toast.success("Website settings saved");
     } catch (err: any) {

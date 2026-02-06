@@ -6,7 +6,6 @@ import { getPages, getPageById, restorePage, deletePage, postDeletePage, postMet
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/router";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 
 interface PageRow {
   id: number;
@@ -643,6 +642,29 @@ export default function ManagePages() {
           setSearch(value);
           setCurrentPage(1);
         }}
+        leftExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-muted">Show</span>
+            <select
+              className="form-select form-select-sm w-auto"
+              value={perPage}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setPerPage(value);
+                setCurrentPage(1);
+                fetchPages({ perPage: value, page: 1 });
+              }}
+              aria-label="Show entries"
+            >
+              {[5, 10, 25, 50].map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted">entries</span>
+          </div>
+        )}
         actionsMenu={(
           <>
             <button
@@ -676,14 +698,6 @@ export default function ManagePages() {
         initialPerPage={perPage}
         initialSortBy={sortBy}
         initialSortOrder={sortOrder}
-      />
-
-      <PageSizeSelector
-        value={perPage}
-        onChange={(value) => {
-          setPerPage(value);
-          setCurrentPage(1);
-        }}
       />
 
       <DataTable<PageRow>

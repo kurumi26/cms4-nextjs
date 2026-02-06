@@ -31,6 +31,13 @@ function getCategorySortKey(c: any): number | undefined {
     normalizeNumber(c?.sort_order) ??
     normalizeNumber(c?.position) ??
     normalizeNumber(c?.display_order) ??
+    normalizeNumber(c?.sequence) ??
+    normalizeNumber(c?.ordering) ??
+    normalizeNumber(c?.sort) ??
+    normalizeNumber(c?.sort_index) ??
+    normalizeNumber(c?.sortIndex) ??
+    normalizeNumber(c?.order_index) ??
+    normalizeNumber(c?.orderIndex) ??
     normalizeNumber(c?.rank) ??
     undefined
   );
@@ -84,12 +91,46 @@ export default function CreateProductCategory() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [orderDirty, setOrderDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [editingName, setEditingName] = useState<string>("");
   const [showDeleteConfirmId, setShowDeleteConfirmId] = useState<string | number | null>(null);
 
-  const loadCategories = async () => {
+  const localOrderKey = `cms4.productCategories.order:${process.env.NEXT_PUBLIC_API_URL || ""}`;
+
+  const readLocalOrder = () => {
+    try {
+      if (typeof window === "undefined") return null;
+      const raw = window.localStorage.getItem(localOrderKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return null;
+      return parsed.map((x) => String(x));
+    } catch {
+      return null;
+    }
+  };
+
+  const writeLocalOrder = (ids: string[]) => {
+    try {
+      if (typeof window === "undefined") return;
+      window.localStorage.setItem(localOrderKey, JSON.stringify(ids));
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearLocalOrder = () => {
+    try {
+      if (typeof window === "undefined") return;
+      window.localStorage.removeItem(localOrderKey);
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadCategories = async (opts?: { resetDirty?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
@@ -113,16 +154,41 @@ export default function CreateProductCategory() {
         position: normalizeNumber(c?.position),
       }));
 
-      // Sort by explicit order if present; otherwise keep current order from API.
+      // Sort by explicit order if present; otherwise use locally-saved order (if any).
       const hasAnyOrder = mapped.some((c) => typeof c.order === "number");
-      setCategories(
-        hasAnyOrder
-          ? [...mapped].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          : mapped
-      );
+      let nextCategories = hasAnyOrder
+        ? [...mapped].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        : mapped;
+
+      if (!hasAnyOrder) {
+        const localIds = readLocalOrder();
+        if (localIds && localIds.length) {
+          const byId = new Map(nextCategories.map((c) => [String(getCategoryApiId(c)), c]));
+          const ordered: CategoryRow[] = [];
+
+          for (const id of localIds) {
+            const row = byId.get(String(id));
+            if (row) {
+              ordered.push(row);
+              byId.delete(String(id));
+            }
+          }
+
+          // Append any categories not in local list (new ones, etc.)
+          for (const row of byId.values()) ordered.push(row);
+
+          // Only apply if it actually reorders the list
+          if (ordered.length === nextCategories.length) nextCategories = ordered;
+        }
+      }
+
+      setCategories(nextCategories);
+      if (opts?.resetDirty !== false) setOrderDirty(false);
+      return nextCategories;
     } catch (e: any) {
       console.error('Failed to load categories', e);
       setError(e?.message || 'Failed to load categories');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -136,21 +202,56 @@ export default function CreateProductCategory() {
 
     const headers = { headers: { "X-No-Loading": true } };
 
+    const expectedIds = next.map((c) => String(getCategoryApiId(c)));
+    const orderPairs = next.map((c, idx) => ({ id: getCategoryApiId(c), order: idx + 1 }));
+
+    const verifyAndToast = async () => {
+      const reloaded = await loadCategories({ resetDirty: false });
+      const actualIds = (reloaded ?? []).map((c) => String(getCategoryApiId(c)));
+
+      const matches =
+        actualIds.length === expectedIds.length &&
+        actualIds.every((id, idx) => id === expectedIds[idx]);
+
+      if (matches) {
+        setOrderDirty(false);
+        toast.success("Category order saved");
+        return true;
+      }
+
+      // Backend didn't return the same order (either it didn't persist, or it doesn't sort by it).
+      // Store locally so refresh keeps the chosen order in this browser.
+      writeLocalOrder(expectedIds);
+      setOrderDirty(false);
+      toast.warning(
+        "Order was not retained after reload. Saved locally in this browser; backend may not persist/sort category positions yet."
+      );
+      return false;
+    };
+
+    // NOTE:
+    // We intentionally do NOT attempt “bulk reorder” endpoints here.
+    // Many backends don’t implement them, which causes 404/405 spam and can trigger 429 rate limits.
+
     const tryUpdateOrder = async (category: CategoryRow, order: number) => {
       const id = category.id;
+
+      // Prefer the resource endpoint used elsewhere in this page.
+      // (We keep this list short to avoid hammering the API.)
       const endpoints = [`/product-categories/${id}`];
+
+      const orderKey: "order" | "sort_order" | "position" =
+        typeof category.sort_order === "number"
+          ? "sort_order"
+          : typeof category.position === "number"
+            ? "position"
+            : "order";
+
       // Some backends validate strictly; try one key at a time.
       const bodies: any[] = [
         // strict backends might require name/title on update
-        { name: category.name, title: category.name, order },
-        { name: category.name, title: category.name, sort_order: order },
-        { name: category.name, title: category.name, position: order },
-        { order },
-        { sort_order: order },
-        { position: order },
-        { display_order: order },
-        { rank: order },
-        { sequence: order },
+        { name: category.name, title: category.name, [orderKey]: order },
+        { [orderKey]: order },
       ];
 
       for (const ep of endpoints) {
@@ -193,15 +294,17 @@ export default function CreateProductCategory() {
       if (failures.length) {
         toast.error(`Failed to save order for: ${failures.join(", ")}`);
         // Reload from server so UI stays consistent with what backend supports
-        await loadCategories();
-        return;
+        await loadCategories({ resetDirty: true });
+        return false;
       }
 
-      toast.success("Category order saved");
+      // Verification reload can still help, but avoid forcing dirty=false if API doesn't reflect order.
+      return await verifyAndToast();
     } catch (e: any) {
       console.error("Save category order error", e);
       toast.error(e?.response?.data?.message || e?.message || "Failed to save category order");
-      await loadCategories();
+      await loadCategories({ resetDirty: true });
+      return false;
     } finally {
       setSavingOrder(false);
     }
@@ -223,12 +326,20 @@ export default function CreateProductCategory() {
       position: idx + 1,
     }));
     setCategories(next);
-    try {
-      await persistCategoryOrder(next);
-    } catch (e) {
-      // Never crash the page on reorder failures
-      console.error("Reorder error", e);
-    }
+    setOrderDirty(true);
+  };
+
+  const handleSaveOrder = async () => {
+    const next = categories.map((c, idx) => ({
+      ...c,
+      order: idx + 1,
+      sort_order: idx + 1,
+      position: idx + 1,
+    }));
+    setCategories(next);
+    const ok = await persistCategoryOrder(next);
+    if (!ok) setOrderDirty(true);
+    return ok;
   };
 
   const handleSubmit = async () => {
@@ -278,7 +389,32 @@ export default function CreateProductCategory() {
         </div>
       </div>
       <div className="mt-4">
-        <h5>Existing Categories</h5>
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <h5 className="mb-0">Existing Categories</h5>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              type="button"
+              onClick={() => {
+                clearLocalOrder();
+                loadCategories();
+              }}
+              disabled={loading || savingOrder}
+              title="Reload categories and discard locally-saved order"
+            >
+              Reset
+            </button>
+            <button
+              className="btn btn-sm btn-primary"
+              type="button"
+              onClick={handleSaveOrder}
+              disabled={!orderDirty || savingOrder || !!editingId}
+              title={editingId ? "Finish editing before saving order" : "Save the current drag order"}
+            >
+              {savingOrder ? "Saving…" : "Save order"}
+            </button>
+          </div>
+        </div>
         <div className="card">
           <div className="card-body">
             {loading && <div>Loading categories…</div>}
@@ -371,8 +507,8 @@ export default function CreateProductCategory() {
             )}
             {!loading && categories.length > 0 && (
               <div className="text-muted mt-2" style={{ fontSize: 12 }}>
-                Drag ☰ to reorder. Order saves automatically.
-                {savingOrder ? " Saving…" : ""}
+                Drag ☰ to reorder. Click <strong>Save order</strong> to apply changes.
+                {orderDirty ? " (Unsaved changes)" : ""}
               </div>
             )}
           </div>
