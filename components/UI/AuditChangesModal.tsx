@@ -180,6 +180,144 @@ function looksLikeImageValue(fieldKey: string, value: any) {
   return extLooks || (keyLooks && (pathLooks || s.includes("/")));
 }
 
+function looksLikeHtmlValue(fieldKey: string, value: any) {
+  if (typeof value !== "string") return false;
+  const s = value.trim();
+  if (!s) return false;
+
+  // Heuristic: key suggests rich HTML content, and the value contains tags.
+  const key = (fieldKey || "").toLowerCase();
+  const keyLooks = /(content|html|body|template|layout|footer|header|section)/.test(key);
+  const tagLooks = /<\/?[a-z][\w-]*(\s[^>]*?)?>/i.test(s);
+
+  return keyLooks && tagLooks;
+}
+
+function stripDangerousHtml(html: string) {
+  // Best-effort client-side hardening. We still sandbox the iframe with no scripts.
+  let s = html || "";
+  // Remove script blocks.
+  s = s.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  // Remove inline event handlers (onClick, onload, ...).
+  s = s.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  // Neutralize javascript: URLs.
+  s = s.replace(/\b(href|src)\s*=\s*("|')\s*javascript:[^"']*(\2)/gi, "$1=$2#$3");
+  return s;
+}
+
+function extractBodyHtml(html: string) {
+  const s = html || "";
+  const bodyMatch = s.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch?.[1] != null) return bodyMatch[1];
+  return s
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<html\b[^>]*>/gi, "")
+    .replace(/<\/html>/gi, "")
+    .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, "")
+    .replace(/<body\b[^>]*>/gi, "")
+    .replace(/<\/body>/gi, "");
+}
+
+function HtmlPreview({ html }: { html: string }) {
+  const [zoomOpen, setZoomOpen] = React.useState(false);
+  const srcDoc = React.useMemo(() => {
+    const fragment = stripDangerousHtml(extractBodyHtml(html));
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <link rel="stylesheet" href="/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/public-css.css" />
+    <link rel="stylesheet" href="/css/custom.css" />
+    <link rel="stylesheet" href="/css/product.css" />
+    <link rel="stylesheet" href="/css/banner.css" />
+    <link rel="stylesheet" href="/css/navigation.css" />
+    <link rel="stylesheet" href="/css/public-overrides.css" />
+    <style>
+      html, body { margin: 0; padding: 0; }
+      img, video { max-width: 100%; height: auto; }
+    </style>
+  </head>
+  <body>
+    ${fragment}
+  </body>
+</html>`;
+  }, [html]);
+
+  React.useEffect(() => {
+    if (!zoomOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [zoomOpen]);
+
+  return (
+    <>
+      {zoomOpen ? (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ background: "rgba(0, 0, 0, 0.7)", zIndex: 1070 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Preview"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setZoomOpen(false);
+          }}
+        >
+          <div
+            className="position-relative bg-white shadow-lg"
+            style={{ width: "min(1100px, 94vw)", borderRadius: 8, overflow: "hidden" }}
+          >
+            <button
+              type="button"
+              className="btn btn-sm btn-light position-absolute"
+              style={{ top: 10, right: 10, zIndex: 1 }}
+              onClick={() => setZoomOpen(false)}
+              aria-label="Close preview"
+              title="Close"
+            >
+              <i className="fas fa-times" />
+            </button>
+
+            <div style={{ width: "100%", aspectRatio: "16 / 9", maxHeight: "75vh" }}>
+              <iframe
+                title="HTML preview (zoomed)"
+                sandbox="allow-same-origin"
+                srcDoc={srcDoc}
+                style={{ width: "100%", height: "100%", border: 0, display: "block" }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="border rounded overflow-hidden bg-white">
+      <div className="d-flex justify-content-end p-1 bg-light border-bottom">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          onClick={() => setZoomOpen(true)}
+          aria-label="Zoom preview"
+          title="Zoom"
+        >
+          <i className="fas fa-search-plus" />
+        </button>
+      </div>
+      <iframe
+        title="HTML preview"
+        sandbox="allow-same-origin"
+        srcDoc={srcDoc}
+        style={{ width: "100%", height: 320, border: 0, display: "block" }}
+      />
+    </div>
+    </>
+  );
+}
+
 function stringDiffParts(oldText: string, newText: string) {
   const a = oldText ?? "";
   const b = newText ?? "";
@@ -699,6 +837,10 @@ export default function AuditChangesModal({
     if (typeof v === "string") {
       const s = v.trim();
       const isUrl = s.startsWith("http://") || s.startsWith("https://");
+
+      if (looksLikeHtmlValue(fieldKey, s)) {
+        return <HtmlPreview html={s} />;
+      }
 
       if (isUrl) {
         return (
