@@ -6,7 +6,7 @@ export const websiteService = {
   ====================== */
   async getSettings() {
     const { data } = await axiosInstance.get("/website-settings");
-    return data.setting;
+    return data;
   },
 
   /* ======================

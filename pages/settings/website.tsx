@@ -86,33 +86,33 @@ function WebsiteSettingsPage() {
     const loadSettings = async () => {
       const s = await websiteService.getSettings();
 
-      setCompanyName(s.company_name);
-      setWebsiteName(s.website_name);
-      setCopyright(s.copyright);
-      setAnalytics(s.google_analytics);
-      setGoogleMap(s.google_map);
-      setRecaptcha(s.google_recaptcha_sitekey);
+      setCompanyName(s.setting.company_name);
+      setWebsiteName(s.setting.website_name);
+      setCopyright(s.setting.copyright);
+      setAnalytics(s.setting.google_analytics);
+      setGoogleMap(s.setting.google_map);
+      setRecaptcha(s.setting.google_recaptcha_sitekey);
 
-      setAddress(s.company_address);
-      setMobile(s.mobile_no);
-      setFax(s.fax_no);
-      setTelephone(s.tel_no);
-      setContactEmail(s.email);
+      setAddress(s.setting.company_address);
+      setMobile(s.setting.mobile_no);
+      setFax(s.setting.fax_no);
+      setTelephone(s.setting.tel_no);
+      setContactEmail(s.setting.email);
 
-      setPrivacyTitle(s.data_privacy_title);
-      setPrivacyPopup(s.data_privacy_popup_content);
-      setPrivacyContent(s.data_privacy_content);
+      setPrivacyTitle(s.data_privacy.name);
+      setPrivacyPopup(s.setting.data_privacy_popup_content);
+      setPrivacyContent(s.data_privacy.contents);
 
       if (s.company_logo) {
         setLogoPreview(
-          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.company_logo}`
+          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.setting.company_logo}`
         );
         setLogoName(s.company_logo);
       }
 
       if (s.website_favicon) {
         setFaviconPreview(
-          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.website_favicon}`
+          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.setting.website_favicon}`
         );
         setFaviconName(s.website_favicon);
       }
