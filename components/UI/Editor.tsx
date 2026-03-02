@@ -1,7 +1,8 @@
 "use client";
 
 import { Editor } from "@tinymce/tinymce-react";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
+import { getMenus } from "@/services/menuService";
 
 interface TinyEditorProps {
   value?: string;
@@ -10,6 +11,21 @@ interface TinyEditorProps {
 
 export default function TinyEditor({ value, onChange }: TinyEditorProps) {
   const editorRef = useRef<any>(null);
+  const [menus, setMenus] = useState<any[]>([]);
+  const menusRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    getMenus({ page: 1, per_page: 1000 })
+      .then((res) => {
+        const data = res.data.data ?? res.data ?? [];
+        setMenus(data);
+        menusRef.current = data;
+      })
+      .catch(() => {
+        setMenus([]);
+        menusRef.current = [];
+      });
+  }, []);
 
   return (
     <Editor
@@ -19,7 +35,8 @@ export default function TinyEditor({ value, onChange }: TinyEditorProps) {
       init={{
         height: 1000,
         menubar: true,
-        content_css: ["/css/custom.css",
+        content_css: [
+          "/css/custom.css",
           "/css/bootstrap.min.css",
           "/css/flatpickr.min.css",
           "/css/glightbox.min.css",
@@ -51,7 +68,38 @@ export default function TinyEditor({ value, onChange }: TinyEditorProps) {
           "alignleft aligncenter alignright alignjustify | " +
           "bullist numlist outdent indent | " +
           "link image media table | " +
-          "ltr rtl | code preview fullscreen",
+          "insertMenu | ltr rtl | code preview fullscreen",
+
+        setup: (editor: any) => {
+          editor.ui.registry.addMenuButton("insertMenu", {
+            text: "Insert Menu",
+            fetch: (callback: any) => {
+              const items = (menusRef.current || []).map((m: any) => ({
+                type: "menuitem",
+                text: m.name,
+                onAction: () => {
+                  // insert a placeholder comment the public renderer can replace
+                  const placeholder = `<!-- CMS_MENU:${m.id} -->`;
+                  editor.insertContent(placeholder);
+                },
+              }));
+
+              // fallback item
+              if (!items.length) {
+                callback([
+                  {
+                    type: "menuitem",
+                    text: "No menus available",
+                    onAction: () => {},
+                  },
+                ]);
+                return;
+              }
+
+              callback(items);
+            },
+          });
+        },
 
         // 🔒 LOCK LTR FOREVER
         content_style: `

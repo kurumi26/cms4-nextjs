@@ -242,6 +242,32 @@ export const restoreArticle = async (id: number) => {
   throw lastErr;
 };
 
+export const duplicateArticle = async (id: number) => {
+  const attempts: Array<() => Promise<any>> = [
+    () => axiosInstance.post(`/articles/${id}/duplicate`),
+    () => axiosInstance.post(`/articles/duplicate`, { id }),
+    () => axiosInstance.post(`/duplicate-article`, { id }),
+  ];
+
+  let lastErr: any;
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      return res.data;
+    } catch (err: any) {
+      lastErr = err;
+      const status = err?.response?.status;
+      if (status === 400 || status === 401 || status === 403 || status === 404) {
+        // treat as final for client errors
+        throw err;
+      }
+      // otherwise try next
+    }
+  }
+
+  throw lastErr;
+};
+
 
 export const getArticle = async (id: number) => {
   const res = await axiosInstance.get(`/articles/${id}`);

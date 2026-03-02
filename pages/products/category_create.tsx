@@ -430,9 +430,10 @@ export default function CreateProductCategory() {
                   strategy={verticalListSortingStrategy}
                 >
                 <ul className="list-group">
-                {categories.map((c: any) => (
+                {categories.map((c: any, idx: number) => (
                   <SortableCategoryItem key={String(c.id)} category={c} disabled={savingOrder || !!editingId}>
                     <div style={{ flex: 1 }}>
+                      <span className="badge bg-secondary me-2">{idx + 1}</span>
                       {editingId === c.id ? (
                         <div className="d-flex gap-2">
                           <input className="form-control form-control-sm" value={editingName} onChange={(e) => setEditingName(e.target.value)} />

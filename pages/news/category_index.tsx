@@ -75,6 +75,13 @@ function ManageNews() {
     [categories, sortBy, sortOrder]
   );
 
+  const displayRows = useMemo(() => {
+    return sortedCategories.map((r, idx) => ({
+      ...r,
+      seq: (currentPage - 1) * perPage + idx + 1,
+    }));
+  }, [sortedCategories, currentPage, perPage]);
+
   /* ======================
    * Columns
    * ====================== */
@@ -83,6 +90,12 @@ function ManageNews() {
       key: "select",
       header: <input type="checkbox" />,
       render: () => <input type="checkbox" />,
+    },
+    {
+      key: "seq",
+      header: "#",
+      width: 60,
+      render: (row) => (row as any).seq,
     },
     {
       key: "name",
@@ -179,7 +192,7 @@ function ManageNews() {
 
       <DataTable<NewsCategoryRow>
         columns={columns}
-        data={sortedCategories}
+        data={displayRows as any}
         loading={loading}
         currentPage={currentPage}
         totalPages={totalPages}

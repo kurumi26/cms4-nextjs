@@ -1,6 +1,7 @@
 import Head from "next/head";
 import LandingPageLayout from "@/components/Layout/GuestLayout";
 import { getArticleBySlug } from "@/services/articleService";
+import { getMenuById } from "@/services/menuService";
 import { articleToAlbum } from "@/schemas/articleToAlbum";
 
 type Props = {
@@ -63,13 +64,54 @@ export async function getServerSideProps({ params }: any) {
   try {
     const res = await getArticleBySlug(params.slug);
 
+    // Replace any CMS_MENU placeholders with rendered menu HTML
+    let article = res.data;
+    let contents = article.contents || "";
+
+    const matches = Array.from(contents.matchAll(/<!--\s*CMS_MENU:(\d+)\s*-->/g));
+    const menuIds = [...new Set(matches.map((m) => Number((m as RegExpMatchArray)[1])))] as number[];
+
+    for (const mid of menuIds) {
+      try {
+        const mres: any = await getMenuById(mid);
+        const menu = mres?.data?.data ?? mres?.data ?? null;
+        if (!menu) continue;
+
+        const renderItems = (items: any[]): string => {
+          if (!Array.isArray(items) || !items.length) return "";
+          let html = "<ul class=\"cms-menu\">";
+          for (const it of items) {
+            const label = it.title || it.name || it.label || it.text || "Untitled";
+            const href = it.url || it.link || it.path || (it.page ? `/pages/${it.page.slug || it.page.id}` : "#");
+            html += `<li><a href=\"${href}\">${label}</a>`;
+            const children = it.children || it.items || it.child || [];
+            if (Array.isArray(children) && children.length) {
+              html += renderItems(children);
+            }
+            html += `</li>`;
+          }
+          html += "</ul>";
+          return html;
+        };
+
+        const menuHtml = `<nav class=\"cms-menu-root\"><h4>${menu.name || "Menu"}</h4>${renderItems(Array.isArray(menu.items) ? menu.items : [])}</nav>`;
+
+        const token = new RegExp(`<!--\\s*CMS_MENU:${mid}\\s*-->`, "g");
+        contents = contents.replace(token, menuHtml);
+      } catch (err) {
+        // ignore failed menu fetches
+      }
+    }
+
+    article = { ...article, contents };
+
     return {
       props: {
         pageData: {
           title: res.data.name,
           album: articleToAlbum(res.data),
         },
-        article: res.data,
+        article,
       },
     };
   } catch {

@@ -5,6 +5,7 @@ import { createPage } from "@/services/pageService";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { getAlbums } from "@/services/albumService";
+import { getMenus } from "@/services/menuService";
 import { toast } from "@/lib/toast";
 import AiAssistant from "@/components/AI/AiAssistant";
 import SelectPreset from "@/components/UI/SelectPreset";
@@ -20,6 +21,8 @@ export default function CreatePage() {
   const [visibility, setVisibility] = useState(true);
   const [albumId, setAlbumId] = useState<number | "">("");
   const [albums, setAlbums] = useState<any[]>([]);
+  const [menuId, setMenuId] = useState<number | "">("");
+  const [menus, setMenus] = useState<any[]>([]);
 
   // SEO
   const [seoTitle, setSeoTitle] = useState("");
@@ -41,6 +44,7 @@ export default function CreatePage() {
         name: title,
         label: label || undefined,
         album_id: albumId || undefined,
+        // menu_id: menuId || undefined,
         contents: content,
         status: visibility ? "published" : "private",
         meta_title: seoTitle || undefined,
@@ -67,6 +71,9 @@ export default function CreatePage() {
         setAlbums(res.data.data ?? res.data);
       })
       .catch(() => setAlbums([]));
+    getMenus({ page: 1, per_page: 1000 })
+      .then((res) => setMenus(res.data.data ?? res.data))
+      .catch(() => setMenus([]));
   }, []);
 
   return (
@@ -110,6 +117,22 @@ export default function CreatePage() {
               {albums.map((album) => (
                 <option key={album.id} value={album.id}>
                   {album.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Menu Group (optional)</label>
+            <select
+              className="form-select"
+              value={menuId}
+              onChange={(e) => setMenuId(e.target.value ? Number(e.target.value) : 0)}
+            >
+              <option value="0">— No Menu —</option>
+              {menus.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
                 </option>
               ))}
             </select>

@@ -10,6 +10,7 @@ import {
   postDeleteArticleByPayload,
   postMethodDeleteArticle,
   restoreArticle,
+  duplicateArticle,
   updateArticleStatus,
   ArticleRow,
 } from "@/services/articleService";
@@ -289,6 +290,29 @@ function ManageNews() {
       setOpen(false);
     };
 
+    const handleDuplicate = async () => {
+      try {
+        const res = await duplicateArticle(row.id);
+
+        // Try to locate the new record id from common response shapes
+        let newId: number | string | undefined = undefined;
+        if (res == null) newId = undefined;
+        else if (typeof res === "number" || typeof res === "string") newId = res;
+        else newId = res?.data?.id ?? res?.data?.article?.id ?? res?.id ?? res?.article?.id ?? res?.insertedId ?? res?.newId;
+
+        setOpen(false);
+        if (newId) {
+          toast.success("Duplicated — opening editor");
+          router.push(`/news/edit/${newId}`);
+        } else {
+          toast.success("Duplicated successfully");
+          fetchArticles();
+        }
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to duplicate news");
+      }
+    };
+
     return (
       <div style={{ display: "inline-block", position: "relative" }}>
         <button className="btn btn-link p-0 text-secondary" onClick={handleClick} type="button" title="Settings">
@@ -303,6 +327,9 @@ function ManageNews() {
                 <div className="list-group list-group-flush">
                   <button className="list-group-item list-group-item-action" onClick={handleToggleStatus} type="button">
                     {normalizeStatus(row) === "published" ? "Private" : "Published"}
+                  </button>
+                  <button className="list-group-item list-group-item-action" onClick={handleDuplicate} type="button">
+                    Duplicate
                   </button>
                   <button className="list-group-item list-group-item-action text-danger" onClick={handleTrash} type="button">
                     Delete
