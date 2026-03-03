@@ -187,27 +187,6 @@ function AuditTrailsPage() {
       <h3 className="mb-3">Audit Trail</h3>
 
       <div className="row g-2 align-items-center mb-3">
-        <div className="col-12 col-md-auto">
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                setPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              {[5, 10, 25, 50].map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">entries</span>
-          </div>
-        </div>
-
         <div className="col-12 col-md d-flex justify-content-md-end">
           <div className="input-group input-group-sm w-100" style={{ maxWidth: 340 }}>
             <span className="input-group-text">
@@ -233,6 +212,8 @@ function AuditTrailsPage() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         wrapperClassName="rounded border bg-white"
         tableClassName="table-sm table-striped table-hover align-middle"
         stickyHeader

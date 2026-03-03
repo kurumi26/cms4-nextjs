@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
 import { getUsers, toggleUserActive, UserRow } from "@/services/userService";
 import { useRouter } from "next/router";
 import { toast } from "@/lib/toast";
+import Link from "next/link";
 
 function ManageUsers() {
   const router = useRouter();
@@ -19,6 +20,8 @@ function ManageUsers() {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<string>("asc");
   const [showInactiveOnly, setShowInactiveOnly] = useState<boolean>(false);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const silentSortFetchRef = useRef(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -57,9 +60,10 @@ function ManageUsers() {
     return copy;
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = opts?.silent ?? false;
+      if (!silent) setLoading(true);
 
       const res = await getUsers({
         search,
@@ -69,7 +73,7 @@ function ManageUsers() {
         sort_order: sortOrder,
         // backend may support this; UI also enforces client-side below
         status: showInactiveOnly ? "Inactive" : undefined,
-      });
+      }, { silent });
 
       const apiRows: UserRow[] = Array.isArray(res?.data?.data) ? res.data.data : [];
 
@@ -82,7 +86,7 @@ function ManageUsers() {
       setUsers(sortedRows);
       setTotalPages(res?.meta?.last_page ?? 1);
     } finally {
-      setLoading(false);
+      if (!(opts?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -120,7 +124,9 @@ function ManageUsers() {
   };
 
   useEffect(() => {
-    const timeout = setTimeout(fetchUsers, 400);
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    const timeout = setTimeout(() => fetchUsers({ silent }), 400);
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly]);
 
@@ -231,27 +237,6 @@ function ManageUsers() {
           setSearch(v);
           setCurrentPage(1);
         }}
-        leftExtras={(
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted small">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                setPerPage(value);
-                setCurrentPage(1);
-              }}
-            >
-              {[5, 10, 25, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted small">entries</span>
-          </div>
-        )}
         actionsMenu={(
           <>
             <button
@@ -272,6 +257,33 @@ function ManageUsers() {
             </button>
           </>
         )}
+        rightExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
+            >
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <Link
+              href="/users/create"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 24px", whiteSpace: "nowrap" }}
+            >
+              Create User
+            </Link>
+          </div>
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sInactiveOnly, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
@@ -293,9 +305,12 @@ function ManageUsers() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         sortBy={sortBy}
         sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
         onSortChange={(nextBy, nextOrder) => {
+          silentSortFetchRef.current = true;
           setSortBy(nextBy);
           setSortOrder(nextOrder);
           setCurrentPage(1);

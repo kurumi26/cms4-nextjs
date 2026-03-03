@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { axiosInstance } from "@/services/axios";
 import { toast } from "@/lib/toast";
 import ConfirmModal from "@/components/UI/ConfirmModal";
@@ -22,10 +22,49 @@ export default function ManageProducts() {
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<any>("asc");
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showPublicPreview, setShowPublicPreview] = useState<boolean>(false);
+  const silentSortFetchRef = useRef(false);
 
-  const fetchProducts = async (opts?: { showDeleted?: boolean }) => {
-    setLoading(true);
+  const sortRowsClientSide = (rows: any[], by?: string, order: "asc" | "desc" = "asc") => {
+    if (!by) return rows;
+    const direction = order === "asc" ? 1 : -1;
+    const copy = [...rows];
+
+    const categoryLabel = (row: any) => {
+      const direct = row?.category && (row.category.name ?? row.category.title);
+      const fallback = row?.category_name ?? (row?.category_id && categoriesMap[String(row.category_id)]) ?? row?.category_id ?? "";
+      return String(direct ?? fallback ?? "").toLowerCase();
+    };
+
+    copy.sort((a: any, b: any) => {
+      const av = by === "price"
+        ? Number(a?.price ?? a?.amount ?? 0)
+        : by === "category"
+          ? categoryLabel(a)
+          : a?.[by];
+      const bv = by === "price"
+        ? Number(b?.price ?? b?.amount ?? 0)
+        : by === "category"
+          ? categoryLabel(b)
+          : b?.[by];
+
+      if (typeof av === "number" && typeof bv === "number") {
+        return (av - bv) * direction;
+      }
+
+      const as = av == null ? "" : String(av).toLowerCase();
+      const bs = bv == null ? "" : String(bv).toLowerCase();
+      if (as < bs) return -1 * direction;
+      if (as > bs) return 1 * direction;
+      return 0;
+    });
+    return copy;
+  };
+
+  const fetchProducts = async (opts?: { showDeleted?: boolean; silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) setLoading(true);
     try {
       const effectiveShowDeleted = opts?.showDeleted ?? showDeleted;
       const svc = await import("@/services/productService");
@@ -33,7 +72,7 @@ export default function ManageProducts() {
       const baseParams: any = { per_page: perPage, page: currentPage, search, sort_by: sortBy, sort_order: sortOrder };
 
       const requestOnce = async (extra: any) => {
-        const res = await svc.getProducts({ ...baseParams, ...extra });
+        const res = await svc.getProducts({ ...baseParams, ...extra }, { silent });
         const data = res?.data ?? res ?? [];
         const items = Array.isArray(data) ? data : (data?.items ?? data?.rows ?? data?.data ?? []);
         const lastPage = res?.meta?.last_page ?? res?.meta?.total_pages ?? 1;
@@ -82,8 +121,9 @@ export default function ManageProducts() {
       if (effectiveShowDeleted && apiItems.length === 0 && lastError) throw lastError;
 
       const filtered = effectiveShowDeleted ? apiItems.filter((r: any) => isRowDeleted(r)) : apiItems.filter((r: any) => !isRowDeleted(r));
+      const sorted = sortRowsClientSide(filtered, sortBy, String(sortOrder).toLowerCase() === "desc" ? "desc" : "asc");
 
-      setProducts(filtered);
+      setProducts(sorted);
       setTotalPages(lastPage);
 
       // try to load product categories to display names
@@ -111,11 +151,16 @@ export default function ManageProducts() {
       console.error("Failed to load products", e);
       setError(e?.message || "Failed to load products");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  useEffect(() => { const t = setTimeout(() => fetchProducts({ showDeleted }), 200); return () => clearTimeout(t); }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  useEffect(() => {
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    const t = setTimeout(() => fetchProducts({ showDeleted, silent }), 200);
+    return () => clearTimeout(t);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
   const handleDelete = async (id: string | number) => {
     setPendingDeleteId(id);
@@ -200,47 +245,57 @@ export default function ManageProducts() {
   return (
     <>
       <div className="container">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h3>Manage Products</h3>
-          <div>
-            <Link href="/products/create" className="btn btn-primary me-2">Create Product</Link>
-            <Link href="/products/category_create" className="btn btn-outline-secondary me-2">Create Category</Link>
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={() => setShowPublicPreview((s) => !s)}
-              title="Toggle public products preview"
-            >
-              {showPublicPreview ? 'Hide public view' : 'Show public view'}
-            </button>
-          </div>
-        </div>
+        <h3 className="mb-3">Manage Products</h3>
         {/* bulk Actions: show when rows selected - moved below SearchBar to align with Filters/PageSize */}
         <SearchBar
           placeholder="Search products"
           value={search}
           onChange={(v) => { setSearch(v); setCurrentPage(1); }}
-          leftExtras={(
-            <div className="d-flex align-items-center gap-2">
-              <span className="text-muted small">Show</span>
-              <select
-                className="form-select form-select-sm w-auto"
-                value={perPage}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  setPerPage(value);
-                  setCurrentPage(1);
-                }}
+          rightExtras={(
+            <div className="d-flex align-items-center gap-2 flex-nowrap">
+              <button
+                type="button"
+                className="btn btn-success d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: "10px 16px", whiteSpace: "nowrap" }}
+                onClick={() => setShowAdvancedSearch(true)}
               >
-                {[5, 10, 25, 50].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <span className="text-muted small">entries</span>
+                <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                  Advanced Search
+                </span>
+              </button>
+
+              <Link
+                href="/products/create"
+                className="btn btn-primary d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: "10px 20px", whiteSpace: "nowrap" }}
+              >
+                Create Product
+              </Link>
+
+              <Link
+                href="/products/category_create"
+                className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              >
+                Create Category
+              </Link>
+
+              <button
+                type="button"
+                className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: "10px 20px", whiteSpace: "nowrap" }}
+                onClick={() => setShowPublicPreview((s) => !s)}
+                title="Toggle public products preview"
+              >
+                {showPublicPreview ? "Hide public view" : "Show public view"}
+              </button>
             </div>
           )}
+          filtersOpen={showAdvancedSearch}
+          onFiltersOpenChange={(open) => {
+            if (!open) setShowAdvancedSearch(false);
+          }}
+          externalOpenAsModal={true}
           actionsMenu={(
             <>
               <button
@@ -301,9 +356,16 @@ export default function ManageProducts() {
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
+              itemsPerPage={perPage}
+              onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
               sortBy={sortBy}
               sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
-              onSortChange={(nextBy, nextOrder) => { setSortBy(nextBy); setSortOrder(nextOrder); setCurrentPage(1); }}
+              onSortChange={(nextBy, nextOrder) => {
+                silentSortFetchRef.current = true;
+                setSortBy(nextBy);
+                setSortOrder(nextOrder);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -452,8 +514,8 @@ function getColumns(categoriesMap: Record<string, string>, router: any, handleDe
         return <span className={deleted ? "fw-bold text-decoration-line-through text-muted" : "fw-bold"}>{p.name ?? p.title ?? p.slug}</span>;
       }
     },
-    { key: "price", header: "Price", render: (p) => p.price ?? p.amount },
-    { key: "category", header: "Category", render: (p) => ( (p.category && (p.category.name ?? p.category.title)) ?? p.category_name ?? (p.category_id && categoriesMap[String(p.category_id)]) ?? p.category_id ?? "-" ) },
+    { key: "price", header: "Price", sortable: true, sortField: "price", defaultSortOrder: "asc", render: (p) => p.price ?? p.amount },
+    { key: "category", header: "Category", sortable: true, sortField: "category", defaultSortOrder: "asc", render: (p) => ( (p.category && (p.category.name ?? p.category.title)) ?? p.category_name ?? (p.category_id && categoriesMap[String(p.category_id)]) ?? p.category_id ?? "-" ) },
     { key: "status", header: "Status", render: (p) => p.status ?? "-" },
     {
       key: "options",

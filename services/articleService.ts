@@ -41,10 +41,12 @@ interface FetchCategoriesParams {
 }
 
 export const getArticleCategories = async (
-  params: FetchCategoriesParams
+  params: FetchCategoriesParams,
+  options?: { silent?: boolean }
 ) => {
   const res = await axiosInstance.get("/article-categories", {
     params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
   });
 
   return res.data;
@@ -133,8 +135,11 @@ interface GetArticlesParams {
   only_deleted?: boolean | number;
 }
 
-export const getArticles = async (params: GetArticlesParams) => {
-  const res = await axiosInstance.get("/articles", { params });
+export const getArticles = async (params: GetArticlesParams, options?: { silent?: boolean }) => {
+  const res = await axiosInstance.get("/articles", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
   return res.data; // 🔥 RAW Laravel pagination
 };
 

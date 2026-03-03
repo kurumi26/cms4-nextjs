@@ -47,8 +47,11 @@ export const createMenu = async (payload: MenuPayload) => {
   return axiosInstance.post("/menus", payload);
 };
 
-export const getMenus = (params: GetMenusParams) => {
-  return axiosInstance.get("/menus", { params });
+export const getMenus = (params: GetMenusParams, options?: { silent?: boolean }) => {
+  return axiosInstance.get("/menus", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
 };
 
 export const getMenuById = (id: number) => {

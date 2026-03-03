@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
@@ -6,6 +6,7 @@ import ConfirmModal from "@/components/UI/ConfirmModal";
 import { deleteMenu, getMenus, MenuRow, activateMenu, postMethodDeleteMenu, updateMenuName, restoreMenu, setMenuInactive } from "@/services/menuService";
 import { useRouter } from "next/router";
 import { toast } from "@/lib/toast";
+import Link from "next/link";
 
 function ManageMenus() {
   const router = useRouter();
@@ -32,6 +33,8 @@ function ManageMenus() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<MenuRow | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const silentSortFetchRef = useRef(false);
 
   /* ======================
    * Fetch Menus
@@ -72,9 +75,10 @@ function ManageMenus() {
     return copy;
   };
 
-  const fetchMenus = async (opts?: { showDeleted?: boolean; page?: number }) => {
+  const fetchMenus = async (opts?: { showDeleted?: boolean; page?: number; silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = opts?.silent ?? false;
+      if (!silent) setLoading(true);
 
       const effectiveShowDeleted = opts?.showDeleted ?? showDeleted;
       const deletedFlag = effectiveShowDeleted ? 1 : 0;
@@ -89,7 +93,7 @@ function ManageMenus() {
       };
 
       const requestOnce = async (extra: any) => {
-        const res = await getMenus({ ...baseParams, ...extra });
+        const res = await getMenus({ ...baseParams, ...extra }, { silent });
         const apiRows: any[] = Array.isArray(res?.data?.data) ? res.data.data : [];
         const lastPage = res?.data?.last_page ?? 1;
         return { apiRows, lastPage };
@@ -144,7 +148,7 @@ function ManageMenus() {
     } catch (err) {
       console.error("Failed to load menus", err);
     } finally {
-      setLoading(false);
+      if (!(opts?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -231,7 +235,9 @@ function ManageMenus() {
    * Effects
    * ====================== */
   useEffect(() => {
-    const timeout = setTimeout(() => fetchMenus(), 400);
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    const timeout = setTimeout(() => fetchMenus({ silent }), 400);
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
@@ -421,7 +427,8 @@ function ManageMenus() {
               {/* Settings (Quick Edit / Delete) */}
               <button
                 className="btn btn-link p-0 ms-2 text-secondary"
-                title="Settings"
+                title="Settings: click to open actions (Quick Edit/Delete) for this menu"
+                aria-label="Settings: click to open actions"
                 onClick={(e) => openSettingsMenu(e, row)}
                 type="button"
               >
@@ -445,27 +452,7 @@ function ManageMenus() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={(
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                setPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              aria-label="Show entries"
-            >
-              {[5, 10, 25, 50].map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">entries</span>
-          </div>
-        )}
+
         actionsMenu={(
           <>
             <button
@@ -486,6 +473,33 @@ function ManageMenus() {
             </button>
           </>
         )}
+        rightExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
+            >
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <Link
+              href="/menu/create"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 24px", whiteSpace: "nowrap" }}
+            >
+              Create Menu
+            </Link>
+          </div>
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
@@ -506,9 +520,12 @@ function ManageMenus() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         sortBy={sortBy}
         sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
         onSortChange={(nextBy, nextOrder) => {
+          silentSortFetchRef.current = true;
           setSortBy(nextBy);
           setSortOrder(nextOrder);
           setCurrentPage(1);
@@ -530,6 +547,8 @@ function ManageMenus() {
                   }}
                   style={{ padding: "6px 8px" }}
                   type="button"
+                  title="Click to quickly edit this menu"
+                  aria-label="Quick edit menu"
                 >
                   Quick Edit
                 </button>
@@ -545,7 +564,8 @@ function ManageMenus() {
                   style={{ padding: "6px 8px" }}
                   type="button"
                   disabled={selected.is_active}
-                  title={selected.is_active ? "Can't delete the active menu" : "Delete"}
+                  title={selected.is_active ? "Can't delete the active menu" : "Click to move this menu to Trash"}
+                  aria-label={selected.is_active ? "Cannot delete active menu" : "Move menu to Trash"}
                 >
                   Delete
                 </button>

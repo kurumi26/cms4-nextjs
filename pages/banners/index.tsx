@@ -1,5 +1,5 @@
 // pages/dashboard/albums.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
@@ -8,6 +8,7 @@ import { OptionItem, getOptions } from "@/services/optionService";
 import { toast } from "@/lib/toast";
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 function ManageAlbums() {
   const router = useRouter();
@@ -34,8 +35,10 @@ function ManageAlbums() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
   const [exitOptions, setExitOptions] = useState<OptionItem[]>([]);
+  const silentSortFetchRef = useRef(false);
 
   /* ======================
    * Fetch Albums
@@ -81,9 +84,10 @@ function ManageAlbums() {
     return copy;
   };
 
-  const fetchAlbums = async () => {
+  const fetchAlbums = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = opts?.silent ?? false;
+      if (!silent) setLoading(true);
 
       const res = await getAlbums({
         search,
@@ -93,7 +97,7 @@ function ManageAlbums() {
         sort_order: sortOrder,
         // many backends expect 1/0 rather than true/false
         show_deleted: showDeleted ? 1 : 0,
-      });
+      }, { silent });
 
       const apiRows: AlbumRow[] = Array.isArray(res?.data?.data) ? res.data.data : [];
       const filteredRows = showDeleted
@@ -106,7 +110,7 @@ function ManageAlbums() {
     } catch (err) {
       console.error("Failed to load albums", err);
     } finally {
-      setLoading(false);
+      if (!(opts?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -114,7 +118,9 @@ function ManageAlbums() {
    * Effects
    * ====================== */
   useEffect(() => {
-    const timeout = setTimeout(fetchAlbums, 400);
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    const timeout = setTimeout(() => fetchAlbums({ silent }), 400);
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
@@ -183,7 +189,8 @@ function ManageAlbums() {
           </button>
           <button
             className="btn btn-link p-0 text-secondary"
-            title="Settings"
+            title="Settings: click to open actions (Quick Edit/Delete) for this album"
+            aria-label="Settings: click to open actions"
             onClick={(e) => {
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
               setMenuPos({ top: rect.bottom + window.scrollY, left: rect.left });
@@ -308,27 +315,7 @@ function ManageAlbums() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={(
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                setPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              aria-label="Show entries"
-            >
-              {[5, 10, 25, 50].map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">entries</span>
-          </div>
-        )}
+
         actionsMenu={(
           <>
             <button
@@ -339,6 +326,33 @@ function ManageAlbums() {
             </button>
           </>
         )}
+        rightExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
+            >
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <Link
+              href="/banners/create"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 24px", whiteSpace: "nowrap" }}
+            >
+              Create Album
+            </Link>
+          </div>
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
         initialSortBy={sortBy === 'updated_at' ? 'modified' : (sortBy === 'name' ? 'title' : sortBy)}
         initialSortOrder={sortOrder}
         initialShowDeleted={showDeleted}
@@ -359,9 +373,12 @@ function ManageAlbums() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         sortBy={sortBy}
         sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
         onSortChange={(nextBy, nextOrder) => {
+          silentSortFetchRef.current = true;
           setSortBy(nextBy);
           setSortOrder(nextOrder);
           setCurrentPage(1);
@@ -438,8 +455,24 @@ function ManageAlbums() {
           <div style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1060 }}>
             <div className="card shadow-sm compact-dropdown" style={{ width: 120 }}>
                 <div className="list-group list-group-flush">
-                  <button className="list-group-item list-group-item-action" onClick={openQuickEditFromMenu} style={{padding:'6px 8px'}}>Quick Edit</button>
-                  <button className="list-group-item list-group-item-action text-danger" onClick={() => { setShowSettingsMenu(false); setShowDeleteConfirm(true); }} style={{padding:'6px 8px'}}>Delete</button>
+                  <button
+                    className="list-group-item list-group-item-action"
+                    onClick={openQuickEditFromMenu}
+                    style={{padding:'6px 8px'}}
+                    title="Click to quickly edit this album"
+                    aria-label="Quick edit album"
+                  >
+                    Quick Edit
+                  </button>
+                  <button
+                    className="list-group-item list-group-item-action text-danger"
+                    onClick={() => { setShowSettingsMenu(false); setShowDeleteConfirm(true); }}
+                    style={{padding:'6px 8px'}}
+                    title="Click to delete this album"
+                    aria-label="Delete album"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
           </div>

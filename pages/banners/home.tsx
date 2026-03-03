@@ -107,6 +107,7 @@ function HomeBanner() {
   const [isResizing, setIsResizing] = useState(false);
   const [resizedPreview, setResizedPreview] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const resizeUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [localPreviews, setLocalPreviews] = useState<Record<number, string>>({});
   const dragIndexRef = React.useRef<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -295,6 +296,20 @@ function HomeBanner() {
       return [...prev, ...newBanners];
     });
 
+    e.target.value = "";
+  };
+
+  const handleReplaceSelectedImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (resizeIndex === null) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    updateBanner(resizeIndex, "image", file);
+    updateBanner(resizeIndex, "preview", URL.createObjectURL(file));
+    setResizedPreview(null);
+
+    // Ensure crop box resets to full image on next image load
+    setCropRect({ x: 0, y: 0, w: 0, h: 0 });
     e.target.value = "";
   };
 
@@ -1518,6 +1533,21 @@ function HomeBanner() {
                   </div>
                 )}
                 <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => resizeUploadInputRef.current?.click()}
+                    disabled={isResizing}
+                  >
+                    Upload New Image
+                  </button>
+                  <input
+                    ref={resizeUploadInputRef}
+                    type="file"
+                    className="d-none"
+                    accept="image/*"
+                    onChange={handleReplaceSelectedImage}
+                  />
                   <button
                     className="btn btn-primary"
                     onClick={performCrop}

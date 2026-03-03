@@ -1,5 +1,10 @@
 /* Dashboard-only polish (kept minimal and Bootstrap-friendly) */
 
+.cms-dashboard {
+  /* Reduce default top padding so the header sits closer to the topbar */
+  padding-top: 0.25rem !important;
+}
+
 .cms-dashboard__header {
   border-radius: 16px;
   background: #fff;

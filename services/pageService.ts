@@ -18,8 +18,14 @@ export const createPage = async (payload: CreatePagePayload) => {
   return axiosInstance.post("/pages", payload);
 };
 
-export const getPages = (params?: {search?: string; page?: number; per_page?: number; show_deleted?: number | boolean}) => {
-  return axiosInstance.get("/pages", { params });
+export const getPages = (
+  params?: { search?: string; page?: number; per_page?: number; show_deleted?: number | boolean },
+  options?: { silent?: boolean }
+) => {
+  return axiosInstance.get("/pages", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
 };
 
 export const restorePage = async (id: number) => {

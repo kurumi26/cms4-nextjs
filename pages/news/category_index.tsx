@@ -5,6 +5,7 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import {
   getArticleCategories,
   NewsCategoryRow,
@@ -22,6 +23,7 @@ function ManageNews() {
   const [perPage, setPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
 
   const sortRowsClientSide = (rows: NewsCategoryRow[], by: string, order: "asc" | "desc") => {
     const direction = order === "asc" ? 1 : -1;
@@ -167,27 +169,34 @@ function ManageNews() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={(
+        rightExtras={(
           <div className="d-flex align-items-center gap-2">
-            <span className="text-muted small">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                setPerPage(value);
-                setCurrentPage(1);
-              }}
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
             >
-              {[5, 10, 25, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted small">entries</span>
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <Link
+              href="/news/category_create"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 24px", whiteSpace: "nowrap" }}
+            >
+              Create Category
+            </Link>
           </div>
         )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
+
       />
 
       <DataTable<NewsCategoryRow>
@@ -197,6 +206,8 @@ function ManageNews() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSortChange={(nextBy, nextOrder) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
@@ -15,6 +15,7 @@ import {
   ArticleRow,
 } from "@/services/articleService";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 type NewsRow = ArticleRow & { slug?: string };
 
@@ -38,6 +39,8 @@ function ManageNews() {
   const [restoreTarget, setRestoreTarget] = useState<NewsRow | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const silentSortFetchRef = useRef(false);
 
   const isRowDeleted = (row: any) => {
     if (!row) return false;
@@ -120,9 +123,10 @@ function ManageNews() {
   /* ======================
    * Fetch Articles
    * ====================== */
-  const fetchArticles = async () => {
+  const fetchArticles = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = opts?.silent ?? false;
+      if (!silent) setLoading(true);
 
       const deletedFlag = showDeleted ? 1 : 0;
       const params: any = {
@@ -141,7 +145,7 @@ function ManageNews() {
           : {}),
       };
 
-      const res = await getArticles(params);
+      const res = await getArticles(params, { silent });
       const apiRows: any[] = Array.isArray(res?.data) ? res.data : [];
 
       // Make UI consistent even if backend ignores trash/sort params
@@ -156,7 +160,7 @@ function ManageNews() {
     } catch (err) {
       console.error("Failed to load articles", err);
     } finally {
-      setLoading(false);
+      if (!(opts?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -164,7 +168,9 @@ function ManageNews() {
    * Effects
    * ====================== */
   useEffect(() => {
-    const timeout = setTimeout(fetchArticles, 400);
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    const timeout = setTimeout(() => fetchArticles({ silent }), 400);
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
@@ -315,7 +321,13 @@ function ManageNews() {
 
     return (
       <div style={{ display: "inline-block", position: "relative" }}>
-        <button className="btn btn-link p-0 text-secondary" onClick={handleClick} type="button" title="Settings">
+        <button
+          className="btn btn-link p-0 text-secondary"
+          onClick={handleClick}
+          type="button"
+          title="Settings: click to open actions (Publish/Private/Duplicate/Delete) for this news"
+          aria-label="Settings: click to open actions"
+        >
           <i className="fas fa-cogs"></i>
         </button>
 
@@ -325,13 +337,31 @@ function ManageNews() {
             <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 1060 }}>
               <div className="card shadow-sm compact-dropdown" style={{ width: 160 }}>
                 <div className="list-group list-group-flush">
-                  <button className="list-group-item list-group-item-action" onClick={handleToggleStatus} type="button">
+                  <button
+                    className="list-group-item list-group-item-action"
+                    onClick={handleToggleStatus}
+                    type="button"
+                    title="Click to switch news visibility between Published and Private"
+                    aria-label="Switch news visibility"
+                  >
                     {normalizeStatus(row) === "published" ? "Private" : "Published"}
                   </button>
-                  <button className="list-group-item list-group-item-action" onClick={handleDuplicate} type="button">
+                  <button
+                    className="list-group-item list-group-item-action"
+                    onClick={handleDuplicate}
+                    type="button"
+                    title="Click to duplicate this news item"
+                    aria-label="Duplicate news item"
+                  >
                     Duplicate
                   </button>
-                  <button className="list-group-item list-group-item-action text-danger" onClick={handleTrash} type="button">
+                  <button
+                    className="list-group-item list-group-item-action text-danger"
+                    onClick={handleTrash}
+                    type="button"
+                    title="Click to move this news item to Trash"
+                    aria-label="Move news item to Trash"
+                  >
                     Delete
                   </button>
                 </div>
@@ -476,27 +506,7 @@ function ManageNews() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={(
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted small">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                setPerPage(value);
-                setCurrentPage(1);
-              }}
-            >
-              {[5, 10, 25, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted small">entries</span>
-          </div>
-        )}
+
         actionsMenu={(
           <>
             <button
@@ -525,6 +535,33 @@ function ManageNews() {
             </button>
           </>
         )}
+        rightExtras={(
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
+            >
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <Link
+              href="/news/create"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 24px", whiteSpace: "nowrap" }}
+            >
+              Create News
+            </Link>
+          </div>
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
@@ -545,9 +582,12 @@ function ManageNews() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
         sortBy={sortBy}
         sortOrder={(String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc") as any}
         onSortChange={(nextBy, nextOrder) => {
+          silentSortFetchRef.current = true;
           setSortBy(nextBy);
           setSortOrder(nextOrder);
           setCurrentPage(1);

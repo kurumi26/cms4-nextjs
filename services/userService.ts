@@ -20,8 +20,11 @@ export interface UserRow {
   status: string;
 }
 
-export const getUsers = async (params: any) => {
-  const res = await axiosInstance.get("/users", { params });
+export const getUsers = async (params: any, options?: { silent?: boolean }) => {
+  const res = await axiosInstance.get("/users", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
   return res.data;
 };
 

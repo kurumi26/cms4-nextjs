@@ -42,7 +42,9 @@ export default function MainBanner({ album }: MainBannerProps) {
   if (!banners.length) return null;
 
   const banner = banners[current];
-  const scriptText = banner.description?.trim() || "Welcome to";
+  const hasCustomScriptText = Boolean(banner.description?.trim());
+  const scriptText = hasCustomScriptText ? banner.description!.trim() : "Welcome to";
+  const isWelcomeScript = ["welcome", "welcome to"].includes(scriptText.toLowerCase());
 
   const overrideById = (banner as any)?.id ? fontOverrides[`id:${(banner as any).id}`] : undefined;
   const overrideByOrder = typeof (banner as any)?.order !== "undefined" ? fontOverrides[`order:${(banner as any).order}`] : undefined;
@@ -152,7 +154,9 @@ export default function MainBanner({ album }: MainBannerProps) {
           : undefined;
 
   const scriptStyle =
-    descriptionFont || typeof descriptionFontSize === "number" || typeof descriptionBold === "boolean"
+    hasCustomScriptText &&
+    !isWelcomeScript &&
+    (descriptionFont || typeof descriptionFontSize === "number" || typeof descriptionBold === "boolean")
       ? ({
           ...(descriptionFont ? { fontFamily: descriptionFont } : {}),
           ...(typeof descriptionFontSize === "number" && Number.isFinite(descriptionFontSize)

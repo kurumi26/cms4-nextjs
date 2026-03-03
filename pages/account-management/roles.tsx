@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
-import PageSizeSelector from "@/components/UI/PageSizeSelector";
 import { toast } from "@/lib/toast";
 import {
   getRoles,
@@ -19,6 +18,7 @@ function ManageRoles() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
 
   const [editingRole, setEditingRole] = useState<RoleRow | null>(null);
   const [name, setName] = useState("");
@@ -150,14 +150,23 @@ function ManageRoles() {
           setSearch(value);
           setCurrentPage(1);
         }}
-      />
-
-      <PageSizeSelector
-        value={perPage}
-        onChange={(value) => {
-          setPerPage(value);
-          setCurrentPage(1);
+        rightExtras={(
+          <button
+            type="button"
+            className="btn btn-success d-flex align-items-center justify-content-center"
+            style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+            onClick={() => setShowAdvancedModal(true)}
+          >
+            <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+              Advanced Search
+            </span>
+          </button>
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
         }}
+        externalOpenAsModal={true}
       />
 
       {/* Create / Edit Form */}
@@ -198,6 +207,8 @@ function ManageRoles() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => { setPerPage(n); setCurrentPage(1); }}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { getPages, getPageById, restorePage, deletePage, postDeletePage, postMet
 import ConfirmModal from "@/components/UI/ConfirmModal";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 interface PageRow {
   id: number;
@@ -42,14 +43,16 @@ export default function ManagePages() {
   const [deleteTitle, setDeleteTitle] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const silentSortFetchRef = useRef(false);
 
   const applySort = (next: { sortBy?: string; sortOrder?: string }) => {
     const nextSortBy = next.sortBy ?? sortBy;
     const nextSortOrder = next.sortOrder ?? sortOrder;
+    silentSortFetchRef.current = true;
     setSortBy(nextSortBy);
     setSortOrder(nextSortOrder);
     setCurrentPage(1);
-    fetchPages({ sortBy: nextSortBy, sortOrder: nextSortOrder, page: 1 });
   };
 
   const toggleSortField = (field: string, defaultOrder: 'asc' | 'desc') => {
@@ -294,9 +297,10 @@ export default function ManagePages() {
     }
   };
 
-  const fetchPages = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string }) => {
+  const fetchPages = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string; silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = overrides?.silent ?? false;
+      if (!silent) setLoading(true);
 
       const useSearch = overrides?.search ?? search;
       const usePage = overrides?.page ?? currentPage;
@@ -327,7 +331,7 @@ export default function ManagePages() {
           : {}),
       };
 
-      let res = await getPages(params);
+      let res = await getPages(params, { silent });
       let apiRows: PageRow[] = res.data.data;
       // Be defensive: some APIs may still include deleted rows even when show_deleted=0.
       // Keep deleted rows exclusively in the Trash view.
@@ -346,7 +350,7 @@ export default function ManagePages() {
           with_trashed: 1,
         };
 
-        res = await getPages(fallbackParams);
+        res = await getPages(fallbackParams, { silent });
         apiRows = res.data.data;
         rows = apiRows.filter(isRowDeleted);
       }
@@ -370,7 +374,7 @@ export default function ManagePages() {
       setCurrentPage(res.data.meta.current_page);
       setTotalPages(res.data.meta.last_page);
     } finally {
-      setLoading(false);
+      if (!(overrides?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -384,7 +388,9 @@ export default function ManagePages() {
   }, [search]);
 
   useEffect(() => {
-    fetchPages();
+    const silent = silentSortFetchRef.current;
+    silentSortFetchRef.current = false;
+    fetchPages({ silent });
   }, [currentPage, perPage, showDeleted, sortBy, sortOrder]);
 
   const handleApplyFilters = (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number }) => {
@@ -588,7 +594,12 @@ export default function ManagePages() {
 
     return (
       <div style={{ display: "inline-block", position: "relative" }}>
-        <button className="btn btn-link p-0 text-secondary" onClick={handleClick}>
+        <button
+          className="btn btn-link p-0 text-secondary"
+          onClick={handleClick}
+          title="Settings: click to open actions (Publish/Private/Delete) for this page"
+          aria-label="Settings: click to open actions"
+        >
           <i className="fas fa-cogs"></i>
         </button>
 
@@ -599,11 +610,21 @@ export default function ManagePages() {
               <div className="card shadow-sm compact-dropdown" style={{ width: 160 }}>
                 <div className="list-group list-group-flush">
                   {/* Action to toggle status (show opposite action, not current status) */}
-                  <button className="list-group-item list-group-item-action" onClick={handleToggleStatus}>
+                  <button
+                    className="list-group-item list-group-item-action"
+                    onClick={handleToggleStatus}
+                    title="Click to switch page visibility between Published and Private"
+                    aria-label="Switch page visibility"
+                  >
                     {((row.visibility || row.status || '').toString().toLowerCase() === 'published') ? 'Private' : 'Published'}
                   </button>
                   {!isRowDeleted(row) && (
-                    <button className="list-group-item list-group-item-action text-danger" onClick={handleDelete}>
+                    <button
+                      className="list-group-item list-group-item-action text-danger"
+                      onClick={handleDelete}
+                      title="Click to move this page to Trash"
+                      aria-label="Move page to Trash"
+                    >
                       Delete
                     </button>
                   )}
@@ -642,57 +663,83 @@ export default function ManagePages() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={(
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                setPerPage(value);
-                setCurrentPage(1);
-                fetchPages({ perPage: value, page: 1 });
-              }}
-              aria-label="Show entries"
-            >
-              {[5, 10, 25, 50].map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">entries</span>
-          </div>
-        )}
-        actionsMenu={(
-          <>
-            <button
-              className="list-group-item list-group-item-action"
-              onClick={() => bulkUpdateStatus("published")}
-              type="button"
-              disabled={showDeleted || selectedIds.length === 0}
-            >
-              Publish
-            </button>
-            <button
-              className="list-group-item list-group-item-action"
-              onClick={() => bulkUpdateStatus("private")}
-              type="button"
-              disabled={showDeleted || selectedIds.length === 0}
-            >
-              Private
-            </button>
-            <button
-              className="list-group-item list-group-item-action text-danger"
-              onClick={openBulkDeleteConfirm}
-              type="button"
-              disabled={showDeleted || selectedIds.length === 0}
-            >
-              Delete
-            </button>
-          </>
-        )}
+          leftExtras={null}
+          actionsMenu={(
+            <>
+              <div className="list-group-item">
+                <div className="d-flex align-items-center gap-2">
+                  <label className="small mb-0 text-muted">Show</label>
+                  <select
+                    className="form-select form-select-sm w-auto"
+                    value={perPage}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setPerPage(value);
+                      setCurrentPage(1);
+                      fetchPages({ perPage: value, page: 1 });
+                    }}
+                    aria-label="Show entries"
+                  >
+                    {[5, 10, 25, 50].map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <span className="text-muted">entries</span>
+                </div>
+              </div>
+              <button
+                className="list-group-item list-group-item-action"
+                onClick={() => bulkUpdateStatus("published")}
+                type="button"
+                disabled={showDeleted || selectedIds.length === 0}
+              >
+                Publish
+              </button>
+              <button
+                className="list-group-item list-group-item-action"
+                onClick={() => bulkUpdateStatus("private")}
+                type="button"
+                disabled={showDeleted || selectedIds.length === 0}
+              >
+                Private
+              </button>
+              <button
+                className="list-group-item list-group-item-action text-danger"
+                onClick={openBulkDeleteConfirm}
+                type="button"
+                disabled={showDeleted || selectedIds.length === 0}
+              >
+                Delete
+              </button>
+            </>
+          )}
+          rightExtras={(
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-success d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: '10px 18px', whiteSpace: 'nowrap' }}
+                onClick={() => setShowAdvancedModal(true)}
+              >
+                <span style={{ lineHeight: 1, textAlign: 'center', display: 'inline-block' }}>
+                  Advanced Search
+                </span>
+              </button>
+
+              <Link
+                href="/pages/create"
+                className="btn btn-primary d-flex align-items-center justify-content-center"
+                style={{ height: 40, padding: '10px 24px', whiteSpace: 'nowrap' }}
+              >
+                Create a Page
+              </Link>
+            </div>
+          )}
+        filtersOpen={showAdvancedModal}
+          onFiltersOpenChange={(open) => {
+            if (!open) setShowAdvancedModal(false);
+          }}
+          externalOpenAsModal={true}
         onApplyFilters={handleApplyFilters}
         initialShowDeleted={showDeleted}
         initialPerPage={perPage}
@@ -707,6 +754,12 @@ export default function ManagePages() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => {
+          setPerPage(n);
+          setCurrentPage(1);
+          fetchPages({ perPage: n, page: 1 });
+        }}
       />
 
       <ConfirmModal

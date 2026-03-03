@@ -60,8 +60,11 @@ export const createProduct = async (form: FormData) => {
   }
 };
 
-export const getProducts = async (params?: any) => {
-  const res = await axiosInstance.get("/products", { params });
+export const getProducts = async (params?: any, options?: { silent?: boolean }) => {
+  const res = await axiosInstance.get("/products", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
   return res.data;
 };
 

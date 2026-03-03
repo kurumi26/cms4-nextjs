@@ -39,15 +39,11 @@ export default function DashboardIndex() {
   }, []);
 
   return (
-    <div className="cms-dashboard container-xxl py-3 py-md-4">
-      <div className="cms-dashboard__header mb-4">
+    <div className="cms-dashboard container-xxl py-2 py-md-3">
+      <div className="cms-dashboard__header mb-2">
         <div className="d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-between">
           <div>
-            <div className="cms-dashboard__kicker">Admin Portal</div>
-            <h2 className="cms-dashboard__title mb-1">Welcome back</h2>
-            <div className="cms-dashboard__subtitle">
-              Manage content, uploads, and navigation.
-            </div>
+            <h2 className="cms-dashboard__title mb-1">Welcome, Admin!</h2>
           </div>
 
           <div className="d-flex flex-wrap gap-2">

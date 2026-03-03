@@ -38,8 +38,14 @@ export interface AlbumRow {
   updated_at: string;
 }
 
-export const getAlbums = (params?: {search?: string;page?: number;per_page?: number; sort_by?: string; sort_order?: string; show_deleted?: boolean | number}) => {
-  return axiosInstance.get("/albums", { params });
+export const getAlbums = (
+  params?: {search?: string;page?: number;per_page?: number; sort_by?: string; sort_order?: string; show_deleted?: boolean | number},
+  options?: { silent?: boolean }
+) => {
+  return axiosInstance.get("/albums", {
+    params,
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
 };
 
 export const getAlbum = (id: number) => {

@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo, useState, useEffect } from "react";
 import type { CSSProperties } from "react";
 
 type SortOrder = "asc" | "desc";
@@ -48,11 +48,18 @@ interface DataTableProps<T> {
 
   // Client-side pagination fallback
   itemsPerPage?: number;
+  // Optional callback when items per page changes (useful for server pagination)
+  onItemsPerPageChange?: (n: number) => void;
 
   // Optional sorting (controlled if onSortChange provided, else internal)
   sortBy?: string;
   sortOrder?: SortOrder;
   onSortChange?: (sortBy: string, sortOrder: SortOrder) => void;
+  // Optional actions area to render above the table (e.g. buttons/dropdowns)
+  actions?: ReactNode;
+
+  // Where to render the entries-per-page control. Defaults to 'bottom'.
+  entriesPlacement?: "bottom" | "top" | "none";
 }
 
 export default function DataTable<T>({
@@ -63,6 +70,7 @@ export default function DataTable<T>({
   totalPages,
   onPageChange,
   itemsPerPage = 10,
+  onItemsPerPageChange,
   sortBy,
   sortOrder,
   onSortChange,
@@ -72,6 +80,8 @@ export default function DataTable<T>({
   tableStyle,
   fixedLayout = false,
   stickyHeader = false,
+  actions,
+  entriesPlacement = "bottom",
 }: DataTableProps<T>) {
   const isServerPaginated =
     typeof currentPage === "number" &&
@@ -180,11 +190,17 @@ export default function DataTable<T>({
 
   // Client-side pagination state (when not server-paginated)
   const [clientPage, setClientPage] = useState(1);
+  const [selectedItemsPerPage, setSelectedItemsPerPage] = useState(itemsPerPage);
+
+  // keep selectedItemsPerPage in sync when prop changes
+  useEffect(() => {
+    setSelectedItemsPerPage(itemsPerPage);
+  }, [itemsPerPage]);
 
   const effectiveCurrentPage = isServerPaginated ? (currentPage || 1) : clientPage;
   const effectiveTotalPages = isServerPaginated
     ? (totalPages || 1)
-    : Math.max(1, Math.ceil(sortedData.length / itemsPerPage));
+    : Math.max(1, Math.ceil(sortedData.length / selectedItemsPerPage));
 
   const clampPage = (p: number) => Math.min(Math.max(1, p), effectiveTotalPages);
 
@@ -197,48 +213,51 @@ export default function DataTable<T>({
   const pageData = isServerPaginated
     ? data
     : sortedData.slice(
-        (effectiveCurrentPage - 1) * itemsPerPage,
-        effectiveCurrentPage * itemsPerPage
+        (effectiveCurrentPage - 1) * selectedItemsPerPage,
+        effectiveCurrentPage * selectedItemsPerPage
       );
 
-  const pageButtons = useMemo(() => {
-    const safeTotal = Math.max(1, effectiveTotalPages);
-    const safeCurrent = Math.min(Math.max(1, effectiveCurrentPage), safeTotal);
+  const safeTotal = Math.max(1, effectiveTotalPages);
+  const safeCurrent = Math.min(Math.max(1, effectiveCurrentPage), safeTotal);
 
-    // show all if small
-    if (safeTotal <= 7) {
-      return {
-        safeTotal,
-        safeCurrent,
-        showFirst: false,
-        showLast: false,
-        leftEllipsis: false,
-        rightEllipsis: false,
-        middle: Array.from({ length: safeTotal }, (_, i) => i + 1).slice(1, -1),
-      };
-    }
+  const entriesOptions = [5, 10, 25, 50, 100];
 
-    const maxMiddle = 5; // buttons between first/last
-    let start = Math.max(2, safeCurrent - Math.floor(maxMiddle / 2));
-    let end = Math.min(safeTotal - 1, start + maxMiddle - 1);
-    start = Math.max(2, end - maxMiddle + 1);
+  const renderEntriesControl = (
+    <div className="d-flex align-items-center gap-2">
+      <label className="small mb-0">Show</label>
+      <select
+        className="form-select form-select-sm"
+        style={{ width: 96 }}
+        value={selectedItemsPerPage}
+        onChange={(e) => {
+          const v = Number(e.target.value) || 10;
+          setSelectedItemsPerPage(v);
+          if (!isServerPaginated) setClientPage(1);
+          if (isServerPaginated && typeof onItemsPerPageChange === "function") {
+            onItemsPerPageChange(v);
+          }
+        }}
+      >
+        {entriesOptions.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+      <span className="small text-muted">entries</span>
+    </div>
+  );
 
-    const middle: number[] = [];
-    for (let p = start; p <= end; p++) middle.push(p);
+  const showBottomEntries = entriesPlacement === "bottom" && (!isServerPaginated || typeof onItemsPerPageChange === "function");
 
-    return {
-      safeTotal,
-      safeCurrent,
-      showFirst: true,
-      showLast: true,
-      leftEllipsis: start > 2,
-      rightEllipsis: end < safeTotal - 1,
-      middle,
-    };
-  }, [effectiveCurrentPage, effectiveTotalPages]);
+  const shouldRenderPaginationBlock = showBottomEntries || effectiveTotalPages > 1;
 
   return (
     <div>
+      {(entriesPlacement === "top" || actions) && (
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <div>{actions}</div>
+          <div>{entriesPlacement === "top" ? renderEntriesControl : null}</div>
+        </div>
+      )}
       {/* TABLE */}
       <div
         className={wrapperClassName ?? "table-responsive"}
@@ -315,83 +334,43 @@ export default function DataTable<T>({
         </table>
       </div>
 
-      {/* PAGINATION */}
-      {effectiveTotalPages > 1 && (
-        <nav>
-          <ul className="pagination justify-content-end mb-0">
-            <li className={`page-item ${pageButtons.safeCurrent <= 1 ? "disabled" : ""}`}>
-              <button className="page-link" onClick={() => handlePageChange(1)} disabled={pageButtons.safeCurrent <= 1}>
-                «
-              </button>
-            </li>
+      {/* PAGINATION & ENTRIES */}
+      {shouldRenderPaginationBlock && (
+        <div className="d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
+            {showBottomEntries && renderEntriesControl}
+          </div>
 
-            <li className={`page-item ${pageButtons.safeCurrent <= 1 ? "disabled" : ""}`}>
+          <nav>
+            <ul className="pagination justify-content-end mb-0">
+            <li className={`page-item ${safeCurrent <= 1 ? "disabled" : ""}`}>
               <button
                 className="page-link"
-                onClick={() => handlePageChange(pageButtons.safeCurrent - 1)}
-                disabled={pageButtons.safeCurrent <= 1}
+                onClick={() => handlePageChange(safeCurrent - 1)}
+                disabled={safeCurrent <= 1}
               >
                 Prev
               </button>
             </li>
 
-            {pageButtons.showFirst && (
-              <li className={`page-item ${pageButtons.safeCurrent === 1 ? "active" : ""}`}>
-                <button className="page-link" onClick={() => handlePageChange(1)}>
-                  1
-                </button>
-              </li>
-            )}
+            <li className="page-item disabled">
+              <span className="page-link">
+                {safeCurrent} / {safeTotal}
+              </span>
+            </li>
 
-            {pageButtons.leftEllipsis && (
-              <li className="page-item disabled">
-                <span className="page-link">…</span>
-              </li>
-            )}
-
-            {pageButtons.middle.map((p) => (
-              <li key={p} className={`page-item ${pageButtons.safeCurrent === p ? "active" : ""}`}>
-                <button className="page-link" onClick={() => handlePageChange(p)}>
-                  {p}
-                </button>
-              </li>
-            ))}
-
-            {pageButtons.rightEllipsis && (
-              <li className="page-item disabled">
-                <span className="page-link">…</span>
-              </li>
-            )}
-
-            {pageButtons.showLast && (
-              <li className={`page-item ${pageButtons.safeCurrent === pageButtons.safeTotal ? "active" : ""}`}>
-                <button className="page-link" onClick={() => handlePageChange(pageButtons.safeTotal)}>
-                  {pageButtons.safeTotal}
-                </button>
-              </li>
-            )}
-
-            <li className={`page-item ${pageButtons.safeCurrent >= pageButtons.safeTotal ? "disabled" : ""}`}>
+            <li className={`page-item ${safeCurrent >= safeTotal ? "disabled" : ""}`}>
               <button
                 className="page-link"
-                onClick={() => handlePageChange(pageButtons.safeCurrent + 1)}
-                disabled={pageButtons.safeCurrent >= pageButtons.safeTotal}
+                onClick={() => handlePageChange(safeCurrent + 1)}
+                disabled={safeCurrent >= safeTotal}
               >
                 Next
               </button>
             </li>
-
-            <li className={`page-item ${pageButtons.safeCurrent >= pageButtons.safeTotal ? "disabled" : ""}`}>
-              <button
-                className="page-link"
-                onClick={() => handlePageChange(pageButtons.safeTotal)}
-                disabled={pageButtons.safeCurrent >= pageButtons.safeTotal}
-              >
-                »
-              </button>
-            </li>
           </ul>
         </nav>
+        </div>
       )}
     </div>
   );

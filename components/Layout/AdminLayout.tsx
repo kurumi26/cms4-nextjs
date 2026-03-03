@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <div className="flex-grow-1 d-flex flex-column">
         <Topbar onToggleSidebar={toggleSidebar} sidebarToggleRef={sidebarToggleRef} />
-        <main className="p-4 overflow-auto flex-grow-1">
+        <main className="p-1 overflow-auto flex-grow-1">
           {children}
         </main>
       </div>

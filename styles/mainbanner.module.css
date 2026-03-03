@@ -1,7 +1,14 @@
 .bannerSection{
   position: relative;
-  min-height: 650px;
+  /* Make the banner cover the full viewport and sit underneath the header */
+  /* Use header height (72px) so the banner visually fills the viewport while the header overlays */
+  height: calc(100vh + 72px);
+  min-height: 560px;
   overflow: hidden;
+  /* pull the banner up so it starts beneath the top of the page (header overlays it) */
+  margin-top: -72px;
+  padding-top: 72px; /* keep internal content visually below the header */
+  z-index: 0;
 }
 
 .sliderStrip{
@@ -16,6 +23,7 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  height: 100%;
 }
 
 .overlay{
@@ -28,10 +36,18 @@
 .content{
   position: relative;
   z-index: 2;
-  min-height: 650px;
+  /* account for the header overlay when centering content */
+  height: calc(100% - 72px);
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+/* Allow the content container to expand while keeping inner padding for readability */
+.content.container{
+  max-width: 100%;
+  padding-left: 2rem;
+  padding-right: 2rem;
 }
 
 .inner{
@@ -45,7 +61,7 @@
 
 /* "Welcome to" script line */
 .script{
-  font-family: 'Great Vibes', cursive;
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
   font-weight: 400;
   color: #fff;
   text-shadow: 0 6px 18px rgba(0,0,0,0.6);

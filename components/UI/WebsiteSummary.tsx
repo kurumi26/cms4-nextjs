@@ -388,45 +388,6 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
             <div className="text-muted small mt-1">{isBusy ? "Checking settings…" : `${checklist.pct}% ready`}</div>
           </div>
 
-          <div className="d-flex align-items-center gap-3 mb-3">
-            <div className="d-flex align-items-center gap-2">
-              <div
-                className="rounded-3 border"
-                style={{ width: 44, height: 44, display: "grid", placeItems: "center", overflow: "hidden", background: "#fff" }}
-                title="Logo"
-              >
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <i className="fas fa-image text-muted" />
-                )}
-              </div>
-
-              <div
-                className="rounded-3 border"
-                style={{ width: 44, height: 44, display: "grid", placeItems: "center", overflow: "hidden", background: "#fff" }}
-                title="Favicon"
-              >
-                {faviconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={faviconUrl} alt="Favicon" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <i className="fas fa-icons text-muted" />
-                )}
-              </div>
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <div className="text-muted small">Site</div>
-              {settingsLoading ? (
-                <div className="cms-skeleton cms-skeleton--line" aria-hidden="true" />
-              ) : (
-                <div className="fw-semibold text-truncate">{settings?.website_name || settings?.company_name || "—"}</div>
-              )}
-            </div>
-          </div>
-
           <div className="d-flex flex-wrap gap-2">
             {settingsLoading ? (
               <>
