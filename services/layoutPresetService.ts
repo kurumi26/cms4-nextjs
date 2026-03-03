@@ -10,8 +10,14 @@ export type LayoutPreset = {
 };
 
 export const layoutPresetService = {
-  getAll() {
-    return axiosInstance.get("/layout-presets");
+  getAll(params?: {
+    search?: string;
+    page?: number;
+    per_page?: number;
+  }) {
+    return axiosInstance.get("/layout-presets", {
+      params,
+    });
   },
 
   create(data: FormData) {
