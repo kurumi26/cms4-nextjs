@@ -32,3 +32,15 @@
   font-weight: 500;
   letter-spacing: 0.01em;
 }
+
+/* Ensure the compact dropdown used across admin lists doesn't wrap labels */
+.compact-dropdown .list-group-item {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Slightly increase spacing and pointer area for small dropdown items */
+.compact-dropdown .list-group-item {
+  padding: 10px 14px !important;
+}

@@ -37,8 +37,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     >
       <Head>
         {/* Admin-only styles: loaded here to avoid affecting GuestLayout */}
-        <link rel="stylesheet" href="/css/custom.css" />
+         <link rel="stylesheet" href="/css/custom.css" />
          <link rel="stylesheet" href="/css/admin.css" />
+         <link rel="stylesheet" href="/css/admin-modal.css" />
       </Head>
 
       <div className="cms-sidebar-overlay" onClick={closeSidebar} />
