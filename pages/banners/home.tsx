@@ -18,6 +18,7 @@ interface BannerForm extends BaseBannerForm {
 const HOME_ALBUM_ID = 1;
 
 const HOME_BANNER_FONT_STORAGE_KEY = "cms4.homeBanner.fonts.v1";
+const HOME_BANNER_VISIBILITY_STORAGE_KEY = "cms4.homeBanner.visibility.v1";
 
 type StoredFontEntry = {
   title_font?: string;
@@ -29,6 +30,10 @@ type StoredFontEntry = {
   button_font?: string;
   button_font_size?: number;
   button_bold?: boolean;
+};
+
+type StoredVisibilityEntry = {
+  is_active?: boolean;
 };
 
 const readStoredHomeBannerFonts = (): Record<string, StoredFontEntry> => {
@@ -48,6 +53,28 @@ const writeStoredHomeBannerFonts = (fonts: Record<string, StoredFontEntry>) => {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(HOME_BANNER_FONT_STORAGE_KEY, JSON.stringify(fonts));
+  } catch {
+    // ignore storage quota / private mode
+  }
+};
+
+const readStoredHomeBannerVisibility = (): Record<string, StoredVisibilityEntry> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(HOME_BANNER_VISIBILITY_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Record<string, StoredVisibilityEntry>;
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredHomeBannerVisibility = (visibility: Record<string, StoredVisibilityEntry>) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HOME_BANNER_VISIBILITY_STORAGE_KEY, JSON.stringify(visibility));
   } catch {
     // ignore storage quota / private mode
   }
@@ -79,6 +106,20 @@ const persistHomeBannerFonts = (nextBanners: BannerForm[]) => {
   });
 
   writeStoredHomeBannerFonts(updated);
+};
+
+const persistHomeBannerVisibility = (nextBanners: BannerForm[]) => {
+  const existing = readStoredHomeBannerVisibility();
+  const updated: Record<string, StoredVisibilityEntry> = { ...existing };
+
+  nextBanners.forEach((b, i) => {
+    const key = bannerFontStorageKey(b, i);
+    updated[key] = {
+      is_active: b.is_active !== false,
+    };
+  });
+
+  writeStoredHomeBannerVisibility(updated);
 };
 
 const FONT_FAMILY_OPTIONS: Array<{ label: string; value: string }> = [
@@ -154,7 +195,22 @@ function HomeBanner() {
       const res = await getAlbum(HOME_ALBUM_ID);
       const album = res.data;
 
+      const parseBool = (value: any): boolean | undefined => {
+        if (typeof value === "boolean") return value;
+        if (value === 1 || value === "1" || value === "true") return true;
+        if (value === 0 || value === "0" || value === "false") return false;
+        return undefined;
+      };
+      const parseStatusVisible = (value: any): boolean | undefined => {
+        if (value == null) return undefined;
+        const normalized = String(value).trim().toLowerCase();
+        if (["published", "public", "active", "visible", "show"].includes(normalized)) return true;
+        if (["private", "hidden", "inactive", "draft", "archived", "hide"].includes(normalized)) return false;
+        return undefined;
+      };
+
       const storedFonts = readStoredHomeBannerFonts();
+      const storedVisibility = readStoredHomeBannerVisibility();
 
       setTransitionIn(album.transition_in);
       setTransitionOut(album.transition_out);
@@ -170,6 +226,9 @@ function HomeBanner() {
           const stored =
             (keyById ? storedFonts[keyById] : undefined) ||
             (keyByOrder ? storedFonts[keyByOrder] : undefined);
+          const storedVis =
+            (keyById ? storedVisibility[keyById] : undefined) ||
+            (keyByOrder ? storedVisibility[keyByOrder] : undefined);
 
           const apiTitleFont = b.title_font ?? b.titleFont ?? b.title_font_family ?? b.titleFontFamily;
           const apiDescriptionFont = b.description_font ?? b.descriptionFont ?? b.description_font_family ?? b.descriptionFontFamily;
@@ -229,9 +288,20 @@ function HomeBanner() {
                   ? false
                   : undefined;
 
+          const activeRaw = b.is_active ?? b.active;
+          const hiddenRaw = b.is_hidden ?? b.hidden;
+          const statusRaw = b.status ?? b.visibility;
+          const parsedActive = parseBool(activeRaw);
+          const parsedHidden = parseBool(hiddenRaw);
+          const parsedStatusVisible = parseStatusVisible(statusRaw);
+          const isActive = typeof parsedHidden === "boolean"
+            ? !parsedHidden
+            : (typeof parsedActive === "boolean" ? parsedActive : (typeof parsedStatusVisible === "boolean" ? parsedStatusVisible : (typeof storedVis?.is_active === "boolean" ? storedVis.is_active : true)));
+
           return {
             id: b.id,
             preview: (b.id && localPreviews[b.id]) ? localPreviews[b.id] : serverPreview,
+            is_active: isActive,
             title: b.title,
             title_font: apiTitleFont ?? stored?.title_font,
             title_font_size:
@@ -291,6 +361,7 @@ function HomeBanner() {
       const newBanners: BannerForm[] = fileArr.map((file, idx) => ({
         image: file,
         preview: URL.createObjectURL(file),
+        is_active: true,
         order: prev.length + idx,
       }));
       return [...prev, ...newBanners];
@@ -894,6 +965,7 @@ function HomeBanner() {
   const handleSave = async () => {
     // Keep a local fallback in case API doesn't persist these fields yet.
     persistHomeBannerFonts(banners);
+    persistHomeBannerVisibility(banners);
 
     const payload: any = {
       name: "Home Banner",
@@ -903,6 +975,8 @@ function HomeBanner() {
       banner_type: "image",
       banners: banners.map((b, i) => ({
         id: b.id,
+        is_active: b.is_active !== false,
+        is_hidden: b.is_active === false,
         title: b.title,
         title_font: b.title_font,
         title_font_size: b.title_font_size,
@@ -1444,6 +1518,14 @@ function HomeBanner() {
                   onClick={() => handleRemoveBanner(index)}
                 >
                   <i className="fa fa-trash"></i> Remove
+                </button>
+                <button
+                  className="btn btn-outline-secondary btn-sm mt-2 ms-2"
+                  onClick={() => updateBanner(index, "is_active", !(banner.is_active !== false))}
+                  title={banner.is_active === false ? "Show in homepage banner" : "Hide from homepage banner"}
+                >
+                  <i className={`fa ${banner.is_active === false ? "fa-eye-slash" : "fa-eye"}`}></i>{" "}
+                  {banner.is_active === false ? "Hidden" : "Visible"}
                 </button>
                 <button
                   className="btn btn-outline-secondary btn-sm mt-2 ms-2"

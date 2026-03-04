@@ -7,7 +7,61 @@ interface MainBannerProps {
 }
 
 export default function MainBanner({ album }: MainBannerProps) {
-  const banners = album.banners || [];
+  const HOME_BANNER_VISIBILITY_STORAGE_KEY = "cms4.homeBanner.visibility.v1";
+
+  const toBoolean = (value: any): boolean | undefined => {
+    if (typeof value === "boolean") return value;
+    if (value === 1 || value === "1" || value === "true") return true;
+    if (value === 0 || value === "0" || value === "false") return false;
+    return undefined;
+  };
+
+  const toVisibleFromStatus = (value: any): boolean | undefined => {
+    if (value == null) return undefined;
+    const normalized = String(value).trim().toLowerCase();
+    if (["published", "public", "active", "visible", "show"].includes(normalized)) return true;
+    if (["private", "hidden", "inactive", "draft", "archived", "hide"].includes(normalized)) return false;
+    return undefined;
+  };
+
+  const isBannerVisible = (banner: any): boolean => {
+    const active = toBoolean(banner?.is_active ?? banner?.active);
+    const hidden = toBoolean(banner?.is_hidden ?? banner?.hidden);
+    const visibleByStatus = toVisibleFromStatus(banner?.status ?? banner?.visibility);
+    if (typeof hidden === "boolean") return !hidden;
+    if (typeof active === "boolean") return active;
+    if (typeof visibleByStatus === "boolean") return visibleByStatus;
+    return true;
+  };
+
+  const [visibilityOverrides, setVisibilityOverrides] = useState<Record<string, { is_active?: boolean }>>({});
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(HOME_BANNER_VISIBILITY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        setVisibilityOverrides(parsed as Record<string, { is_active?: boolean }>);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const banners = (album.banners || []).filter((banner: any, index: number) => {
+    const keyById = banner?.id ? `id:${banner.id}` : undefined;
+    const keyByOrder = typeof banner?.order !== "undefined" ? `order:${banner.order}` : undefined;
+    const keyByIndex = `index:${index}`;
+
+    const local =
+      (keyById ? visibilityOverrides[keyById] : undefined) ||
+      (keyByOrder ? visibilityOverrides[keyByOrder] : undefined) ||
+      visibilityOverrides[keyByIndex];
+
+    if (typeof local?.is_active === "boolean") return local.is_active;
+    return isBannerVisible(banner);
+  });
   const [current, setCurrent] = useState(0);
   const [fontOverrides, setFontOverrides] = useState<Record<string, any>>({});
 

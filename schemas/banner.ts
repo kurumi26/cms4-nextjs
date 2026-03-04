@@ -2,6 +2,8 @@ export interface BannerForm {
   id?: number;
   preview?: string;
   image?: File;
+  is_active?: boolean;
+  is_hidden?: boolean;
   title?: string;
   title_font?: string;
   title_font_size?: number;
