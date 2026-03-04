@@ -14,6 +14,7 @@ type SidebarProps = {
 export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarProps) {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
   const MenuLabel = ({ icon, text }: { icon: string; text: string }) => (
     <span className="cms-sidebar__label-row">
@@ -59,6 +60,7 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
   const avatarUrl = useMemo(() => resolveAvatarUrl(currentUser?.avatar), [currentUser?.avatar]);
 
   const isActive = (href: string) => pathname === href;
+  const isPathActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
   const menuItems = [
     {
@@ -139,6 +141,19 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
     }
   ];
 
+  useEffect(() => {
+    setOpenMenus((prev) => {
+      const next = { ...prev };
+      menuItems.forEach((item: any) => {
+        if (item.children && item.children.some((child: any) => isPathActive(child.href))) {
+          next[item.href] = true;
+        }
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   return (
     <aside
       className={`cms-sidebar d-flex flex-column flex-shrink-0 p-3 ${
@@ -215,11 +230,18 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
 
             {"children" in item ? (
               <>
+                {(() => {
+                  const childActive = item.children.some((child: any) => isPathActive(child.href));
+                  const parentActive = isPathActive(item.href);
+                  const shouldHighlightParent = parentActive || childActive || !!openMenus[item.href];
+                  return (
                 <button
                   onClick={() => toggleMenu(item.href)}
-                  className={`cms-sidebar__button nav-link text-white mb-2 rounded w-100 text-start border-0 bg-transparent ${
-                    pathname?.startsWith(item.href) ? "active" : ""
-                  }`}
+                  onMouseEnter={() => setHoveredKey(`parent:${item.href}`)}
+                  onMouseLeave={() => setHoveredKey((prev) => (prev === `parent:${item.href}` ? null : prev))}
+                  className={`cms-sidebar__button nav-link text-white mb-2 rounded w-100 text-start border-0 ${
+                    shouldHighlightParent ? "active" : ""
+                  } ${hoveredKey === `parent:${item.href}` ? "cms-sidebar__hover" : ""}`}
                 >
                   <span className="cms-sidebar__item-row d-flex align-items-center justify-content-between">
                     <span className="cms-sidebar__item-label">{item.label}</span>
@@ -231,6 +253,8 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
                     />
                   </span>
                 </button>
+                  );
+                })()}
 
                 {openMenus[item.href] && (
                   <div className="cms-sidebar__submenu ms-3 ps-2">
@@ -239,9 +263,11 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
                         key={child.href}
                         href={child.href}
                         onClick={onClose}
+                        onMouseEnter={() => setHoveredKey(`child:${child.href}`)}
+                        onMouseLeave={() => setHoveredKey((prev) => (prev === `child:${child.href}` ? null : prev))}
                         className={`cms-sidebar__link nav-link text-white mb-1 ${
                           isActive(child.href) ? "active" : ""
-                        }`}
+                        } ${hoveredKey === `child:${child.href}` ? "cms-sidebar__hover" : ""}`}
                         style={{ fontSize: "12px" }}
                       >
                         <span className="cms-sidebar__child">{child.label}</span>
@@ -255,9 +281,11 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
               <Link
                 href={item.href}
                 onClick={onClose}
+                onMouseEnter={() => setHoveredKey(`single:${item.href}`)}
+                onMouseLeave={() => setHoveredKey((prev) => (prev === `single:${item.href}` ? null : prev))}
                 className={`cms-sidebar__link nav-link text-white mb-2 rounded ${
                   isActive(item.href) ? "active" : ""
-                }`}
+                } ${hoveredKey === `single:${item.href}` ? "cms-sidebar__hover" : ""}`}
               >
                 {item.label}
               </Link>

@@ -86,35 +86,35 @@ function WebsiteSettingsPage() {
     const loadSettings = async () => {
       const s = await websiteService.getSettings();
 
-      setCompanyName(s.setting.company_name);
-      setWebsiteName(s.setting.website_name);
-      setCopyright(s.setting.copyright);
-      setAnalytics(s.setting.google_analytics);
-      setGoogleMap(s.setting.google_map);
-      setRecaptcha(s.setting.google_recaptcha_sitekey);
+      // Normalize response: some backends return { setting: {...} }, others return the object directly.
+      const data = s?.setting ?? s ?? {};
 
-      setAddress(s.setting.company_address);
-      setMobile(s.setting.mobile_no);
-      setFax(s.setting.fax_no);
-      setTelephone(s.setting.tel_no);
-      setContactEmail(s.setting.email);
+      setCompanyName(data.company_name ?? data.website_name ?? "");
+      setWebsiteName(data.website_name ?? "");
+      setCopyright(data.copyright ?? "");
+      setAnalytics(data.google_analytics ?? "");
+      setGoogleMap(data.google_map ?? "");
+      setRecaptcha(data.google_recaptcha_sitekey ?? "");
 
-      setPrivacyTitle(s.data_privacy.name);
-      setPrivacyPopup(s.setting.data_privacy_popup_content);
-      setPrivacyContent(s.data_privacy.contents);
+      setAddress(data.company_address ?? "");
+      setMobile(data.mobile_no ?? "");
+      setFax(data.fax_no ?? "");
+      setTelephone(data.tel_no ?? "");
+      setContactEmail(data.email ?? "");
 
-      if (s.company_logo) {
-        setLogoPreview(
-          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.setting.company_logo}`
-        );
-        setLogoName(s.company_logo);
+      // Privacy fields: support both nested `data_privacy` object and flat keys
+      setPrivacyTitle(data.data_privacy_title ?? data.data_privacy?.name ?? "");
+      setPrivacyPopup(data.data_privacy_popup_content ?? data.data_privacy?.popup_content ?? "");
+      setPrivacyContent(data.data_privacy_content ?? data.data_privacy?.contents ?? data.data_privacy?.content ?? "");
+
+      if (data.company_logo) {
+        setLogoPreview(`${process.env.NEXT_PUBLIC_API_URL}/storage/${data.company_logo}`);
+        setLogoName(String(data.company_logo));
       }
 
-      if (s.website_favicon) {
-        setFaviconPreview(
-          `${process.env.NEXT_PUBLIC_API_URL}/storage/${s.setting.website_favicon}`
-        );
-        setFaviconName(s.website_favicon);
+      if (data.website_favicon) {
+        setFaviconPreview(`${process.env.NEXT_PUBLIC_API_URL}/storage/${data.website_favicon}`);
+        setFaviconName(String(data.website_favicon));
       }
 
     };

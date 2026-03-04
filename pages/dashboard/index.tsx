@@ -2,7 +2,7 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import WebsiteSummary from "@/components/UI/WebsiteSummary";
 import RecentActivity from "@/components/UI/RecentActivity";
 import StatsCards from "@/components/UI/StatsCards";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getDashboardStats } from "@/services/dashboardService";
 import Link from "next/link";
 
@@ -15,6 +15,8 @@ export default function DashboardIndex() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const [summaryHeight, setSummaryHeight] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -37,6 +39,27 @@ export default function DashboardIndex() {
 
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    const el = summaryRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const next = el.getBoundingClientRect().height;
+      if (next > 0) setSummaryHeight(next);
+    };
+
+    update();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => update());
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [loading, stats.pages, stats.albums, stats.news]);
 
   return (
     <div className="cms-dashboard container-xxl py-2 py-md-3">
@@ -90,15 +113,23 @@ export default function DashboardIndex() {
         loading={loading}
       />
 
-      <section className="row g-3 g-lg-4 mb-4">
+      <section
+        className="row g-3 g-lg-4 mb-4"
+        style={summaryHeight ? ({ ["--cms-summary-height" as any]: `${summaryHeight}px` } as React.CSSProperties) : undefined}
+      >
         <div className="col-12 col-lg-4">
-          <WebsiteSummary
-            stats={{ pages: stats.pages, albums: stats.albums, news: stats.news }}
-            loading={loading}
-          />
+          <div ref={summaryRef}>
+            <WebsiteSummary
+              stats={{ pages: stats.pages, albums: stats.albums, news: stats.news }}
+              loading={loading}
+            />
+          </div>
         </div>
 
-        <div className="col-12 col-lg-8">
+        <div
+          className="col-12 col-lg-8 cms-dashboard__recent-col"
+          style={summaryHeight ? { height: `${summaryHeight}px` } : undefined}
+        >
           <RecentActivity />
         </div>
       </section>

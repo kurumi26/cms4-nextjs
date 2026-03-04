@@ -188,3 +188,9 @@
 .cms-page-size .form-select {
   min-height: 34px;
 }
+
+@media (min-width: 992px) {
+  .cms-dashboard__recent-col {
+    height: var(--cms-summary-height, auto);
+  }
+}

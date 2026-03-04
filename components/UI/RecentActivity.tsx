@@ -187,7 +187,7 @@ export default function RecentActivity() {
   }, [currentPage, totalPages]);
 
   return (
-    <div className="card cms-panel shadow-sm border-0">
+    <div className="card cms-panel shadow-sm border-0 h-100 d-flex flex-column">
       <div className="card-header cms-panel__header">
         <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
           <div className="d-flex align-items-center gap-2">
@@ -245,7 +245,7 @@ export default function RecentActivity() {
         </div>
       </div>
 
-      <div className="p-3">
+      <div className="p-3 flex-grow-1 overflow-auto">
         {error && (
           <div className="alert alert-danger d-flex align-items-center justify-content-between" role="alert">
             <div>
