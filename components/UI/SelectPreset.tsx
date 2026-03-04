@@ -10,10 +10,23 @@ export default function SelectPreset({ onSelect }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    layoutPresetService.getAll().then((res) => {
-      setPresets(res.data.filter((p: LayoutPreset) => p.is_active));
-      setLoading(false);
-    });
+    layoutPresetService
+      .getAll()
+      .then((res) => {
+        const rows: LayoutPreset[] = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.data)
+            ? res.data.data
+            : [];
+
+        setPresets(rows.filter((p: LayoutPreset) => p.is_active));
+      })
+      .catch(() => {
+        setPresets([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return <p className="text-muted mb-2">Loading presets…</p>;

@@ -21,6 +21,8 @@ function PresetPage() {
 
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   /* =========================
    Fetch Presets
@@ -165,6 +167,10 @@ function PresetPage() {
     };
   }, [thumbnailPreview]);
 
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [search, currentPage, perPage, sortBy, sortOrder]);
+
   /* =========================
    Sorting (Client Side)
   ========================== */
@@ -218,10 +224,41 @@ function PresetPage() {
     }
   };
 
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(displayRows.map((r) => r.id));
+      return;
+    }
+    setSelectedIds([]);
+  };
+
+  const toggleRow = (id: number, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)
+    );
+  };
+
   /* =========================
    Columns
   ========================== */
   const columns: Column<LayoutPreset>[] = [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          checked={displayRows.length > 0 && displayRows.every((r) => selectedIds.includes(r.id))}
+          onChange={(e) => toggleSelectAll(e.target.checked)}
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={(e) => toggleRow(row.id, e.target.checked)}
+        />
+      ),
+    },
     {
       key: "seq",
       header: "#",
@@ -280,15 +317,19 @@ function PresetPage() {
       render: (row) => (
         <>
           <button
-            className="btn btn-link p-0 me-2 text-primary"
+            className="btn btn-link p-0 me-2 text-secondary"
+            title="Edit"
             onClick={() => openEditModal(row)}
+            type="button"
           >
             <i className="fas fa-edit" />
           </button>
 
           <button
             className="btn btn-link p-0 text-danger"
+            title="Delete"
             onClick={() => handleDelete(row.id)}
+            type="button"
           >
             <i className="fas fa-trash" />
           </button>
@@ -304,12 +345,6 @@ function PresetPage() {
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-0">Layout Presets</h3>
-        <button
-          className="btn btn-primary"
-          onClick={openAddModal}
-        >
-          + Add Preset
-        </button>
       </div>
       <SearchBar
         placeholder="Search presets..."
@@ -318,26 +353,43 @@ function PresetPage() {
           setSearch(value);
           setCurrentPage(1);
         }}
-        leftExtras={
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted small">Show</span>
-            <select
-              className="form-select form-select-sm w-auto"
-              value={perPage}
-              onChange={(e) => {
-                setPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
+        rightExtras={(
+          <div className="d-flex align-items-center gap-2 flex-nowrap">
+            <button
+              type="button"
+              className="btn btn-success d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={() => setShowAdvancedModal(true)}
             >
-              {[5, 10, 25, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted small">entries</span>
+              <span style={{ lineHeight: 1, textAlign: "center", display: "inline-block" }}>
+                Advanced Search
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              style={{ height: 40, padding: "10px 18px", whiteSpace: "nowrap" }}
+              onClick={openAddModal}
+            >
+              + Add Preset
+            </button>
           </div>
-        }
+        )}
+        filtersOpen={showAdvancedModal}
+        onFiltersOpenChange={(open) => {
+          if (!open) setShowAdvancedModal(false);
+        }}
+        externalOpenAsModal={true}
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage }) => {
+          setSortBy(sBy === "modified" ? "name" : sBy);
+          setSortOrder((String(sOrder).toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc");
+          setPerPage(sPerPage);
+          setCurrentPage(1);
+        }}
+        initialSortBy={sortBy}
+        initialSortOrder={sortOrder}
+        initialPerPage={perPage}
       />
 
       <DataTable<LayoutPreset>
@@ -347,6 +399,11 @@ function PresetPage() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        itemsPerPage={perPage}
+        onItemsPerPageChange={(n: number) => {
+          setPerPage(n);
+          setCurrentPage(1);
+        }}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSortChange={(nextBy, nextOrder) => {
