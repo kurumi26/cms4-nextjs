@@ -49,6 +49,474 @@ const extractFileList = (input: any): File[] => {
   return [];
 };
 
+const registerCmsBlocks = (editor: any) => {
+  const bm = editor.BlockManager;
+
+  const add = (id: string, config: any) => {
+    if (bm.get(id)) return;
+    bm.add(id, config);
+  };
+
+  add("cms-hero", {
+    label: "Hero Section",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-flag" },
+    content: `
+      <section class="cms-hero" style="padding:64px 24px;background:#f8fafc;text-align:center;">
+        <div style="max-width:900px;margin:0 auto;">
+          <h1 style="font-size:42px;line-height:1.2;margin:0 0 12px;">Build Beautiful Pages Faster</h1>
+          <p style="font-size:18px;color:#475569;margin:0 0 24px;">Drop in ready sections and customize text, colors, and spacing in seconds.</p>
+          <a href="#" style="display:inline-block;background:#0d6efd;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;">Get Started</a>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-about", {
+    label: "About Section",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-info-circle" },
+    content: `
+      <section style="padding:56px 24px;">
+        <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;">
+          <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1200" alt="About" style="width:100%;border-radius:12px;object-fit:cover;min-height:260px;"/>
+          <div>
+            <h2 style="margin:0 0 12px;">About Our Brand</h2>
+            <p style="margin:0;color:#475569;line-height:1.7;">Share your company story, mission, and what makes your team different.</p>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-features-3", {
+    label: "Features 3-Column",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-th-large" },
+    content: `
+      <section style="padding:56px 24px;background:#fff;">
+        <div style="max-width:1100px;margin:0 auto;">
+          <h2 style="text-align:center;margin:0 0 22px;">Why Choose Us</h2>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;">
+            <div style="padding:18px;border:1px solid #e2e8f0;border-radius:12px;"><h3 style="margin-top:0;">Fast Setup</h3><p style="margin:0;color:#475569;">Launch quickly with ready-made building blocks.</p></div>
+            <div style="padding:18px;border:1px solid #e2e8f0;border-radius:12px;"><h3 style="margin-top:0;">Responsive</h3><p style="margin:0;color:#475569;">Layouts adapt naturally across desktop and mobile.</p></div>
+            <div style="padding:18px;border:1px solid #e2e8f0;border-radius:12px;"><h3 style="margin-top:0;">Customizable</h3><p style="margin:0;color:#475569;">Edit text, spacing, and visuals with full control.</p></div>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-testimonials", {
+    label: "Testimonials",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-commenting" },
+    content: `
+      <section style="padding:56px 24px;background:#f8fafc;">
+        <div style="max-width:1000px;margin:0 auto;">
+          <h2 style="text-align:center;margin:0 0 20px;">What Customers Say</h2>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;">
+            <blockquote style="margin:0;padding:20px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;">“Great service and excellent quality.”<br/><strong>- Customer A</strong></blockquote>
+            <blockquote style="margin:0;padding:20px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;">“Very easy to use and manage content.”<br/><strong>- Customer B</strong></blockquote>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-pricing", {
+    label: "Pricing Cards",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-tags" },
+    content: `
+      <section style="padding:56px 24px;">
+        <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;">
+          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Starter</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$19</p><p style="color:#475569;">Great for small teams.</p></div>
+          <div style="border:2px solid #0d6efd;border-radius:12px;padding:18px;"><h3>Pro</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$49</p><p style="color:#475569;">Best for growing teams.</p></div>
+          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Business</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$99</p><p style="color:#475569;">Advanced needs and support.</p></div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-faq", {
+    label: "FAQ",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-question-circle" },
+    content: `
+      <section style="padding:56px 24px;background:#fff;">
+        <div style="max-width:900px;margin:0 auto;">
+          <h2 style="margin:0 0 14px;">Frequently Asked Questions</h2>
+          <details open style="padding:12px 0;border-bottom:1px solid #e2e8f0;"><summary style="font-weight:600;cursor:pointer;">How do I update content?</summary><p style="margin:8px 0 0;color:#475569;">Use the visual editor and click save when done.</p></details>
+          <details style="padding:12px 0;border-bottom:1px solid #e2e8f0;"><summary style="font-weight:600;cursor:pointer;">Is this mobile-friendly?</summary><p style="margin:8px 0 0;color:#475569;">Yes, all section templates are responsive-ready.</p></details>
+          <details style="padding:12px 0;"><summary style="font-weight:600;cursor:pointer;">Can I add custom code?</summary><p style="margin:8px 0 0;color:#475569;">Yes, use the code editor option in the top panel.</p></details>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-gallery-4", {
+    label: "Image Gallery",
+    category: "CMS Media",
+    attributes: { class: "fa fa-image" },
+    content: `
+      <section style="padding:40px 24px;">
+        <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;">
+          <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800" alt="Gallery 1" style="width:100%;border-radius:10px;object-fit:cover;height:160px;" />
+          <img src="https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800" alt="Gallery 2" style="width:100%;border-radius:10px;object-fit:cover;height:160px;" />
+          <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800" alt="Gallery 3" style="width:100%;border-radius:10px;object-fit:cover;height:160px;" />
+          <img src="https://images.unsplash.com/photo-1482192596544-9eb780fc7f66?w=800" alt="Gallery 4" style="width:100%;border-radius:10px;object-fit:cover;height:160px;" />
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-cta", {
+    label: "Call To Action",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-bullhorn" },
+    content: `
+      <section style="padding:48px 24px;background:#0f172a;color:#fff;">
+        <div style="max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <h2 style="margin:0 0 8px;">Ready to get started?</h2>
+            <p style="margin:0;color:#cbd5e1;">Create your next page with reusable visual blocks.</p>
+          </div>
+          <a href="#" style="display:inline-block;background:#fff;color:#0f172a;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600;">Contact Us</a>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-header", {
+    label: "Header / Navbar",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-header" },
+    content: `
+      <header style="position:sticky;top:0;z-index:20;background:#0f172a;color:#fff;padding:14px 24px;">
+        <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+          <a href="#" style="color:#fff;text-decoration:none;font-size:20px;font-weight:700;letter-spacing:.4px;">Restaurant Place</a>
+          <nav style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+            <a href="#" style="color:#e2e8f0;text-decoration:none;">Home</a>
+            <a href="#" style="color:#e2e8f0;text-decoration:none;">Menu</a>
+            <a href="#" style="color:#e2e8f0;text-decoration:none;">About</a>
+            <a href="#" style="color:#e2e8f0;text-decoration:none;">Contact</a>
+            <a href="#" style="display:inline-block;background:#f43f5e;color:#fff;text-decoration:none;padding:8px 14px;border-radius:999px;font-weight:600;">Book Now</a>
+          </nav>
+        </div>
+      </header>
+    `,
+  });
+
+  add("cms-footer", {
+    label: "Footer",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-window-minimize" },
+    content: `
+      <footer style="background:#111827;color:#cbd5e1;padding:34px 24px;">
+        <div style="max-width:1120px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:18px;">
+          <div>
+            <h3 style="margin:0 0 10px;color:#fff;">Restaurant Place</h3>
+            <p style="margin:0;line-height:1.7;">Serve great food and warm experiences. Update this content with your address and contact details.</p>
+          </div>
+          <div>
+            <h4 style="margin:0 0 10px;color:#fff;">Quick Links</h4>
+            <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Home</a></p>
+            <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Menu</a></p>
+            <p style="margin:0;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Contact</a></p>
+          </div>
+          <div>
+            <h4 style="margin:0 0 10px;color:#fff;">Follow</h4>
+            <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Facebook</a></p>
+            <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Instagram</a></p>
+            <p style="margin:0;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Twitter</a></p>
+          </div>
+        </div>
+        <div style="max-width:1120px;margin:18px auto 0;padding-top:14px;border-top:1px solid rgba(255,255,255,0.15);font-size:13px;color:#94a3b8;">© 2026 Restaurant Place. All rights reserved.</div>
+      </footer>
+    `,
+  });
+
+  add("cms-header-hero-combo", {
+    label: "Header + Hero Combo",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-object-group" },
+    content: `
+      <section>
+        <header style="position:relative;z-index:10;background:#0f172a;color:#fff;padding:14px 24px;">
+          <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <a href="#" style="color:#fff;text-decoration:none;font-size:20px;font-weight:700;letter-spacing:.4px;">Restaurant Place</a>
+            <nav style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+              <a href="#" style="color:#e2e8f0;text-decoration:none;">Home</a>
+              <a href="#" style="color:#e2e8f0;text-decoration:none;">Menu</a>
+              <a href="#" style="color:#e2e8f0;text-decoration:none;">About</a>
+              <a href="#" style="color:#e2e8f0;text-decoration:none;">Contact</a>
+            </nav>
+          </div>
+        </header>
+        <div style="padding:74px 24px;background:linear-gradient(135deg,#111827,#1f2937);color:#fff;text-align:center;">
+          <div style="max-width:900px;margin:0 auto;">
+            <p style="margin:0 0 8px;color:#93c5fd;letter-spacing:.08em;text-transform:uppercase;font-size:12px;">Welcome</p>
+            <h1 style="font-size:44px;line-height:1.2;margin:0 0 12px;">Good Food, Great Moments</h1>
+            <p style="font-size:18px;color:#d1d5db;margin:0 0 24px;">Craft your homepage quickly using prebuilt blocks, then customize every detail.</p>
+            <a href="#" style="display:inline-block;background:#f43f5e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600;">Explore Menu</a>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-footer-contact-strip", {
+    label: "Footer + Contact Strip",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-address-card" },
+    content: `
+      <section>
+        <div style="background:#f8fafc;padding:14px 24px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+          <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#334155;font-size:14px;">
+            <span>📍 123 Main Street, Quezon City</span>
+            <span>📞 +63 900 123 4567</span>
+            <span>✉️ hello@restaurantplace.com</span>
+          </div>
+        </div>
+        <footer style="background:#111827;color:#cbd5e1;padding:34px 24px;">
+          <div style="max-width:1120px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:18px;">
+            <div>
+              <h3 style="margin:0 0 10px;color:#fff;">Restaurant Place</h3>
+              <p style="margin:0;line-height:1.7;">Serve great food and warm experiences. Update this content with your address and contact details.</p>
+            </div>
+            <div>
+              <h4 style="margin:0 0 10px;color:#fff;">Quick Links</h4>
+              <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Home</a></p>
+              <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Menu</a></p>
+              <p style="margin:0;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Contact</a></p>
+            </div>
+            <div>
+              <h4 style="margin:0 0 10px;color:#fff;">Follow</h4>
+              <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Facebook</a></p>
+              <p style="margin:0 0 8px;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Instagram</a></p>
+              <p style="margin:0;"><a href="#" style="color:#cbd5e1;text-decoration:none;">Twitter</a></p>
+            </div>
+          </div>
+          <div style="max-width:1120px;margin:18px auto 0;padding-top:14px;border-top:1px solid rgba(255,255,255,0.15);font-size:13px;color:#94a3b8;">© 2026 Restaurant Place. All rights reserved.</div>
+        </footer>
+      </section>
+    `,
+  });
+
+  add("cms-map", {
+    label: "Map Embed",
+    category: "CMS Media",
+    attributes: { class: "fa fa-map-marker" },
+    content: `
+      <section style="padding:24px;">
+        <div style="max-width:1000px;margin:0 auto;">
+          <iframe
+            src="https://www.google.com/maps?q=Manila&output=embed"
+            style="width:100%;height:320px;border:0;border-radius:10px;"
+            loading="lazy"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-carousel-selection", {
+    label: "Carousel (Selection Dots)",
+    category: "CMS Media",
+    attributes: { class: "fa fa-sliders" },
+    content: `
+      <section style="padding:40px 24px;background:#f8fafc;">
+        <div style="max-width:980px;margin:0 auto;">
+          <style>
+            .cms-car{position:relative;overflow:hidden;border-radius:14px;background:#0f172a}
+            .cms-car-track{display:flex;transition:transform .45s ease}
+            .cms-car-slide{width:100%;flex:0 0 100%;position:relative;min-height:320px}
+            .cms-car-slide img{width:100%;height:320px;object-fit:cover;display:block;opacity:.9}
+            .cms-car-cap{position:absolute;left:24px;bottom:20px;color:#fff;max-width:70%}
+            .cms-car-cap h3{margin:0 0 6px;font-size:28px}
+            .cms-car-cap p{margin:0;color:#e2e8f0}
+            .cms-car-dots{display:flex;justify-content:center;gap:8px;margin-top:12px}
+            .cms-car-dot{width:12px;height:12px;border-radius:999px;background:#cbd5e1;cursor:pointer;display:inline-block;border:0;padding:0}
+            .cms-car-dot.is-active{background:#0d6efd}
+            .cms-car-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:999px;border:0;background:rgba(15,23,42,.62);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;z-index:2}
+            .cms-car-arrow:hover{background:rgba(15,23,42,.82)}
+            .cms-car-arrow.prev{left:10px}
+            .cms-car-arrow.next{right:10px}
+          </style>
+          <div class="cms-car js-cms-car" data-autoplay="true" data-interval="4000">
+            <div class="cms-car-track">
+              <div class="cms-car-slide">
+                <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1400" alt="Slide 1"/>
+                <div class="cms-car-cap"><h3>Freshly Prepared</h3><p>Highlight your latest offer here.</p></div>
+              </div>
+              <div class="cms-car-slide">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1400" alt="Slide 2"/>
+                <div class="cms-car-cap"><h3>Family Favorites</h3><p>Showcase bestselling dishes.</p></div>
+              </div>
+              <div class="cms-car-slide">
+                <img src="https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?w=1400" alt="Slide 3"/>
+                <div class="cms-car-cap"><h3>Reserve a Table</h3><p>Add your CTA and booking link.</p></div>
+              </div>
+            </div>
+            <button type="button" class="cms-car-arrow prev" aria-label="Previous slide">❮</button>
+            <button type="button" class="cms-car-arrow next" aria-label="Next slide">❯</button>
+            <div class="cms-car-dots">
+              <button type="button" class="cms-car-dot" aria-label="Slide 1"></button>
+              <button type="button" class="cms-car-dot" aria-label="Slide 2"></button>
+              <button type="button" class="cms-car-dot" aria-label="Slide 3"></button>
+            </div>
+          </div>
+          <script>
+            (function () {
+              var cars = document.querySelectorAll('.js-cms-car');
+              cars.forEach(function (car) {
+                if (car.getAttribute('data-bound') === '1') return;
+                car.setAttribute('data-bound', '1');
+
+                var track = car.querySelector('.cms-car-track');
+                var slides = Array.prototype.slice.call(car.querySelectorAll('.cms-car-slide'));
+                var dots = Array.prototype.slice.call(car.querySelectorAll('.cms-car-dot'));
+                var prevBtn = car.querySelector('.cms-car-arrow.prev');
+                var nextBtn = car.querySelector('.cms-car-arrow.next');
+                var idx = 0;
+                var timer = null;
+                var interval = Number(car.getAttribute('data-interval') || 4000);
+                var autoplay = String(car.getAttribute('data-autoplay') || 'true') !== 'false';
+
+                var render = function () {
+                  if (!track || !slides.length) return;
+                  track.style.transform = 'translateX(-' + idx * 100 + '%)';
+                  dots.forEach(function (d, i) {
+                    if (i === idx) d.classList.add('is-active');
+                    else d.classList.remove('is-active');
+                  });
+                };
+
+                var goTo = function (nextIndex) {
+                  if (!slides.length) return;
+                  idx = (nextIndex + slides.length) % slides.length;
+                  render();
+                };
+
+                var start = function () {
+                  if (!autoplay || slides.length < 2) return;
+                  if (timer) window.clearInterval(timer);
+                  timer = window.setInterval(function () { goTo(idx + 1); }, Math.max(1500, interval));
+                };
+
+                var stop = function () {
+                  if (!timer) return;
+                  window.clearInterval(timer);
+                  timer = null;
+                };
+
+                if (prevBtn) prevBtn.addEventListener('click', function () { goTo(idx - 1); start(); });
+                if (nextBtn) nextBtn.addEventListener('click', function () { goTo(idx + 1); start(); });
+
+                dots.forEach(function (dot, i) {
+                  dot.addEventListener('click', function () {
+                    goTo(i);
+                    start();
+                  });
+                });
+
+                car.addEventListener('mouseenter', stop);
+                car.addEventListener('mouseleave', start);
+
+                render();
+                start();
+              });
+            })();
+          </script>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-slicer-slider", {
+    label: "Slicer / Slider Section",
+    category: "CMS Sections",
+    attributes: { class: "fa fa-columns" },
+    content: `
+      <section style="padding:56px 24px;background:#fff;">
+        <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:stretch;">
+          <div style="position:relative;overflow:hidden;border-radius:14px;min-height:300px;">
+            <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=1400" alt="Slicer Visual" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+            <div style="position:absolute;inset:0;background:linear-gradient(120deg,rgba(15,23,42,.62),rgba(15,23,42,.12));"></div>
+            <div style="position:absolute;left:20px;bottom:18px;color:#fff;max-width:70%;">
+              <h3 style="margin:0 0 6px;font-size:30px;">Feature Spotlight</h3>
+              <p style="margin:0;color:#e2e8f0;">Use this as a sliced hero panel or promo area.</p>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;">
+              <h4 style="margin:0 0 6px;">Slice 1</h4>
+              <p style="margin:0;color:#475569;">Add text, links, and short details.</p>
+            </div>
+            <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;">
+              <h4 style="margin:0 0 6px;">Slice 2</h4>
+              <p style="margin:0;color:#475569;">Perfect for highlights and quick stats.</p>
+            </div>
+            <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;">
+              <h4 style="margin:0 0 6px;">Slice 3</h4>
+              <p style="margin:0;color:#475569;">Duplicate this card to add more slices.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+
+  add("cms-spacer", {
+    label: "Spacer",
+    category: "CMS Utility",
+    attributes: { class: "fa fa-arrows-v" },
+    content: `<div style="height:40px;"></div>`,
+  });
+
+  add("cms-divider", {
+    label: "Divider",
+    category: "CMS Utility",
+    attributes: { class: "fa fa-minus" },
+    content: `<hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;"/>`,
+  });
+
+  add("cms-social-links", {
+    label: "Social Links",
+    category: "CMS Utility",
+    attributes: { class: "fa fa-share-alt" },
+    content: `
+      <div style="display:flex;gap:12px;justify-content:center;padding:12px 0;">
+        <a href="#" style="text-decoration:none;">Facebook</a>
+        <a href="#" style="text-decoration:none;">Instagram</a>
+        <a href="#" style="text-decoration:none;">Twitter</a>
+      </div>
+    `,
+  });
+
+  add("cms-quick-links", {
+    label: "Quick Links",
+    category: "CMS Utility",
+    attributes: { class: "fa fa-link" },
+    content: `
+      <section style="padding:20px 24px;">
+        <div style="max-width:900px;margin:0 auto;padding:18px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;">
+          <h4 style="margin:0 0 12px;">Quick Links</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <a href="#" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5f9;color:#0f172a;text-decoration:none;">Home</a>
+            <a href="#" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5f9;color:#0f172a;text-decoration:none;">Menu</a>
+            <a href="#" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5f9;color:#0f172a;text-decoration:none;">Promos</a>
+            <a href="#" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5f9;color:#0f172a;text-decoration:none;">About</a>
+            <a href="#" style="display:inline-block;padding:8px 12px;border-radius:999px;background:#f1f5f9;color:#0f172a;text-decoration:none;">Contact</a>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+};
+
 export default function GrapesEditor({ value = "", onChange, height = 800 }: GrapesEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
@@ -117,6 +585,8 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       style: css,
     });
 
+    registerCmsBlocks(editor);
+
     const buildContent = (ed: any) => {
       const html = ed.getHtml() || "";
       const styles = ed.getCss() || "";
@@ -135,11 +605,19 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
       const resetCodeCommandState = () => {
         try {
-          ed.stopCommand("cms:open-code");
-        } catch {}
-        try {
-          ed.stopCommand("core:open-code");
-        } catch {}
+          const viewsButtons = ed?.Panels?.getPanel?.("views")?.get?.("buttons");
+          if (viewsButtons?.forEach) {
+            viewsButtons.forEach((btn: any) => {
+              const id = String(btn?.get?.("id") || "");
+              const cmd = String(btn?.get?.("command") || "");
+              if (id === "open-code" || id === "cms-open-code" || cmd === "cms:open-code" || cmd === "core:open-code" || cmd === "open-code") {
+                btn.set?.("active", false);
+              }
+            });
+          }
+        } catch {
+          // ignore state-sync errors
+        }
       };
 
       const beautifyHtml = beautifyModule?.html || beautifyModule?.default?.html;
@@ -488,6 +966,22 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       },
       stop() {},
     });
+
+    if (editor.Commands.has("open-code")) {
+      editor.Commands.extend("open-code", {
+        run(ed: any) {
+          openCodeModal(ed);
+        },
+        stop() {},
+      });
+    } else {
+      editor.Commands.add("open-code", {
+        run(ed: any) {
+          openCodeModal(ed);
+        },
+        stop() {},
+      });
+    }
 
     if (editor.Commands.has("core:open-code")) {
       editor.Commands.extend("core:open-code", {
