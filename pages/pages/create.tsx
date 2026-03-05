@@ -16,6 +16,26 @@ const GrapesEditor = dynamic(() => import("@/components/UI/GrapesEditor"), { ssr
 
 const DEFAULT_CONTENT = ``;
 
+const getPageSaveErrorMessage = (error: any, mode: "create" | "update") => {
+  const apiMessage = error?.response?.data?.message;
+  const fallback = mode === "create" ? "Failed to create page" : "Failed to update page";
+  const source = [apiMessage, error?.message].filter(Boolean).join(" ");
+
+  if (/pages_slug_unique|duplicate\s+entry|sqlstate\[23000\]/i.test(source)) {
+    return "Page slug already exists. Please change Page Title or Label, then save again.";
+  }
+
+  if (/insert\s+into\s+`?pages`?|update\s+`?pages`?/i.test(source)) {
+    return fallback;
+  }
+
+  if (typeof apiMessage === "string" && apiMessage.trim()) {
+    return apiMessage;
+  }
+
+  return fallback;
+};
+
 export default function CreatePage() {
   // Page state
   const router = useRouter();
@@ -86,7 +106,7 @@ export default function CreatePage() {
 
     } catch (error: any) {
       console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to create page");
+      toast.error(getPageSaveErrorMessage(error, "create"));
     } finally {
       setLoading(false);
     }
