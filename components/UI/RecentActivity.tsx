@@ -245,7 +245,7 @@ export default function RecentActivity() {
         </div>
       </div>
 
-      <div className="p-3 flex-grow-1 overflow-auto">
+      <div className="p-3 flex-grow-1 d-flex flex-column" style={{ minHeight: 0 }}>
         {error && (
           <div className="alert alert-danger d-flex align-items-center justify-content-between" role="alert">
             <div>
@@ -258,149 +258,151 @@ export default function RecentActivity() {
           </div>
         )}
 
-        {loading ? (
-          <ul className="list-group list-group-flush cms-activity">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="list-group-item cms-activity__item">
-                <div className="d-flex align-items-start justify-content-between gap-3">
-                  <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
-                    <span className="badge rounded-pill text-bg-secondary">
-                      <i className="fas fa-circle" />
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="cms-skeleton cms-skeleton--line" aria-hidden="true" />
-                      <div className="cms-skeleton cms-skeleton--line mt-2" aria-hidden="true" style={{ maxWidth: 220 }} />
+        <div className="flex-grow-1 overflow-auto" style={{ minHeight: 0 }}>
+          {loading ? (
+            <ul className="list-group list-group-flush cms-activity">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <li key={i} className="list-group-item cms-activity__item">
+                  <div className="d-flex align-items-start justify-content-between gap-3">
+                    <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
+                      <span className="badge rounded-pill text-bg-secondary">
+                        <i className="fas fa-circle" />
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="cms-skeleton cms-skeleton--line" aria-hidden="true" />
+                        <div className="cms-skeleton cms-skeleton--line mt-2" aria-hidden="true" style={{ maxWidth: 220 }} />
+                      </div>
                     </div>
+                    <span className="cms-skeleton cms-skeleton--pill" aria-hidden="true" />
                   </div>
-                  <span className="cms-skeleton cms-skeleton--pill" aria-hidden="true" />
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : limited.length === 0 ? (
-          <div className="text-center py-4">
-            <div className="fw-semibold">No activity found</div>
-            <div className="text-muted small">Try clearing search or changing the filter.</div>
-          </div>
-        ) : (
-          <div className="cms-activity-groups">
-            {grouped.map(([label, list]) => (
-              <div key={label} className="mb-3">
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <div className="text-uppercase text-muted small fw-semibold">{label}</div>
-                  <div className="text-muted small">{list.length} item(s)</div>
-                </div>
+                </li>
+              ))}
+            </ul>
+          ) : limited.length === 0 ? (
+            <div className="text-center py-4">
+              <div className="fw-semibold">No activity found</div>
+              <div className="text-muted small">Try clearing search or changing the filter.</div>
+            </div>
+          ) : (
+            <div className="cms-activity-groups">
+              {grouped.map(([label, list]) => (
+                <div key={label} className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="text-uppercase text-muted small fw-semibold">{label}</div>
+                    <div className="text-muted small">{list.length} item(s)</div>
+                  </div>
 
-                <ul className="list-group list-group-flush cms-activity">
-                  {list.map((row) => {
-                    const meta = eventMeta(row.event);
-                    const when = timeAgo(row.created_at);
-                    const model = modelLabel(row.auditable_type);
-                    const href = entityHref(row);
+                  <ul className="list-group list-group-flush cms-activity">
+                    {list.map((row) => {
+                      const meta = eventMeta(row.event);
+                      const when = timeAgo(row.created_at);
+                      const model = modelLabel(row.auditable_type);
+                      const href = entityHref(row);
 
-                    return (
-                      <li key={row.id} className="list-group-item cms-activity__item">
-                        <div className="d-flex align-items-start justify-content-between gap-3">
-                          <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
-                            <span className={`badge rounded-pill ${meta.badge}`} title={meta.label}>
-                              <i className={meta.icon} />
-                            </span>
+                      return (
+                        <li key={row.id} className="list-group-item cms-activity__item">
+                          <div className="d-flex align-items-start justify-content-between gap-3">
+                            <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
+                              <span className={`badge rounded-pill ${meta.badge}`} title={meta.label}>
+                                <i className={meta.icon} />
+                              </span>
 
-                            <div style={{ minWidth: 0 }}>
-                              <div className="d-flex flex-wrap gap-2 align-items-center">
-                                <div className="fw-semibold text-truncate">{actorLabel(row)}</div>
-                                <span className="text-muted small">{meta.label.toLowerCase()}</span>
-                                <span className="badge bg-dark-subtle text-dark">
-                                  {model} #{row.auditable_id}
-                                </span>
-                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div className="d-flex flex-wrap gap-2 align-items-center">
+                                  <div className="fw-semibold text-truncate">{actorLabel(row)}</div>
+                                  <span className="text-muted small">{meta.label.toLowerCase()}</span>
+                                  <span className="badge bg-dark-subtle text-dark">
+                                    {model} #{row.auditable_id}
+                                  </span>
+                                </div>
 
-                              <div className="text-muted small d-flex flex-wrap gap-2">
-                                <span className="text-truncate" title={row.ip_address || undefined}>
-                                  {row.ip_address ? `IP: ${row.ip_address}` : ""}
-                                </span>
-                                {href && (
-                                  <Link href={href} className="text-decoration-none">
-                                    Open record
-                                  </Link>
-                                )}
+                                <div className="text-muted small d-flex flex-wrap gap-2">
+                                  <span className="text-truncate" title={row.ip_address || undefined}>
+                                    {row.ip_address ? `IP: ${row.ip_address}` : ""}
+                                  </span>
+                                  {href && (
+                                    <Link href={href} className="text-decoration-none">
+                                      Open record
+                                    </Link>
+                                  )}
+                                </div>
                               </div>
                             </div>
+
+                            <span className="cms-activity__time" title={new Date(row.created_at).toLocaleString()}>
+                              {when}
+                            </span>
                           </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                          <span className="cms-activity__time" title={new Date(row.created_at).toLocaleString()}>
-                            {when}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+        {!loading && limited.length > 0 && pageNumbers.safeTotal > 1 && (
+          <nav aria-label="Recent activity pagination" className="mt-2 pt-2 border-top">
+            <ul className="pagination pagination-sm mb-0 justify-content-end">
+              <li className={`page-item ${pageNumbers.safeCurrent <= 1 ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={pageNumbers.safeCurrent <= 1}
+                  aria-label="First page"
+                >
+                  «
+                </button>
+              </li>
 
-            {pageNumbers.safeTotal > 1 && (
-              <nav aria-label="Recent activity pagination" className="mt-3">
-                <ul className="pagination pagination-sm mb-0 justify-content-end">
-                  <li className={`page-item ${pageNumbers.safeCurrent <= 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      type="button"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={pageNumbers.safeCurrent <= 1}
-                      aria-label="First page"
-                    >
-                      «
-                    </button>
-                  </li>
+              <li className={`page-item ${pageNumbers.safeCurrent <= 1 ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={pageNumbers.safeCurrent <= 1}
+                  aria-label="Previous page"
+                >
+                  Prev
+                </button>
+              </li>
 
-                  <li className={`page-item ${pageNumbers.safeCurrent <= 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={pageNumbers.safeCurrent <= 1}
-                      aria-label="Previous page"
-                    >
-                      Prev
-                    </button>
-                  </li>
+              {pageNumbers.pages.map((p) => (
+                <li key={p} className={`page-item ${p === pageNumbers.safeCurrent ? "active" : ""}`}>
+                  <button className="page-link" type="button" onClick={() => setCurrentPage(p)}>
+                    {p}
+                  </button>
+                </li>
+              ))}
 
-                  {pageNumbers.pages.map((p) => (
-                    <li key={p} className={`page-item ${p === pageNumbers.safeCurrent ? "active" : ""}`}>
-                      <button className="page-link" type="button" onClick={() => setCurrentPage(p)}>
-                        {p}
-                      </button>
-                    </li>
-                  ))}
+              <li className={`page-item ${pageNumbers.safeCurrent >= pageNumbers.safeTotal ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(pageNumbers.safeTotal, p + 1))}
+                  disabled={pageNumbers.safeCurrent >= pageNumbers.safeTotal}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </li>
 
-                  <li className={`page-item ${pageNumbers.safeCurrent >= pageNumbers.safeTotal ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.min(pageNumbers.safeTotal, p + 1))}
-                      disabled={pageNumbers.safeCurrent >= pageNumbers.safeTotal}
-                      aria-label="Next page"
-                    >
-                      Next
-                    </button>
-                  </li>
-
-                  <li className={`page-item ${pageNumbers.safeCurrent >= pageNumbers.safeTotal ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      type="button"
-                      onClick={() => setCurrentPage(pageNumbers.safeTotal)}
-                      disabled={pageNumbers.safeCurrent >= pageNumbers.safeTotal}
-                      aria-label="Last page"
-                    >
-                      »
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            )}
-          </div>
+              <li className={`page-item ${pageNumbers.safeCurrent >= pageNumbers.safeTotal ? "disabled" : ""}`}>
+                <button
+                  className="page-link"
+                  type="button"
+                  onClick={() => setCurrentPage(pageNumbers.safeTotal)}
+                  disabled={pageNumbers.safeCurrent >= pageNumbers.safeTotal}
+                  aria-label="Last page"
+                >
+                  »
+                </button>
+              </li>
+            </ul>
+          </nav>
         )}
       </div>
     </div>

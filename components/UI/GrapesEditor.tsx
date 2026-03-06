@@ -541,6 +541,22 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           const files = extractFileList(event);
           if (!files.length) return;
 
+          const addLocalAssets = () => {
+            const localAssets = files
+              .filter((file) => String(file.type || "").startsWith("image/"))
+              .map((file) => ({
+                src: URL.createObjectURL(file),
+                type: "image",
+                name: file.name,
+              }));
+
+            if (localAssets.length) {
+              editor.AssetManager.add(localAssets);
+            }
+
+            return localAssets.length > 0;
+          };
+
           const formData = new FormData();
           files.forEach((file) => formData.append("files", file));
 
@@ -557,7 +573,10 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
             const data = await res.json();
             const urls = Array.isArray(data?.urls) ? data.urls.filter(Boolean) : [];
 
-            if (!urls.length) return;
+            if (!urls.length) {
+              addLocalAssets();
+              return;
+            }
 
             editor.AssetManager.add(
               urls.map((url: string) => ({
@@ -567,7 +586,8 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
             );
           } catch (error) {
             console.error("Grapes asset upload failed:", error);
-            if (typeof window !== "undefined") {
+            const usedFallback = addLocalAssets();
+            if (!usedFallback && typeof window !== "undefined") {
               window.alert("Asset upload failed. Please try again.");
             }
           }
@@ -587,6 +607,34 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     registerCmsBlocks(editor);
 
+    const collapseAllBlockCategories = () => {
+      try {
+        const categories = editor.BlockManager?.getCategories?.();
+        if (!categories) return;
+
+        const closeCategory = (category: any) => {
+          category?.set?.("open", false);
+        };
+
+        if (typeof categories.each === "function") {
+          categories.each(closeCategory);
+        } else if (typeof categories.forEach === "function") {
+          categories.forEach(closeCategory);
+        }
+
+        const container = editor.getContainer() as HTMLElement;
+        container
+          ?.querySelectorAll?.(".gjs-block-category.gjs-open")
+          ?.forEach((el) => el.classList.remove("gjs-open"));
+      } catch {
+        // ignore category collapse sync errors
+      }
+    };
+
+    collapseAllBlockCategories();
+    requestAnimationFrame(collapseAllBlockCategories);
+    setTimeout(collapseAllBlockCategories, 120);
+
     const buildContent = (ed: any) => {
       const html = ed.getHtml() || "";
       const styles = ed.getCss() || "";
@@ -605,16 +653,24 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
       const resetCodeCommandState = () => {
         try {
-          const viewsButtons = ed?.Panels?.getPanel?.("views")?.get?.("buttons");
-          if (viewsButtons?.forEach) {
-            viewsButtons.forEach((btn: any) => {
+          ed?.stopCommand?.("cms:open-code");
+          ed?.stopCommand?.("open-code");
+          ed?.stopCommand?.("core:open-code");
+
+          const resetButtons = (panelId: string) => {
+            const panelButtons = ed?.Panels?.getPanel?.(panelId)?.get?.("buttons");
+            if (!panelButtons?.forEach) return;
+            panelButtons.forEach((btn: any) => {
               const id = String(btn?.get?.("id") || "");
               const cmd = String(btn?.get?.("command") || "");
               if (id === "open-code" || id === "cms-open-code" || cmd === "cms:open-code" || cmd === "core:open-code" || cmd === "open-code") {
                 btn.set?.("active", false);
               }
             });
-          }
+          };
+
+          resetButtons("views");
+          resetButtons("options");
         } catch {
           // ignore state-sync errors
         }
@@ -961,22 +1017,49 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
     };
 
     editor.Commands.add("cms:open-code", {
-      run(ed: any) {
+      run(ed: any, sender: any) {
+        ed?.stopCommand?.("open-code");
+        ed?.stopCommand?.("core:open-code");
+        ed?.stopCommand?.("cms:open-code");
+        sender?.set?.("active", false);
         openCodeModal(ed);
       },
       stop() {},
     });
 
+    const forceBindCodeButtons = () => {
+      const panelIds = ["options", "views"];
+      const buttonIds = ["open-code", "cms-open-code"];
+
+      panelIds.forEach((panelId) => {
+        buttonIds.forEach((buttonId) => {
+          const btn = editor.Panels.getButton(panelId, buttonId);
+          if (!btn?.set) return;
+          btn.set("command", "cms:open-code");
+          btn.set("togglable", false);
+          btn.set("active", false);
+        });
+      });
+    };
+
     if (editor.Commands.has("open-code")) {
       editor.Commands.extend("open-code", {
-        run(ed: any) {
+        run(ed: any, sender: any) {
+          ed?.stopCommand?.("open-code");
+          ed?.stopCommand?.("core:open-code");
+          ed?.stopCommand?.("cms:open-code");
+          sender?.set?.("active", false);
           openCodeModal(ed);
         },
         stop() {},
       });
     } else {
       editor.Commands.add("open-code", {
-        run(ed: any) {
+        run(ed: any, sender: any) {
+          ed?.stopCommand?.("open-code");
+          ed?.stopCommand?.("core:open-code");
+          ed?.stopCommand?.("cms:open-code");
+          sender?.set?.("active", false);
           openCodeModal(ed);
         },
         stop() {},
@@ -985,58 +1068,118 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     if (editor.Commands.has("core:open-code")) {
       editor.Commands.extend("core:open-code", {
-        run(ed: any) {
+        run(ed: any, sender: any) {
+          ed?.stopCommand?.("open-code");
+          ed?.stopCommand?.("core:open-code");
+          ed?.stopCommand?.("cms:open-code");
+          sender?.set?.("active", false);
           openCodeModal(ed);
         },
         stop() {},
       });
     } else {
       editor.Commands.add("core:open-code", {
-        run(ed: any) {
+        run(ed: any, sender: any) {
+          ed?.stopCommand?.("open-code");
+          ed?.stopCommand?.("core:open-code");
+          ed?.stopCommand?.("cms:open-code");
+          sender?.set?.("active", false);
           openCodeModal(ed);
         },
         stop() {},
       });
     }
 
-    let isSidePanelHidden = false;
-    let sidePanelWidth = 0;
+    let isSidePanelHidden = true;
+    let sidePanelWidth = 250;
+    const minSidePanelWidth = 250;
     const applySidePanelVisibility = (hidden: boolean) => {
+      const dividerColor = "rgba(148, 163, 184, 0.55)";
       const root = editor.getContainer() as HTMLElement;
+      const editorRoot = (root.classList.contains("gjs-editor")
+        ? root
+        : root.querySelector(".gjs-editor")) as HTMLElement | null;
       const viewsContainer = root.querySelector(".gjs-pn-views-container") as HTMLElement | null;
       const viewsPanel = root.querySelector(".gjs-pn-panel.gjs-pn-views") as HTMLElement | null;
+      const optionsTopPanel = root.querySelector(".gjs-pn-panel.gjs-pn-options") as HTMLElement | null;
       const canvas = root.querySelector(".gjs-cv-canvas") as HTMLElement | null;
 
       if (viewsContainer) {
         const measured = Math.round(viewsContainer.getBoundingClientRect().width);
         if (!sidePanelWidth && measured > 0) {
-          sidePanelWidth = measured;
+          sidePanelWidth = Math.max(minSidePanelWidth, measured);
         }
         viewsContainer.style.transition = "width 220ms ease, opacity 180ms ease";
-        viewsContainer.style.overflow = "hidden";
+        viewsContainer.style.overflowX = "hidden";
+        viewsContainer.style.overflowY = hidden ? "hidden" : "auto";
       }
       if (viewsPanel) {
         viewsPanel.style.transition = "opacity 180ms ease";
       }
+      if (optionsTopPanel) {
+        optionsTopPanel.style.transition = "right 220ms ease";
+      }
       if (canvas) {
-        canvas.style.transition = "right 220ms ease";
+        canvas.style.transition = "right 220ms ease, border-color 180ms ease";
       }
 
-      const expandedWidth = sidePanelWidth || 280;
+      const expandedWidth = Math.max(minSidePanelWidth, sidePanelWidth || 250);
+      const activeWidth = hidden ? 0 : expandedWidth;
+      root.style.setProperty("--cms-side-panel-width", `${activeWidth}px`);
+      root.style.setProperty("--gjs-left-width", `${activeWidth}px`);
+      root.classList.toggle("cms-side-panel-hidden", hidden);
+      editorRoot?.style.setProperty("--cms-side-panel-width", `${activeWidth}px`);
+      editorRoot?.style.setProperty("--gjs-left-width", `${activeWidth}px`);
+      editorRoot?.classList.toggle("cms-side-panel-hidden", hidden);
 
       if (viewsContainer) {
-        viewsContainer.style.width = hidden ? "0px" : `${expandedWidth}px`;
-        viewsContainer.style.minWidth = hidden ? "0px" : `${expandedWidth}px`;
+        viewsContainer.style.width = `${activeWidth}px`;
+        viewsContainer.style.minWidth = `${activeWidth}px`;
+        viewsContainer.style.flex = `0 0 ${activeWidth}px`;
         viewsContainer.style.opacity = hidden ? "0" : "1";
         viewsContainer.style.pointerEvents = hidden ? "none" : "";
+        viewsContainer.style.display = hidden ? "none" : "";
+        viewsContainer.style.overflowX = "hidden";
+        viewsContainer.style.overflowY = hidden ? "hidden" : "auto";
+        viewsContainer.style.borderLeft = hidden ? "0" : `1px solid ${dividerColor}`;
+        viewsContainer.style.boxShadow = hidden ? "none" : `inset 1px 0 0 ${dividerColor}`;
       }
       if (viewsPanel) {
         viewsPanel.style.opacity = hidden ? "0" : "1";
         viewsPanel.style.pointerEvents = hidden ? "none" : "";
+        viewsPanel.style.display = hidden ? "none" : "";
+        viewsPanel.style.width = `${activeWidth}px`;
+        viewsPanel.style.minWidth = `${activeWidth}px`;
+        viewsPanel.style.maxWidth = `${activeWidth}px`;
+        viewsPanel.style.visibility = hidden ? "hidden" : "visible";
+      }
+      if (optionsTopPanel) {
+        optionsTopPanel.style.right = `${activeWidth}px`;
       }
       if (canvas) {
-        canvas.style.right = hidden ? "0px" : `${expandedWidth}px`;
+        canvas.style.right = `${activeWidth}px`;
+        canvas.style.borderRight = hidden ? "0" : `1px solid ${dividerColor}`;
+        canvas.style.width = "";
       }
+
+      const allViewsContainers = root.querySelectorAll(".gjs-pn-views-container");
+      const allViewsPanels = root.querySelectorAll(".gjs-pn-panel.gjs-pn-views");
+      allViewsContainers.forEach((panel) => {
+        const el = panel as HTMLElement;
+        el.style.display = hidden ? "none" : "";
+        el.style.width = `${activeWidth}px`;
+        el.style.minWidth = `${activeWidth}px`;
+        el.style.maxWidth = `${activeWidth}px`;
+        el.style.visibility = hidden ? "hidden" : "visible";
+      });
+      allViewsPanels.forEach((panel) => {
+        const el = panel as HTMLElement;
+        el.style.display = hidden ? "none" : "";
+        el.style.width = `${activeWidth}px`;
+        el.style.minWidth = `${activeWidth}px`;
+        el.style.maxWidth = `${activeWidth}px`;
+        el.style.visibility = hidden ? "hidden" : "visible";
+      });
     };
 
     editor.Commands.add("cms:toggle-side-panel", {
@@ -1068,6 +1211,8 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       });
     });
 
+    forceBindCodeButtons();
+
     const optionsPanel = editor.Panels.getPanel("options");
     if (optionsPanel) {
       const optionsButtons = optionsPanel.get("buttons");
@@ -1075,11 +1220,22 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       if (!hasCustom) {
         (optionsButtons as any)?.add({
           id: "cms-open-code",
-          className: "fa fa-file-code-o",
+          className: "fa fa-file-code-o cms-open-code-btn",
+          label: "",
           command: "cms:open-code",
           togglable: false,
           attributes: { title: "Edit Code" },
         } as any);
+      }
+
+      const openCodeBtn = editor.Panels.getButton("options", "cms-open-code");
+      if (openCodeBtn?.set) {
+        openCodeBtn.set("className", "fa fa-file-code-o cms-open-code-btn");
+        openCodeBtn.set("label", "");
+        openCodeBtn.set("attributes", {
+          ...(openCodeBtn.get("attributes") || {}),
+          title: "Edit Code",
+        });
       }
 
       const hasToggleSide = optionsButtons?.some((btn: any) => btn.get("id") === "cms-toggle-side-panel");
@@ -1089,10 +1245,80 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           className: "fa fa-columns",
           command: "cms:toggle-side-panel",
           togglable: false,
-          attributes: { title: "Hide Side Panel" },
+          attributes: { title: "Show Side Panel" },
         } as any);
       }
+
+      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
+      if (toggleBtn?.set) {
+        toggleBtn.set("active", true);
+        toggleBtn.set("attributes", {
+          ...(toggleBtn.get("attributes") || {}),
+          title: "Show Side Panel",
+        });
+      }
     }
+
+    const syncInitialSidePanelState = () => {
+      applySidePanelVisibility(isSidePanelHidden);
+      forceBindCodeButtons();
+      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
+      if (toggleBtn?.set) {
+        toggleBtn.set("active", isSidePanelHidden);
+        toggleBtn.set("attributes", {
+          ...(toggleBtn.get("attributes") || {}),
+          title: isSidePanelHidden ? "Show Side Panel" : "Hide Side Panel",
+        });
+      }
+    };
+
+    const syncSidePanelFromViewButtons = () => {
+      const optionsButtons = editor.Panels.getPanel("options")?.get("buttons");
+      let hasActiveViewButton = false;
+
+      if (optionsButtons?.forEach) {
+        optionsButtons.forEach((btn: any) => {
+          const cmd = String(btn?.get?.("command") || "");
+          const active = Boolean(btn?.get?.("active"));
+          if (active && /^open-/.test(cmd) && cmd !== "open-code") {
+            hasActiveViewButton = true;
+          }
+        });
+      }
+
+      const shouldHide = !hasActiveViewButton;
+
+      if (shouldHide === isSidePanelHidden) return;
+
+      isSidePanelHidden = shouldHide;
+      applySidePanelVisibility(isSidePanelHidden);
+
+      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
+      if (toggleBtn?.set) {
+        toggleBtn.set("active", isSidePanelHidden);
+        toggleBtn.set("attributes", {
+          ...(toggleBtn.get("attributes") || {}),
+          title: isSidePanelHidden ? "Show Side Panel" : "Hide Side Panel",
+        });
+      }
+    };
+
+    const panelButtonClickHandler = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      const viewBtn = target?.closest?.(".gjs-pn-panel.gjs-pn-options .gjs-pn-btn");
+      if (!viewBtn) return;
+      requestAnimationFrame(syncSidePanelFromViewButtons);
+      setTimeout(syncSidePanelFromViewButtons, 0);
+    };
+
+    const editorContainerEl = editor.getContainer() as HTMLElement;
+    editorContainerEl.addEventListener("click", panelButtonClickHandler, true);
+
+    requestAnimationFrame(syncInitialSidePanelState);
+    setTimeout(syncInitialSidePanelState, 80);
+    editor.on("load", syncInitialSidePanelState);
+    editor.on("load", syncSidePanelFromViewButtons);
+    editor.on("load", collapseAllBlockCategories);
 
     const ensureUrlTraits = (component: any) => {
       if (!component) return;
@@ -1224,7 +1450,10 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     return () => {
       try {
+        editorContainerEl.removeEventListener("click", panelButtonClickHandler, true);
         editor.off("update", emit);
+        editor.off("load", syncSidePanelFromViewButtons);
+        editor.off("load", collapseAllBlockCategories);
         editor.destroy();
       } catch {
         // ignore destroy errors
@@ -1248,5 +1477,105 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
     lastEmittedRef.current = incoming;
   }, [value]);
 
-  return <div ref={hostRef} />;
+  return (
+    <div
+      className="cms-grapes-shell"
+      style={{
+        border: "5px solid #8b7b82",
+        borderRadius: "6px",
+        overflow: "hidden",
+      }}
+    >
+      <div ref={hostRef} />
+      <style jsx global>{`
+        .cms-grapes-shell .gjs-editor {
+          --cms-side-panel-width: 250px;
+          --gjs-left-width: 250px;
+        }
+
+        .cms-grapes-shell .gjs-cv-canvas {
+          right: var(--cms-side-panel-width);
+          transition: right 220ms ease, border-color 180ms ease;
+        }
+
+        .cms-grapes-shell .gjs-pn-views-container,
+        .cms-grapes-shell .gjs-pn-panel.gjs-pn-views {
+          transition: width 220ms ease, opacity 180ms ease;
+        }
+
+        .cms-grapes-shell .cms-open-code-btn {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          min-width: 30px;
+        }
+
+        .cms-grapes-shell .cms-open-code-btn::before {
+          content: "</>";
+          font-size: 12px;
+          line-height: 1;
+          font-weight: 700;
+          letter-spacing: -0.2px;
+        }
+
+        .cms-grapes-shell .gjs-pn-views-container {
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+
+        .cms-grapes-shell .gjs-block {
+          min-height: 112px;
+          padding: 10px 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .cms-grapes-shell .gjs-block .gjs-block__media {
+          min-height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 34px;
+          line-height: 1;
+          margin-bottom: 0;
+        }
+
+        .cms-grapes-shell .gjs-block .gjs-block__media svg {
+          width: 40px !important;
+          height: 40px !important;
+        }
+
+        .cms-grapes-shell .gjs-block .gjs-block-label {
+          margin-top: 0;
+          line-height: 1.2;
+          font-size: 13px;
+          text-align: center;
+          white-space: normal;
+          word-break: break-word;
+        }
+
+        .cms-grapes-shell .cms-side-panel-hidden .gjs-cv-canvas {
+          right: 0 !important;
+          border-right: 0 !important;
+        }
+
+        .cms-grapes-shell .cms-side-panel-hidden .gjs-pn-views-container,
+        .cms-grapes-shell .cms-side-panel-hidden .gjs-pn-panel.gjs-pn-views {
+          display: none !important;
+          width: 0 !important;
+          min-width: 0 !important;
+          max-width: 0 !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
+          border: 0 !important;
+          box-shadow: none !important;
+        }
+      `}</style>
+    </div>
+  );
 }
