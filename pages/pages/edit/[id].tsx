@@ -10,6 +10,7 @@ import AiAssistant from "@/components/AI/AiAssistant";
 import SelectPreset from "@/components/UI/SelectPreset";
 import dynamic from "next/dynamic";
 import { composeContentFromGrapes, extractGrapesParts } from "@/lib/grapesContent";
+import Tooltip from "@/components/UI/Tooltip";
 
 const GrapesEditor = dynamic(() => import("@/components/UI/GrapesEditor"), { ssr: false });
 
@@ -161,7 +162,10 @@ function EditPage() {
         <div className="card-body">
 
           <div className="mb-3">
-            <label className="form-label">Page Title</label>
+            <label className="form-label d-flex align-items-center">
+              Page Title
+              <Tooltip text="Main title of the page. This is used for generating the page slug and identifying the page." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -172,7 +176,10 @@ function EditPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Page Label</label>
+            <label className="form-label d-flex align-items-center">
+              Page Label
+              <Tooltip text="Internal name used inside the CMS to help identify the page. It does not appear on the website." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -184,7 +191,10 @@ function EditPage() {
 
           {Number(id) !== 1 && (
             <div className="mb-3">
-              <label className="form-label">Album (optional)</label>
+              <label className="form-label d-flex align-items-center">
+                Album (optional)
+                <Tooltip text="Attach this page to an album to group related pages like galleries or portfolios." />
+              </label>
               <select
                 className="form-select"
                 value={albumId}
@@ -204,7 +214,10 @@ function EditPage() {
           )}
           {Number(id) !== 1 && (
             <div className="mb-3">
-              <label className="form-label">Menu Group (optional)</label>
+              <label className="form-label d-flex align-items-center">
+                Menu Group (optional)
+                <Tooltip text="Select a menu group if you want this page to appear in the website navigation." />
+              </label>
               <select
                 className="form-select"
                 value={menuId}
@@ -221,8 +234,10 @@ function EditPage() {
           )}
 
           <div className="mb-3">
-            <label className="form-label">Layout Presets</label>
-
+            <label className="form-label d-flex align-items-center">
+              Layout Presets
+              <Tooltip text="Apply a predefined layout template to quickly structure your page content." />
+            </label>
             <SelectPreset
               onSelect={(html) => {
                 setTinyContent(html);
@@ -233,7 +248,10 @@ function EditPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Page Content</label>
+            <label className="form-label d-flex align-items-center">
+              Page Content
+              <Tooltip text="Edit the main body of the page. You can choose between the visual builder or rich text editor." />
+            </label>
             <div className="d-flex align-items-center gap-3 mb-2">
               <div className="form-check form-check-inline mb-0">
                 <input
@@ -244,8 +262,9 @@ function EditPage() {
                   checked={editorType === "tinymce"}
                   onChange={() => handleEditorTypeChange("tinymce")}
                 />
-                <label className="form-check-label" htmlFor="editorTinyMce">
+                <label className="form-check-label d-flex align-items-center" htmlFor="editorTinyMce">
                   TinyMCE
+                  <Tooltip text="Simple rich text editor for writing articles and formatted text." />
                 </label>
               </div>
               <div className="form-check form-check-inline mb-0">
@@ -257,8 +276,9 @@ function EditPage() {
                   checked={editorType === "grapesjs"}
                   onChange={() => handleEditorTypeChange("grapesjs")}
                 />
-                <label className="form-check-label" htmlFor="editorGrapes">
+                <label className="form-check-label d-flex align-items-center" htmlFor="editorGrapes">
                   GrapesJS
+                  <Tooltip text="Drag-and-drop page builder for designing complex layouts visually." />
                 </label>
               </div>
             </div>
@@ -288,8 +308,9 @@ function EditPage() {
               checked={visibility}
               onChange={() => setVisibility(!visibility)}
             />
-            <label className="form-check-label">
+            <label className="form-check-label d-flex align-items-center">
               {visibility ? "Published" : "Private"}
+              <Tooltip text="Published pages are visible to visitors. Private pages remain hidden." />
             </label>
           </div>
         </div>
@@ -300,7 +321,10 @@ function EditPage() {
         <div className="card-body">
 
           <div className="mb-3">
-            <label className="form-label">SEO Title</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Title
+              <Tooltip text="Title displayed in search engine results and browser tabs. Recommended length: 50–60 characters." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -310,7 +334,10 @@ function EditPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">SEO Description</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Description
+              <Tooltip text="Short summary of the page used by search engines. Recommended length: 150–160 characters." />
+            </label>
             <textarea
               rows={4}
               className="form-control"
@@ -320,7 +347,10 @@ function EditPage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">SEO Keywords</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Keywords
+              <Tooltip text="Optional keywords related to the page. Separate multiple keywords with commas." />
+            </label>
             <input
               type="text"
               className="form-control"

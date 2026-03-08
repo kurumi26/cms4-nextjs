@@ -5,6 +5,7 @@ import { BannerForm } from "@/schemas/banner";
 import { OptionItem, getOptions } from "@/services/optionService";
 import { createAlbum } from "@/services/albumService";
 import { toast } from "@/lib/toast";
+import Tooltip from "@/components/UI/Tooltip";
 
 function CreateAlbum() {
   const router = useRouter();
@@ -110,12 +111,16 @@ function CreateAlbum() {
    * ====================== */
   return (
     <div className="container">
-      <h3 className="mb-4">Create an Album</h3>
+      <h3 className="mb-4 d-flex align-items-center gap-2">
+        Create an Album
+        <Tooltip text="Create a new banner album containing multiple images that rotate as a slideshow." />
+      </h3>
 
       {/* Album Name */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Album Name <span className="text-danger">*</span>
+          <Tooltip text="Name used to identify this banner album inside the CMS." />
         </label>
         <input
           className="form-control"
@@ -127,8 +132,9 @@ function CreateAlbum() {
 
       {/* Transition In */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition In <span className="text-danger">*</span>
+          <Tooltip text="Animation used when a banner appears on screen." />
         </label>
         <select
           className="form-control"
@@ -146,8 +152,9 @@ function CreateAlbum() {
 
       {/* Transition Out */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition Out <span className="text-danger">*</span>
+          <Tooltip text="Animation used when the banner disappears before the next one shows." />
         </label>
         <select
           className="form-control"
@@ -165,8 +172,9 @@ function CreateAlbum() {
 
       {/* Duration */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition Duration (seconds) <span className="text-danger">*</span>
+          <Tooltip text="How long each banner stays visible before switching to the next." />
         </label>
         <input
           type="range"
@@ -181,8 +189,9 @@ function CreateAlbum() {
 
       {/* Upload Images */}
       <div className="mb-4">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Album Images <span className="text-danger">*</span>
+          <Tooltip text="Upload one or more images that will appear in this banner album slideshow." />
         </label>
         <button
           type="button"
@@ -190,6 +199,7 @@ function CreateAlbum() {
           onClick={() => document.getElementById("imageUpload")?.click()}
         >
           Upload Images
+          <Tooltip text="Select multiple images from your device to add to this banner album." />
         </button>
 
         <input
@@ -216,7 +226,10 @@ function CreateAlbum() {
 
                 <div className="card-body">
                   <div className="mb-2">
-                    <label className="form-label">Title</label>
+                    <label className="form-label d-flex align-items-center">
+                      Title
+                      <Tooltip text="Headline text displayed on top of the banner image." />
+                    </label>
                     <input
                       className="form-control"
                       value={banner.title || ""}
@@ -227,7 +240,10 @@ function CreateAlbum() {
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Description</label>
+                    <label className="form-label d-flex align-items-center">
+                      Description
+                      <Tooltip text="Optional supporting text displayed below the banner title." />
+                    </label>
                     <textarea
                       className="form-control"
                       value={banner.description || ""}
@@ -254,12 +270,14 @@ function CreateAlbum() {
       <div className="d-flex gap-2">
         <button className="btn btn-primary" onClick={handleSave}>
           Save Album
+          <Tooltip text="Save this album and its banners to the system." />
         </button>
         <button
           className="btn btn-outline-secondary"
           onClick={() => router.back()}
         >
           Cancel
+          <Tooltip text="Discard changes and return to the album list." />
         </button>
       </div>
     </div>

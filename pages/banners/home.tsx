@@ -9,6 +9,7 @@ import {
   updateAlbum,
 } from "@/services/albumService";
 import { axiosInstance } from "@/services/axios";
+import Tooltip from "@/components/UI/Tooltip";
 
 // Extend BannerForm to include order property
 interface BannerForm extends BaseBannerForm {
@@ -1020,15 +1021,24 @@ function HomeBanner() {
 
   return (
     <div className="container">
-      <h3 className="mb-4">Edit Home Banner</h3>
+      <h3 className="mb-4 d-flex align-items-center gap-2">
+        Edit Home Banner
+        <Tooltip text="Manage homepage banner images, text overlays, animations, and ordering." />
+      </h3>
 
       <div className="mb-3">
-        <label className="form-label">Album Name</label>
+        <label className="form-label d-flex align-items-center">
+          Album Name
+          <Tooltip text="This album stores all banners used on the homepage slider." />
+        </label>
         <input className="form-control" value="Home Banner" readOnly />
       </div>
 
       <div className="mb-3">
-        <label className="form-label">Transition In</label>
+        <label className="form-label d-flex align-items-center">
+          Transition In
+          <Tooltip text="Animation used when a banner enters the screen." />
+        </label>
         <select
           className="form-control"
           value={transitionIn}
@@ -1043,7 +1053,10 @@ function HomeBanner() {
       </div>
 
       <div className="mb-3">
-        <label className="form-label">Transition Out</label>
+        <label className="form-label d-flex align-items-center">
+          Transition Out
+          <Tooltip text="Animation used when a banner leaves the screen." />
+        </label>
         <select
           className="form-control"
           value={transitionOut}
@@ -1058,7 +1071,10 @@ function HomeBanner() {
       </div>
 
       <div className="mb-3">
-        <label className="form-label">Transition Duration (seconds)</label>
+        <label className="form-label d-flex align-items-center">
+          Transition Duration (seconds)
+          <Tooltip text="How long each banner stays visible before switching to the next." />
+        </label>
         <input
           type="range"
           className="form-range"
@@ -1072,7 +1088,10 @@ function HomeBanner() {
 
       {/* Banner Type */}
       <div className="mb-3">
-        <label className="form-label">Banner Type</label>
+        <label className="form-label d-flex align-items-center">
+          Banner Type
+          <Tooltip text="Currently only image banners are supported for the homepage slider." />
+        </label>
         <div className="form-check">
           <input
             type="radio"
@@ -1089,7 +1108,10 @@ function HomeBanner() {
 
       {/* Upload Images */}
       <div className="mb-4">
-        <label className="form-label">Banner Images</label>
+        <label className="form-label d-flex align-items-center">
+          Banner Images
+          <Tooltip text="Upload images to display in the homepage slider. You can reorder banners by dragging them." />
+        </label>
         <div className="d-flex gap-2 align-items-center justify-content-between flex-wrap">
           <button
             type="button"
@@ -1097,15 +1119,16 @@ function HomeBanner() {
             onClick={() => document.getElementById("imageUpload")?.click()}
           >
             Upload Images
+            <Tooltip text="Upload one or multiple images to add new banners." />
           </button>
 
           <button
             type="button"
             className="btn btn-outline-secondary"
             onClick={() => setShowPublicPreview((s) => !s)}
-            title="Toggle public homepage preview"
           >
             {showPublicPreview ? "Hide public view" : "Show public view"}
+            <Tooltip text="Preview how the homepage banner appears on the public website." />
           </button>
         </div>
 
@@ -1235,7 +1258,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Title</label>
+                  <label className="form-label d-flex align-items-center">
+                    Title
+                    <Tooltip text="Main headline displayed on top of the banner image." />
+                  </label>
                   <input
                     className="form-control"
                     value={banner.title || ""}
@@ -1246,7 +1272,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Title Font</label>
+                  <label className="form-label d-flex align-items-center">
+                    Title Font
+                    <Tooltip text="Choose the font style and size used for the banner title." />
+                  </label>
                   <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
                     <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
                       <select
@@ -1323,7 +1352,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Description</label>
+                  <label className="form-label d-flex align-items-center">
+                    Description
+                    <Tooltip text="Short supporting text displayed under the banner title." />
+                  </label>
                   <textarea
                     className="form-control"
                     value={banner.description || ""}
@@ -1334,7 +1366,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Description Font</label>
+                  <label className="form-label d-flex align-items-center">
+                    Description Font
+                    <Tooltip text="Font styling for the banner description text." />
+                  </label>
                   <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
                     <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
                       <select
@@ -1412,7 +1447,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Button Text</label>
+                  <label className="form-label d-flex align-items-center">
+                    Button Text
+                    <Tooltip text="Text displayed on the banner call-to-action button." />
+                  </label>
                   <input
                     className="form-control"
                     value={banner.button_text || ""}
@@ -1423,7 +1461,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Button Font</label>
+                  <label className="form-label d-flex align-items-center">
+                    Button Font
+                    <Tooltip text="Font styling used for the banner button label." />
+                  </label>
                   <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
                     <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
                       <select
@@ -1497,7 +1538,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">URL</label>
+                  <label className="form-label d-flex align-items-center">
+                    URL
+                    <Tooltip text="Destination link when the banner button is clicked." />
+                  </label>
                   <input
                     type="url"
                     className="form-control"
@@ -1509,7 +1553,10 @@ function HomeBanner() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Alt Text</label>
+                  <label className="form-label d-flex align-items-center">
+                    Alt Text
+                    <Tooltip text="Accessibility description of the image for screen readers and SEO." />
+                  </label>
                   <input
                     className="form-control"
                     value={banner.alt || ""}
@@ -1554,7 +1601,10 @@ function HomeBanner() {
                 <h5 className="card-title">Crop / Resize Banner Image</h5>
 
                 <div className="mb-3">
-                  <label className="form-label">Crop Area</label>
+                  <label className="form-label d-flex align-items-center">
+                    Crop Area
+                    <Tooltip text="Select the visible area of the banner image by dragging and resizing the crop box." />
+                  </label>
                   <div className="d-flex flex-wrap gap-2 mb-2">
                     <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetCropToFullImage}>
                       Full Image
@@ -1614,7 +1664,10 @@ function HomeBanner() {
 
                 {resizedPreview && (
                   <div className="mb-3">
-                    <label className="form-label">Cropped Preview</label>
+                    <label className="form-label d-flex align-items-center">
+                      Cropped Preview
+                      <Tooltip text="Preview of how the banner image will appear after cropping." />
+                    </label>
                     <div>
                       <img src={resizedPreview} alt="crop-preview" style={{maxWidth: '100%', maxHeight: 220, objectFit: 'contain', border: '1px solid #ddd'}} />
                     </div>
@@ -1655,6 +1708,7 @@ function HomeBanner() {
       <div className="d-flex gap-2">
         <button className="btn btn-primary" onClick={handleSave}>
           Update Album
+          <Tooltip text="Save all banner changes including text, images, order, and animation settings." />
         </button>
       </div>
     </div>

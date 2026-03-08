@@ -11,6 +11,7 @@ import AiAssistant from "@/components/AI/AiAssistant";
 import SelectPreset from "@/components/UI/SelectPreset";
 import dynamic from "next/dynamic";
 import { extractGrapesParts } from "@/lib/grapesContent";
+import Tooltip from "@/components/UI/Tooltip";
 
 const GrapesEditor = dynamic(() => import("@/components/UI/GrapesEditor"), { ssr: false });
 
@@ -132,7 +133,10 @@ export default function CreatePage() {
         <div className="card-body">
 
           <div className="mb-3">
-            <label className="form-label">Page Title</label>
+            <label className="form-label d-flex align-items-center">
+              Page Title
+              <Tooltip text="This will appear as the main heading of the page and in browser tabs." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -142,7 +146,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Page Label</label>
+            <label className="form-label d-flex align-items-center">
+              Page Label
+              <Tooltip text="Internal label used for identifying the page inside the CMS. It does not appear on the public website." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -152,7 +159,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Album (optional)</label>
+            <label className="form-label d-flex align-items-center">
+              Album (optional)
+              <Tooltip text="Attach this page to an album. Useful for grouping related pages like galleries, portfolios, or categories." />
+            </label>
             <select
               className="form-select"
               value={albumId}
@@ -170,7 +180,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Menu Group (optional)</label>
+            <label className="form-label d-flex align-items-center">
+              Menu Group (optional)
+              <Tooltip text="Assign this page to a menu group so it can appear in your website navigation." />
+            </label>
             <select
               className="form-select"
               value={menuId}
@@ -186,8 +199,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Layout Presets</label>
-
+            <label className="form-label d-flex align-items-center">
+              Layout Presets
+              <Tooltip text="Choose a pre-designed layout template to quickly build your page structure." />
+            </label>
             <SelectPreset
               onSelect={(html) => {
                 setTinyContent(html);
@@ -198,7 +213,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Page Content</label>
+            <label className="form-label d-flex align-items-center">
+              Page Content
+              <Tooltip text="Create and edit the main content of the page. You can use either the visual builder or the rich text editor." />
+            </label>
             <div className="d-flex align-items-center gap-3 mb-2">
               <div className="form-check form-check-inline mb-0">
                 <input
@@ -211,6 +229,7 @@ export default function CreatePage() {
                 />
                 <label className="form-check-label" htmlFor="editorTinyMce">
                   TinyMCE
+                  <Tooltip text="A simple rich text editor similar to Microsoft Word. Best for writing articles or basic content." />
                 </label>
               </div>
               <div className="form-check form-check-inline mb-0">
@@ -224,6 +243,7 @@ export default function CreatePage() {
                 />
                 <label className="form-check-label" htmlFor="editorGrapes">
                   GrapesJS
+                  <Tooltip text="A drag-and-drop page builder for creating complex layouts and visual designs." />
                 </label>
               </div>
             </div>
@@ -253,8 +273,9 @@ export default function CreatePage() {
               checked={visibility}
               onChange={() => setVisibility(!visibility)}
             />
-            <label className="form-check-label">
+            <label className="form-check-label d-flex align-items-center">
               {visibility ? "Published" : "Private"}
+              <Tooltip text="Published pages are visible on the website. Private pages are hidden from visitors." />
             </label>
           </div>
         </div>
@@ -265,7 +286,10 @@ export default function CreatePage() {
         <div className="card-body">
 
           <div className="mb-3">
-            <label className="form-label">SEO Title</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Title
+              <Tooltip text="The title shown in search engine results and browser tabs. Recommended length: 50–60 characters." />
+            </label>
             <input
               type="text"
               className="form-control"
@@ -275,7 +299,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">SEO Description</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Description
+              <Tooltip text="Short summary of the page used by search engines. Recommended length: 150–160 characters." />
+            </label>
             <textarea
               rows={4}
               className="form-control"
@@ -285,7 +312,10 @@ export default function CreatePage() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">SEO Keywords</label>
+            <label className="form-label d-flex align-items-center">
+              SEO Keywords
+              <Tooltip text="Optional keywords related to the page content. Separate multiple keywords with commas." />
+            </label>
             <input
               type="text"
               className="form-control"

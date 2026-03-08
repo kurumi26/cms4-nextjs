@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuditRow, getAuditTrails } from "@/services/auditService";
+import Tooltip from "@/components/UI/Tooltip";
 
 type AuditEventFilter = "all" | "created" | "updated" | "deleted" | "restored";
 
@@ -195,8 +196,14 @@ export default function RecentActivity() {
               <i className="fas fa-clock-rotate-left" />
             </span>
             <div>
-              <h4 className="mb-0 cms-panel__title">Recent Activity</h4>
-              <div className="text-muted small">Latest changes across the CMS</div>
+              <h4 className="mb-0 cms-panel__title d-flex align-items-center gap-2">
+                Recent Activity
+                <Tooltip text="Shows the latest actions performed in the CMS such as creating, updating, deleting, or restoring records." />
+              </h4>
+              <div className="text-muted small d-flex align-items-center gap-1">
+                Latest changes across the CMS
+                <Tooltip text="Displays the most recent content and system changes performed by users." />
+              </div>
             </div>
           </div>
 
@@ -211,6 +218,7 @@ export default function RecentActivity() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <Tooltip text="Search activity by user name, content type, or event." />
             </div>
 
             <select
@@ -226,6 +234,7 @@ export default function RecentActivity() {
               <option value="deleted">Deleted</option>
               <option value="restored">Restored</option>
             </select>
+            <Tooltip text="Filter activity by event type such as created, updated, deleted, or restored." />
 
             <button
               type="button"
@@ -241,6 +250,7 @@ export default function RecentActivity() {
               <i className="fas fa-table-list me-2" />
               Audit Logs
             </Link>
+            <Tooltip text="Open the full audit log history with detailed records." />
           </div>
         </div>
       </div>

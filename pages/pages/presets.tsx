@@ -1,5 +1,6 @@
 "use client";
 
+import Tooltip from "@/components/UI/Tooltip";
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
@@ -344,7 +345,10 @@ function PresetPage() {
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="mb-0">Layout Presets</h3>
+        <h3 className="mb-0 d-flex align-items-center gap-2">
+          Layout Presets
+          <Tooltip text="Reusable page layout templates that can be applied when creating or editing pages." />
+        </h3>
       </div>
       <SearchBar
         placeholder="Search presets..."
@@ -429,7 +433,10 @@ function PresetPage() {
 
             <div className="modal-body">
               <div className="mb-3">
-                <label>Name</label>
+                <label className="form-label d-flex align-items-center">
+                  Name
+                  <Tooltip text="Name of the layout preset used to identify it when selecting templates." />
+                </label>
                 <input
                   className="form-control"
                   value={form.name}
@@ -440,7 +447,10 @@ function PresetPage() {
               </div>
 
               <div className="mb-3">
-                <label>Category</label>
+                <label className="form-label d-flex align-items-center">
+                  Category
+                  <Tooltip text="Optional grouping for presets such as Landing Pages, Hero Sections, or Contact Pages." />
+                </label>
                 <input
                   className="form-control"
                   value={form.category}
@@ -451,7 +461,10 @@ function PresetPage() {
               </div>
 
               <div className="mb-3">
-                <label className="form-label">Thumbnail Image</label>
+                <label className="form-label d-flex align-items-center">
+                  Thumbnail Image
+                  <Tooltip text="Preview image displayed when selecting this preset. Recommended size: around 600x400px." />
+                </label>
                 <input
                   type="file"
                   className="form-control"
@@ -471,7 +484,10 @@ function PresetPage() {
                 {/* New Upload Preview */}
                 {thumbnailPreview && (
                   <div className="mb-3">
-                    <label className="form-label">Preview</label>
+                    <label className="form-label d-flex align-items-center">
+                      Preview
+                      <Tooltip text="Preview of the uploaded thumbnail image." />
+                    </label>
                     <img
                       src={thumbnailPreview}
                       className="img-fluid rounded border"
@@ -482,7 +498,10 @@ function PresetPage() {
                 {/* Current Thumbnail (Edit Mode) */}
                   {isEditMode && !form.thumbnail && (
                     <div className="mb-3">
-                      <label className="form-label">Current Thumbnail</label>
+                      <label className="form-label d-flex align-items-center">
+                        Current Thumbnail
+                        <Tooltip text="Existing thumbnail image currently assigned to this preset." />
+                      </label>
                       <img
                         src={`${process.env.NEXT_PUBLIC_API_URL}/storage/${
                           presets.find(p => p.id === editingId)?.thumbnail
@@ -495,7 +514,10 @@ function PresetPage() {
               </div>
 
               <div className="mb-3">
-                <label>Content</label>
+                <label className="form-label d-flex align-items-center">
+                  Content
+                  <Tooltip text="HTML layout structure that will be inserted into the page editor when this preset is selected." />
+                </label>
                 <textarea
                   className="form-control"
                   rows={6}
@@ -515,8 +537,9 @@ function PresetPage() {
                     setForm({ ...form, is_active: e.target.checked })
                   }
                 />
-                <label className="form-check-label">
+                <label className="form-check-label d-flex align-items-center">
                   Active
+                  <Tooltip text="Only active presets will appear in the layout preset selector when creating pages." />
                 </label>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { websiteService } from "@/services/websiteService";
 import { getUsers } from "@/services/userService";
 import { getPages } from "@/services/pageService";
 import { getArticles } from "@/services/articleService";
+import Tooltip from "@/components/UI/Tooltip";
 
 type WebsiteSummaryStats = {
   pages?: number;
@@ -366,10 +367,14 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
             <span className="cms-panel__badge">
               <i className="fas fa-chart-pie" />
             </span>
-            <h4 className="mb-0 cms-panel__title">Website Summary</h4>
+            <h4 className="mb-0 cms-panel__title d-flex align-items-center gap-2">
+              Website Summary
+              <Tooltip text="Overview of your website setup status, content statistics, and quick management actions." />
+            </h4>
           </div>
           <Link href="/settings/website" className="text-muted small text-decoration-none">
             Manage
+            <Tooltip text="Open website settings such as company info, SEO, analytics, and branding." />
           </Link>
         </div>
       </div>
@@ -377,7 +382,10 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
       <div className="list-group list-group-flush">
         <div className="list-group-item py-3">
           <div className="d-flex align-items-center justify-content-between mb-2">
-            <strong className="fs-6 text-uppercase text-muted">Setup</strong>
+            <strong className="fs-6 text-uppercase text-muted d-flex align-items-center gap-2">
+              Setup
+              <Tooltip text="Tracks which essential website settings have already been configured." />
+            </strong>
             <span className="text-muted small">{isBusy ? "Loading…" : `${checklist.done}/${checklist.total} complete`}</span>
           </div>
 
@@ -403,9 +411,13 @@ export default function WebsiteSummary({ stats, loading = false }: WebsiteSummar
 
         <div className="list-group-item py-3">
           <div className="d-flex align-items-center justify-content-between mb-2">
-            <strong className="fs-6 text-uppercase text-muted">Content</strong>
+            <strong className="fs-6 text-uppercase text-muted d-flex align-items-center gap-2">
+              Content
+              <Tooltip text="Overview of your website content including pages, banner albums, news, and users." />
+            </strong>
             <Link href="/pages" className="text-muted small text-decoration-none">
               View all
+              <Tooltip text="Open the full content management section." />
             </Link>
           </div>
 

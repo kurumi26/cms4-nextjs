@@ -6,6 +6,7 @@ import { OptionItem, getOptions } from "@/services/optionService";
 import { getAlbum, updateAlbum } from "@/services/albumService";
 import { toast } from "@/lib/toast";
 import { axiosInstance } from "@/services/axios";
+import Tooltip from "@/components/UI/Tooltip";
 
 const FONT_FAMILY_OPTIONS: Array<{ label: string; value: string }> = [
   { label: "Default", value: "" },
@@ -596,12 +597,15 @@ function EditAlbum() {
 
   return (
     <div className="container">
-      <h3 className="mb-4">Edit Album</h3>
-
+      <h3 className="mb-4 d-flex align-items-center gap-2">
+        Edit Album
+        <Tooltip text="Modify banner images, text overlays, fonts, and animations for this banner album." />
+      </h3>
       {/* Album Name */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Album Name <span className="text-danger">*</span>
+          <Tooltip text="Name used to identify this banner album in the CMS." />
         </label>
         <input
           className="form-control"
@@ -612,8 +616,9 @@ function EditAlbum() {
 
       {/* Transition In */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition In <span className="text-danger">*</span>
+          <Tooltip text="Animation used when a banner appears in the slideshow." />
         </label>
         <select
           className="form-control"
@@ -631,8 +636,9 @@ function EditAlbum() {
 
       {/* Transition Out */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition Out <span className="text-danger">*</span>
+          <Tooltip text="Animation used when the banner disappears before the next one shows." />
         </label>
         <select
           className="form-control"
@@ -650,8 +656,9 @@ function EditAlbum() {
 
       {/* Duration */}
       <div className="mb-3">
-        <label className="form-label">
+        <label className="form-label d-flex align-items-center">
           Transition Duration (seconds)
+          <Tooltip text="How long each banner remains visible before switching." />
         </label>
         <input
           type="range"
@@ -666,13 +673,17 @@ function EditAlbum() {
 
       {/* Upload Images */}
       <div className="mb-4">
-        <label className="form-label">Album Images</label>
+        <label className="form-label d-flex align-items-center">
+          Album Images
+          <Tooltip text="Upload additional images to this banner album slideshow." />
+        </label>
         <button
           type="button"
           className="btn btn-outline-secondary d-block"
           onClick={() => document.getElementById("imageUpload")?.click()}
         >
           Upload Images
+          <Tooltip text="Add new images to the banner album." />
         </button>
 
         <input
@@ -745,7 +756,10 @@ function EditAlbum() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Title</label>
+                  <label className="form-label d-flex align-items-center">
+                    Title
+                    <Tooltip text="Main headline displayed over the banner image." />
+                  </label>
                   <input
                     className="form-control"
                     value={banner.title || ""}
@@ -756,7 +770,10 @@ function EditAlbum() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Title Font</label>
+                  <label className="form-label d-flex align-items-center">
+                    Title Font
+                    <Tooltip text="Choose the font style, size, and weight used for the banner title." />
+                  </label>
                   <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
                     <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
                       <select
@@ -828,7 +845,10 @@ function EditAlbum() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Description</label>
+                  <label className="form-label d-flex align-items-center">
+                    Description
+                    <Tooltip text="Supporting text displayed under the banner title." />
+                  </label>
                   <textarea
                     className="form-control"
                     value={banner.description || ""}
@@ -839,7 +859,10 @@ function EditAlbum() {
                 </div>
 
                 <div className="mb-2">
-                  <label className="form-label">Description Font</label>
+                  <label className="form-label d-flex align-items-center">
+                    Description Font
+                    <Tooltip text="Font style settings used for the banner description text." />
+                  </label>
                   <div className="d-flex gap-2 align-items-center flex-nowrap" style={{ width: "100%" }}>
                     <div className="position-relative" style={{ flex: "1 1 auto", minWidth: 0 }}>
                       <select
@@ -913,6 +936,7 @@ function EditAlbum() {
                 <button
                   className="btn btn-outline-danger btn-sm mt-2"
                   onClick={() => handleRemoveBanner(index)}
+                  title="Remove this banner from the album"
                 >
                   Remove
                 </button>
@@ -921,6 +945,7 @@ function EditAlbum() {
                   onClick={() => openEditModal(index)}
                 >
                   <i className="fa fa-edit"></i> Edit
+                  <Tooltip text="Crop or resize the banner image." />
                 </button>
               </div>
             </div>
@@ -934,9 +959,15 @@ function EditAlbum() {
           <div className="d-flex align-items-center justify-content-center h-100">
             <div className="card" style={{ width: 640 }}>
               <div className="card-body">
-                <h5 className="card-title">Crop / Resize Banner Image</h5>
+                <h5 className="card-title d-flex align-items-center gap-2">
+                  Crop / Resize Banner Image
+                  <Tooltip text="Adjust the visible area of the banner image before saving." />
+                </h5>
                 <div className="mb-3">
-                  <label className="form-label">Crop Area</label>
+                  <label className="form-label d-flex align-items-center">
+                    Crop Area
+                    <Tooltip text="Drag the box to select the portion of the image that will be visible in the banner." />
+                  </label>
                   <div className="d-flex flex-wrap gap-2 mb-2">
                     <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetCropToFullImage}>
                       Full Image
@@ -992,7 +1023,10 @@ function EditAlbum() {
 
                 {cropPreview && (
                   <div className="mb-3">
-                    <label className="form-label">Cropped Preview</label>
+                    <label className="form-label d-flex align-items-center">
+                      Cropped Preview
+                      <Tooltip text="Preview of the banner after applying the crop." />
+                    </label>
                     <div>
                       <img src={cropPreview} alt="crop-preview" style={{ maxWidth: '100%', maxHeight: 220, objectFit: 'contain', border: '1px solid #ddd' }} />
                     </div>
@@ -1015,12 +1049,14 @@ function EditAlbum() {
       <div className="d-flex gap-2">
         <button className="btn btn-primary" onClick={handleSave}>
           Update Album
+          <Tooltip text="Save all changes made to this banner album." />
         </button>
         <button
           className="btn btn-outline-secondary"
           onClick={() => router.back()}
         >
           Cancel
+          <Tooltip text="Discard changes and return to the album list." />
         </button>
       </div>
     </div>
