@@ -1,4 +1,3 @@
-// types/filemanager.d.ts
 declare module '@ray-solutions/react-file-manager/dist/react-file-manager.es.js' {
   import { FC, ReactNode } from 'react';
 
@@ -26,7 +25,7 @@ declare module '@ray-solutions/react-file-manager/dist/react-file-manager.es.js'
   export interface FileManagerProps {
     files: FileItem[];
     initialPath?: string;
-    filePreviewPath?: string;   // ✅ add this
+    filePreviewPath?: string;        // ✅ add this
     onFolderChange?: (path: unknown) => void;
     onCreateFolder?: (folderName: string, parentPath: unknown) => void;
     onFileUpload?: (files: File[], path: string) => void;
@@ -35,6 +34,11 @@ declare module '@ray-solutions/react-file-manager/dist/react-file-manager.es.js'
     permissions?: Permission[];
     filePreviewComponent?: (file: FileItem) => ReactNode;
   }
-  
+
   export const FileManager: FC<FileManagerProps>;
+}
+
+declare module '@ray-solutions/react-file-manager/dist/react-file-manager.css' {
+  const content: string;
+  export default content;
 }
