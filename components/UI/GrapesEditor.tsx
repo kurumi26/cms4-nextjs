@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import grapesjs from "grapesjs";
 import grapesjsPresetWebpage from "grapesjs-preset-webpage";
 import grapesjsBlocksBasic from "grapesjs-blocks-basic";
 import grapesjsPluginForms from "grapesjs-plugin-forms";
+import {
+  cmsStudioCanvasCss,
+  configureStudioCategories,
+  registerAdvancedCmsBlocks,
+  resolveCmsBlockMedia,
+} from "./grapesStudio";
 import "codemirror/mode/xml/xml";
 import "codemirror/mode/javascript/javascript";
 import "codemirror/mode/css/css";
@@ -51,7 +57,15 @@ const registerCmsBlocks = (editor: any) => {
 
   const add = (id: string, config: any) => {
     if (bm.get(id)) return;
-    bm.add(id, config);
+    const nextAttributes = { ...(config?.attributes || {}) };
+    const iconClass = nextAttributes.class;
+    delete nextAttributes.class;
+
+    bm.add(id, {
+      ...config,
+      attributes: Object.keys(nextAttributes).length ? nextAttributes : undefined,
+      media: config?.media || resolveCmsBlockMedia(iconClass),
+    });
   };
 
   add("cms-hero", {
@@ -514,24 +528,60 @@ const registerCmsBlocks = (editor: any) => {
   });
 };
 
+const DEFAULT_STUDIO_MARKUP = `
+  <main style="min-height:100vh;padding:72px 24px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);color:#0f172a;">
+    <section style="max-width:980px;margin:0 auto;padding:36px;border-radius:32px;background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 24px 60px rgba(15,23,42,.08);">
+      <span style="display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">CMS Studio</span>
+      <h1 style="margin:18px 0 12px;font-size:52px;line-height:1.04;max-width:12ch;">Start with a polished page block.</h1>
+      <p style="margin:0;max-width:62ch;font-size:18px;line-height:1.8;color:#64748b;">Open the block library and drag in page starters, hero sections, testimonials, service grids, forms, pricing tables, and media layouts.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:28px;">
+        <div style="padding:18px;border-radius:22px;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800;">Page starters</div><div style="margin-top:8px;font-size:20px;font-weight:800;">Drop in a full starter layout.</div></div>
+        <div style="padding:18px;border-radius:22px;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800;">Responsive preview</div><div style="margin-top:8px;font-size:20px;font-weight:800;">Switch between desktop, tablet, and mobile.</div></div>
+        <div style="padding:18px;border-radius:22px;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:800;">Custom code</div><div style="margin-top:8px;font-size:20px;font-weight:800;">Fine-tune HTML, CSS, and JS when needed.</div></div>
+      </div>
+    </section>
+  </main>
+`;
+
 export default function GrapesEditor({ value = "", onChange, height = 800 }: GrapesEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
   const lastEmittedRef = useRef<string>("");
   const jsRef = useRef<string>("");
+  const leftBlocksRef = useRef<HTMLDivElement | null>(null);
+  const leftLayersRef = useRef<HTMLDivElement | null>(null);
+  const rightStylesRef = useRef<HTMLDivElement | null>(null);
+  const rightTraitsRef = useRef<HTMLDivElement | null>(null);
+  const sidebarRefreshTimeoutRef = useRef<number | null>(null);
+  const [activeLeftPanel, setActiveLeftPanel] = useState<"blocks" | "layers">("blocks");
+  const [activeRightPanel, setActiveRightPanel] = useState<"styles" | "settings">("styles");
+  const [isLeftSidebarHidden, setIsLeftSidebarHidden] = useState(false);
+  const [isRightSidebarHidden, setIsRightSidebarHidden] = useState(false);
 
   useEffect(() => {
     if (!hostRef.current || editorRef.current) return;
 
     const { body, css, js } = extractContentParts(value);
+    const previewFrameHeight = `${Math.max(560, height - 120)}px`;
     jsRef.current = js;
 
     const editor = grapesjs.init({
       container: hostRef.current,
       fromElement: false,
       height: `${height}px`,
+      noticeOnUnload: false,
       storageManager: false,
       plugins: [grapesjsPresetWebpage, grapesjsBlocksBasic, grapesjsPluginForms],
+      deviceManager: {
+        devices: [
+          { id: "desktop", name: "Desktop", width: "", height: previewFrameHeight, minHeight: previewFrameHeight },
+          { id: "tablet", name: "Tablet", width: "834px", widthMedia: "992px", height: previewFrameHeight, minHeight: previewFrameHeight },
+          { id: "mobile", name: "Mobile", width: "390px", widthMedia: "480px", height: previewFrameHeight, minHeight: previewFrameHeight },
+        ],
+      },
+      canvas: {
+        styles: [cmsStudioCanvasCss],
+      },
       assetManager: {
         upload: false,
         uploadFile: async (event: any) => {
@@ -598,39 +648,50 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
         },
       },
       selectorManager: { componentFirst: true },
-      components: body || "<div>Start building your page...</div>",
+      components: body || DEFAULT_STUDIO_MARKUP,
       style: css,
     });
 
     registerCmsBlocks(editor);
+    registerAdvancedCmsBlocks(editor);
 
-    const collapseAllBlockCategories = () => {
+    const syncBlockCategories = () => {
       try {
-        const categories = editor.BlockManager?.getCategories?.();
-        if (!categories) return;
+        configureStudioCategories(editor);
 
-        const closeCategory = (category: any) => {
-          category?.set?.("open", false);
-        };
-
-        if (typeof categories.each === "function") {
-          categories.each(closeCategory);
-        } else if (typeof categories.forEach === "function") {
-          categories.forEach(closeCategory);
-        }
-
-        const container = editor.getContainer() as HTMLElement;
-        container
-          ?.querySelectorAll?.(".gjs-block-category.gjs-open")
-          ?.forEach((el) => el.classList.remove("gjs-open"));
+        const blockRoot = leftBlocksRef.current || (editor.getContainer() as HTMLElement);
+        blockRoot?.querySelectorAll?.(".gjs-block-category")?.forEach((el) => {
+          el.classList.remove("gjs-open");
+        });
       } catch {
         // ignore category collapse sync errors
       }
     };
 
-    collapseAllBlockCategories();
-    requestAnimationFrame(collapseAllBlockCategories);
-    setTimeout(collapseAllBlockCategories, 120);
+    const mountStudioPanels = () => {
+      const isEditorReady = Boolean(editor.getModel?.()?.get?.("ready"));
+      const renderInto = (mountPoint: HTMLDivElement | null, nextView?: HTMLElement) => {
+        if (!mountPoint || !nextView) return;
+        mountPoint.replaceChildren(nextView);
+      };
+
+      const safeRender = (renderer: () => HTMLElement | undefined) => {
+        try {
+          return renderer();
+        } catch {
+          return undefined;
+        }
+      };
+
+      renderInto(leftBlocksRef.current, safeRender(() => editor.BlockManager.render()));
+      renderInto(leftLayersRef.current, isEditorReady ? safeRender(() => editor.LayerManager.render()) : undefined);
+      renderInto(rightStylesRef.current, safeRender(() => editor.StyleManager.render()));
+      renderInto(rightTraitsRef.current, safeRender(() => editor.TraitManager.render()));
+    };
+
+    syncBlockCategories();
+    requestAnimationFrame(syncBlockCategories);
+    setTimeout(syncBlockCategories, 120);
 
     const buildContent = (ed: any) => {
       const html = ed.getHtml() || "";
@@ -1087,11 +1148,7 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       });
     }
 
-    let isSidePanelHidden = true;
-    let sidePanelWidth = 250;
-    const minSidePanelWidth = 250;
-    const applySidePanelVisibility = (hidden: boolean) => {
-      const dividerColor = "rgba(148, 163, 184, 0.55)";
+    const hideLegacyViewsUi = () => {
       const root = editor.getContainer() as HTMLElement;
       const editorRoot = (root.classList.contains("gjs-editor")
         ? root
@@ -1101,96 +1158,80 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       const optionsTopPanel = root.querySelector(".gjs-pn-panel.gjs-pn-options") as HTMLElement | null;
       const canvas = root.querySelector(".gjs-cv-canvas") as HTMLElement | null;
 
-      if (viewsContainer) {
-        const measured = Math.round(viewsContainer.getBoundingClientRect().width);
-        if (!sidePanelWidth && measured > 0) {
-          sidePanelWidth = Math.max(minSidePanelWidth, measured);
-        }
-        viewsContainer.style.transition = "width 220ms ease, opacity 180ms ease";
-        viewsContainer.style.overflowX = "hidden";
-        viewsContainer.style.overflowY = hidden ? "hidden" : "auto";
-      }
-      if (viewsPanel) {
-        viewsPanel.style.transition = "opacity 180ms ease";
-      }
+      root.style.setProperty("--cms-side-panel-width", "0px");
+      root.style.setProperty("--gjs-left-width", "0px");
+      editorRoot?.style.setProperty("--cms-side-panel-width", "0px");
+      editorRoot?.style.setProperty("--gjs-left-width", "0px");
+
+      [viewsContainer, viewsPanel].forEach((panel) => {
+        if (!panel) return;
+        panel.style.display = "none";
+        panel.style.width = "0";
+        panel.style.minWidth = "0";
+        panel.style.maxWidth = "0";
+        panel.style.opacity = "0";
+        panel.style.visibility = "hidden";
+        panel.style.pointerEvents = "none";
+        panel.style.overflow = "hidden";
+        panel.style.border = "0";
+        panel.style.boxShadow = "none";
+      });
+
       if (optionsTopPanel) {
-        optionsTopPanel.style.transition = "right 220ms ease";
-      }
-      if (canvas) {
-        canvas.style.transition = "right 220ms ease, border-color 180ms ease";
+        optionsTopPanel.style.left = "0";
+        optionsTopPanel.style.right = "0";
+        optionsTopPanel.style.justifyContent = "flex-start";
       }
 
-      const expandedWidth = Math.max(minSidePanelWidth, sidePanelWidth || 250);
-      const activeWidth = hidden ? 0 : expandedWidth;
-      root.style.setProperty("--cms-side-panel-width", `${activeWidth}px`);
-      root.style.setProperty("--gjs-left-width", `${activeWidth}px`);
-      root.classList.toggle("cms-side-panel-hidden", hidden);
-      editorRoot?.style.setProperty("--cms-side-panel-width", `${activeWidth}px`);
-      editorRoot?.style.setProperty("--gjs-left-width", `${activeWidth}px`);
-      editorRoot?.classList.toggle("cms-side-panel-hidden", hidden);
-
-      if (viewsContainer) {
-        viewsContainer.style.width = `${activeWidth}px`;
-        viewsContainer.style.minWidth = `${activeWidth}px`;
-        viewsContainer.style.flex = `0 0 ${activeWidth}px`;
-        viewsContainer.style.opacity = hidden ? "0" : "1";
-        viewsContainer.style.pointerEvents = hidden ? "none" : "";
-        viewsContainer.style.display = hidden ? "none" : "";
-        viewsContainer.style.overflowX = "hidden";
-        viewsContainer.style.overflowY = hidden ? "hidden" : "auto";
-        viewsContainer.style.borderLeft = hidden ? "0" : `1px solid ${dividerColor}`;
-        viewsContainer.style.boxShadow = hidden ? "none" : `inset 1px 0 0 ${dividerColor}`;
-      }
-      if (viewsPanel) {
-        viewsPanel.style.opacity = hidden ? "0" : "1";
-        viewsPanel.style.pointerEvents = hidden ? "none" : "";
-        viewsPanel.style.display = hidden ? "none" : "";
-        viewsPanel.style.width = `${activeWidth}px`;
-        viewsPanel.style.minWidth = `${activeWidth}px`;
-        viewsPanel.style.maxWidth = `${activeWidth}px`;
-        viewsPanel.style.visibility = hidden ? "hidden" : "visible";
-      }
-      if (optionsTopPanel) {
-        optionsTopPanel.style.right = `${activeWidth}px`;
-      }
       if (canvas) {
-        canvas.style.right = `${activeWidth}px`;
-        canvas.style.borderRight = hidden ? "0" : `1px solid ${dividerColor}`;
+        canvas.style.right = "0";
+        canvas.style.borderRight = "0";
         canvas.style.width = "";
       }
+    };
 
-      const allViewsContainers = root.querySelectorAll(".gjs-pn-views-container");
-      const allViewsPanels = root.querySelectorAll(".gjs-pn-panel.gjs-pn-views");
-      allViewsContainers.forEach((panel) => {
-        const el = panel as HTMLElement;
-        el.style.display = hidden ? "none" : "";
-        el.style.width = `${activeWidth}px`;
-        el.style.minWidth = `${activeWidth}px`;
-        el.style.maxWidth = `${activeWidth}px`;
-        el.style.visibility = hidden ? "hidden" : "visible";
-      });
-      allViewsPanels.forEach((panel) => {
-        const el = panel as HTMLElement;
-        el.style.display = hidden ? "none" : "";
-        el.style.width = `${activeWidth}px`;
-        el.style.minWidth = `${activeWidth}px`;
-        el.style.maxWidth = `${activeWidth}px`;
-        el.style.visibility = hidden ? "hidden" : "visible";
+    const deviceButtons = [
+      {
+        id: "cms-device-desktop",
+        command: "cms:set-device-desktop",
+        device: "Desktop",
+        className: "fa fa-desktop cms-device-btn",
+        title: "Desktop preview",
+      },
+      {
+        id: "cms-device-tablet",
+        command: "cms:set-device-tablet",
+        device: "Tablet",
+        className: "fa fa-tablet cms-device-btn",
+        title: "Tablet preview",
+      },
+      {
+        id: "cms-device-mobile",
+        command: "cms:set-device-mobile",
+        device: "Mobile",
+        className: "fa fa-mobile cms-device-btn",
+        title: "Mobile preview",
+      },
+    ];
+
+    const syncDeviceButtons = () => {
+      const currentDevice = String(editor.getDevice?.() || "Desktop");
+      deviceButtons.forEach(({ id, device }) => {
+        const button = editor.Panels.getButton("options", id);
+        if (button?.set) {
+          button.set("active", currentDevice === device);
+        }
       });
     };
 
-    editor.Commands.add("cms:toggle-side-panel", {
-      run(ed: any, sender: any) {
-        isSidePanelHidden = !isSidePanelHidden;
-        applySidePanelVisibility(isSidePanelHidden);
-        if (sender?.set) {
-          sender.set("active", isSidePanelHidden);
-          sender.set("attributes", {
-            ...(sender.get("attributes") || {}),
-            title: isSidePanelHidden ? "Show Side Panel" : "Hide Side Panel",
-          });
-        }
-      },
+    deviceButtons.forEach(({ command, device }) => {
+      if (editor.Commands.has(command)) return;
+      editor.Commands.add(command, {
+        run(ed: any) {
+          ed.setDevice(device);
+          syncDeviceButtons();
+        },
+      });
     });
 
     const panels = editor.Panels.getPanels();
@@ -1213,19 +1254,29 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
     const optionsPanel = editor.Panels.getPanel("options");
     if (optionsPanel) {
       const optionsButtons = optionsPanel.get("buttons");
-      const hasCustom = optionsButtons?.some((btn: any) => btn.get("id") === "cms-open-code");
-      if (!hasCustom) {
-        (optionsButtons as any)?.add({
-          id: "cms-open-code",
-          className: "fa fa-file-code-o cms-open-code-btn",
-          label: "",
-          command: "cms:open-code",
-          togglable: false,
-          attributes: { title: "Edit Code" },
-        } as any);
-      }
 
-      const openCodeBtn = editor.Panels.getButton("options", "cms-open-code");
+      ["cms-open-code", "cms-toggle-side-panel", "cms-device-desktop", "cms-device-tablet", "cms-device-mobile"].forEach((id) => {
+        const button = editor.Panels.getButton("options", id);
+        if (!button) return;
+        try {
+          optionsButtons?.remove?.(button);
+        } catch {
+          button.collection?.remove?.(button);
+        }
+      });
+
+      [...deviceButtons].reverse().forEach(({ id, command, className, title }) => {
+        (optionsButtons as any)?.add({
+          id,
+          className,
+          label: "",
+          command,
+          togglable: false,
+          attributes: { title },
+        } as any, { at: 0 });
+      });
+
+      const openCodeBtn = editor.Panels.getButton("options", "open-code");
       if (openCodeBtn?.set) {
         openCodeBtn.set("className", "fa fa-file-code-o cms-open-code-btn");
         openCodeBtn.set("label", "");
@@ -1235,87 +1286,49 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
         });
       }
 
-      const hasToggleSide = optionsButtons?.some((btn: any) => btn.get("id") === "cms-toggle-side-panel");
-      if (!hasToggleSide) {
-        (optionsButtons as any)?.add({
-          id: "cms-toggle-side-panel",
-          className: "fa fa-columns",
-          command: "cms:toggle-side-panel",
-          togglable: false,
-          attributes: { title: "Show Side Panel" },
-        } as any);
-      }
-
-      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
-      if (toggleBtn?.set) {
-        toggleBtn.set("active", true);
-        toggleBtn.set("attributes", {
-          ...(toggleBtn.get("attributes") || {}),
-          title: "Show Side Panel",
+      const exportBtn = editor.Panels.getButton("options", "export-template");
+      if (exportBtn?.set) {
+        exportBtn.set("className", "fa fa-download");
+        exportBtn.set("attributes", {
+          ...(exportBtn.get("attributes") || {}),
+          title: "Export HTML",
         });
       }
     }
 
-    const syncInitialSidePanelState = () => {
-      applySidePanelVisibility(isSidePanelHidden);
+    const syncEditorChromeState = () => {
+      hideLegacyViewsUi();
       forceBindCodeButtons();
-      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
-      if (toggleBtn?.set) {
-        toggleBtn.set("active", isSidePanelHidden);
-        toggleBtn.set("attributes", {
-          ...(toggleBtn.get("attributes") || {}),
-          title: isSidePanelHidden ? "Show Side Panel" : "Hide Side Panel",
-        });
+      syncDeviceButtons();
+    };
+
+    const syncInitialStudioState = () => {
+      syncEditorChromeState();
+      mountStudioPanels();
+      syncBlockCategories();
+    };
+
+    const syncStudioDefaults = () => {
+      try {
+        setActiveLeftPanel("blocks");
+        setActiveRightPanel("styles");
+        setIsLeftSidebarHidden(false);
+        setIsRightSidebarHidden(false);
+        editor.setDevice("Desktop");
+        hideLegacyViewsUi();
+        mountStudioPanels();
+        syncBlockCategories();
+        syncDeviceButtons();
+      } catch {
+        // ignore default sync errors
       }
     };
 
-    const syncSidePanelFromViewButtons = () => {
-      const optionsButtons = editor.Panels.getPanel("options")?.get("buttons");
-      let hasActiveViewButton = false;
-
-      if (optionsButtons?.forEach) {
-        optionsButtons.forEach((btn: any) => {
-          const cmd = String(btn?.get?.("command") || "");
-          const active = Boolean(btn?.get?.("active"));
-          if (active && /^open-/.test(cmd) && cmd !== "open-code") {
-            hasActiveViewButton = true;
-          }
-        });
-      }
-
-      const shouldHide = !hasActiveViewButton;
-
-      if (shouldHide === isSidePanelHidden) return;
-
-      isSidePanelHidden = shouldHide;
-      applySidePanelVisibility(isSidePanelHidden);
-
-      const toggleBtn = editor.Panels.getButton("options", "cms-toggle-side-panel");
-      if (toggleBtn?.set) {
-        toggleBtn.set("active", isSidePanelHidden);
-        toggleBtn.set("attributes", {
-          ...(toggleBtn.get("attributes") || {}),
-          title: isSidePanelHidden ? "Show Side Panel" : "Hide Side Panel",
-        });
-      }
-    };
-
-    const panelButtonClickHandler = (event: Event) => {
-      const target = event.target as HTMLElement | null;
-      const viewBtn = target?.closest?.(".gjs-pn-panel.gjs-pn-options .gjs-pn-btn");
-      if (!viewBtn) return;
-      requestAnimationFrame(syncSidePanelFromViewButtons);
-      setTimeout(syncSidePanelFromViewButtons, 0);
-    };
-
-    const editorContainerEl = editor.getContainer() as HTMLElement;
-    editorContainerEl.addEventListener("click", panelButtonClickHandler, true);
-
-    requestAnimationFrame(syncInitialSidePanelState);
-    setTimeout(syncInitialSidePanelState, 80);
-    editor.on("load", syncInitialSidePanelState);
-    editor.on("load", syncSidePanelFromViewButtons);
-    editor.on("load", collapseAllBlockCategories);
+    requestAnimationFrame(syncEditorChromeState);
+    setTimeout(syncEditorChromeState, 80);
+    editor.on("load", syncInitialStudioState);
+    editor.on("load", syncStudioDefaults);
+    editor.on("change:device", syncDeviceButtons);
 
     const ensureUrlTraits = (component: any) => {
       if (!component) return;
@@ -1391,10 +1404,7 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
       const tagName = String(component?.get?.("tagName") || "").toLowerCase();
       if (["a", "button", "video", "iframe"].includes(tagName)) {
-        const traitsBtn = editor.Panels.getButton("views", "open-tm");
-        if (traitsBtn && !traitsBtn.get("active")) {
-          traitsBtn.set("active", true);
-        }
+        setActiveRightPanel("settings");
       }
     });
 
@@ -1447,10 +1457,10 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     return () => {
       try {
-        editorContainerEl.removeEventListener("click", panelButtonClickHandler, true);
         editor.off("update", emit);
-        editor.off("load", syncSidePanelFromViewButtons);
-        editor.off("load", collapseAllBlockCategories);
+        editor.off("load", syncInitialStudioState);
+        editor.off("load", syncStudioDefaults);
+        editor.off("change:device", syncDeviceButtons);
         editor.destroy();
       } catch {
         // ignore destroy errors
@@ -1474,30 +1484,413 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
     lastEmittedRef.current = incoming;
   }, [value]);
 
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const refreshViewport = () => {
+      try {
+        editor.refresh?.({ tools: true });
+        editor.refreshCanvas?.({ tools: true });
+        editor.Canvas?.refresh?.({ all: true });
+        editor.Canvas?.fitViewport?.({
+          ignoreHeight: true,
+          gap: isLeftSidebarHidden && isRightSidebarHidden ? 12 : 20,
+        });
+      } catch {
+        // ignore canvas refresh errors
+      }
+    };
+
+    if (sidebarRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(sidebarRefreshTimeoutRef.current);
+      sidebarRefreshTimeoutRef.current = null;
+    }
+
+    requestAnimationFrame(() => {
+      refreshViewport();
+
+      sidebarRefreshTimeoutRef.current = window.setTimeout(() => {
+        refreshViewport();
+        sidebarRefreshTimeoutRef.current = null;
+      }, 240);
+    });
+
+    return () => {
+      if (sidebarRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(sidebarRefreshTimeoutRef.current);
+        sidebarRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [isLeftSidebarHidden, isRightSidebarHidden]);
+
   return (
     <div
-      className="cms-grapes-shell"
-      style={{
-        border: "5px solid #8b7b82",
-        borderRadius: "6px",
-        overflow: "hidden",
-      }}
+      className={`cms-grapes-shell${isLeftSidebarHidden ? " cms-grapes-shell--left-hidden" : ""}${isRightSidebarHidden ? " cms-grapes-shell--right-hidden" : ""}`}
     >
-      <div ref={hostRef} />
+      <div className="cms-grapes-shell__workspace">
+        <aside className={`cms-grapes-sidebar cms-grapes-sidebar--left${isLeftSidebarHidden ? " is-hidden" : ""}`}>
+          <div className="cms-grapes-sidebar__toolbar">
+            <button
+              type="button"
+              className={`cms-grapes-sidebar__tab${activeLeftPanel === "blocks" ? " is-active" : ""}`}
+              onClick={() => setActiveLeftPanel("blocks")}
+            >
+              Blocks
+            </button>
+            <button
+              type="button"
+              className={`cms-grapes-sidebar__tab${activeLeftPanel === "layers" ? " is-active" : ""}`}
+              onClick={() => setActiveLeftPanel("layers")}
+            >
+              Layers
+            </button>
+          </div>
+          <div
+            ref={leftBlocksRef}
+            className={`cms-grapes-sidebar__panel${activeLeftPanel === "blocks" ? " is-active" : ""}`}
+          />
+          <div
+            ref={leftLayersRef}
+            className={`cms-grapes-sidebar__panel${activeLeftPanel === "layers" ? " is-active" : ""}`}
+          />
+        </aside>
+
+        <div ref={hostRef} className="cms-grapes-shell__host" />
+
+        <aside className={`cms-grapes-sidebar cms-grapes-sidebar--right${isRightSidebarHidden ? " is-hidden" : ""}`}>
+          <div className="cms-grapes-sidebar__toolbar">
+            <button
+              type="button"
+              className={`cms-grapes-sidebar__tab${activeRightPanel === "styles" ? " is-active" : ""}`}
+              onClick={() => setActiveRightPanel("styles")}
+            >
+              Styles
+            </button>
+            <button
+              type="button"
+              className={`cms-grapes-sidebar__tab${activeRightPanel === "settings" ? " is-active" : ""}`}
+              onClick={() => setActiveRightPanel("settings")}
+            >
+              Settings
+            </button>
+          </div>
+          <div
+            ref={rightStylesRef}
+            className={`cms-grapes-sidebar__panel${activeRightPanel === "styles" ? " is-active" : ""}`}
+          />
+          <div
+            ref={rightTraitsRef}
+            className={`cms-grapes-sidebar__panel${activeRightPanel === "settings" ? " is-active" : ""}`}
+          />
+        </aside>
+      </div>
+
+      <button
+        type="button"
+        className="cms-grapes-shell__edge-toggle cms-grapes-shell__edge-toggle--left"
+        onClick={() => setIsLeftSidebarHidden((hidden) => !hidden)}
+        title={isLeftSidebarHidden ? "Show left sidebar" : "Hide left sidebar"}
+        aria-label={isLeftSidebarHidden ? "Show left sidebar" : "Hide left sidebar"}
+      >
+        <span className={`fa ${isLeftSidebarHidden ? "fa-chevron-right" : "fa-chevron-left"}`} aria-hidden="true" />
+      </button>
+
+      <button
+        type="button"
+        className="cms-grapes-shell__edge-toggle cms-grapes-shell__edge-toggle--right"
+        onClick={() => setIsRightSidebarHidden((hidden) => !hidden)}
+        title={isRightSidebarHidden ? "Show right sidebar" : "Hide right sidebar"}
+        aria-label={isRightSidebarHidden ? "Show right sidebar" : "Hide right sidebar"}
+      >
+        <span className={`fa ${isRightSidebarHidden ? "fa-chevron-left" : "fa-chevron-right"}`} aria-hidden="true" />
+      </button>
+
       <style jsx global>{`
+        .cms-grapes-shell {
+          --cms-left-sidebar-width: 320px;
+          --cms-right-sidebar-width: 320px;
+          --cms-canvas-padding: 28px;
+          position: relative;
+          border: 1px solid rgba(15, 23, 42, 0.12);
+          border-radius: 22px;
+          overflow: hidden;
+          background: #dbe4f2;
+          box-shadow: 0 28px 64px rgba(15, 23, 42, 0.14);
+        }
+
+        .cms-grapes-shell.cms-grapes-shell--left-hidden {
+          --cms-left-sidebar-width: 0px;
+          --cms-canvas-padding: 20px;
+        }
+
+        .cms-grapes-shell.cms-grapes-shell--right-hidden {
+          --cms-right-sidebar-width: 0px;
+          --cms-canvas-padding: 20px;
+        }
+
+        .cms-grapes-shell.cms-grapes-shell--left-hidden.cms-grapes-shell--right-hidden {
+          --cms-canvas-padding: 12px;
+        }
+
+        .cms-grapes-shell__workspace {
+          display: grid;
+          grid-template-columns: var(--cms-left-sidebar-width) minmax(0, 1fr) var(--cms-right-sidebar-width);
+          height: ${height}px;
+          min-height: ${height}px;
+        }
+
+        .cms-grapes-sidebar {
+          display: flex;
+          flex-direction: column;
+          height: ${height}px;
+          min-width: 0;
+          min-height: ${height}px;
+          background: linear-gradient(180deg, #08101f 0%, #0f172a 100%);
+          color: #e2e8f0;
+          overflow: hidden;
+          transition: opacity 180ms ease, border-color 180ms ease;
+        }
+
+        .cms-grapes-sidebar.is-hidden {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+          border-color: transparent;
+        }
+
+        .cms-grapes-sidebar--left {
+          border-right: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .cms-grapes-sidebar--right {
+          border-left: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .cms-grapes-sidebar__toolbar {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          padding: 14px 10px 14px 14px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+          box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .cms-grapes-sidebar__tab {
+          min-height: 42px;
+          padding: 10px 12px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.04);
+          color: #cbd5e1;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+        }
+
+        .cms-grapes-sidebar__tab:hover {
+          transform: translateY(-1px);
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(96, 165, 250, 0.3);
+          color: #ffffff;
+        }
+
+        .cms-grapes-sidebar__tab.is-active {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          border-color: rgba(96, 165, 250, 0.45);
+          color: #ffffff;
+          box-shadow: 0 14px 24px rgba(37, 99, 235, 0.24);
+        }
+
+        .cms-grapes-sidebar__panel {
+          display: none;
+          flex: 1 1 0;
+          min-height: 0;
+          overflow: auto;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.32) transparent;
+        }
+
+        .cms-grapes-sidebar__panel::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .cms-grapes-sidebar__panel::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .cms-grapes-sidebar__panel::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.28);
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+
+        .cms-grapes-sidebar__panel::-webkit-scrollbar-thumb:hover {
+          background: rgba(148, 163, 184, 0.42);
+          border: 2px solid transparent;
+          background-clip: padding-box;
+        }
+
+        .cms-grapes-sidebar__panel.is-active {
+          display: block;
+        }
+
+        .cms-grapes-shell__host {
+          position: relative;
+          height: ${height}px;
+          min-height: ${height}px;
+          min-width: 0;
+        }
+
+        .cms-grapes-shell__edge-toggle {
+          position: absolute;
+          top: 92px;
+          z-index: 40;
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 999px;
+          background: linear-gradient(180deg, rgba(8, 16, 31, 0.96), rgba(15, 23, 42, 0.96));
+          color: #e2e8f0;
+          box-shadow: 0 16px 28px rgba(15, 23, 42, 0.22);
+          transition: left 220ms ease, right 220ms ease, transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+        }
+
+        .cms-grapes-shell__edge-toggle:hover {
+          transform: translateY(-1px);
+          border-color: rgba(96, 165, 250, 0.36);
+          color: #ffffff;
+        }
+
+        .cms-grapes-shell__edge-toggle--left {
+          left: calc(var(--cms-left-sidebar-width) - 8px);
+        }
+
+        .cms-grapes-shell__edge-toggle--right {
+          right: calc(var(--cms-right-sidebar-width) - 8px);
+        }
+
+        .cms-grapes-shell.cms-grapes-shell--left-hidden .cms-grapes-shell__edge-toggle--left {
+          left: 10px;
+        }
+
+        .cms-grapes-shell.cms-grapes-shell--right-hidden .cms-grapes-shell__edge-toggle--right {
+          right: 10px;
+        }
+
         .cms-grapes-shell .gjs-editor {
-          --cms-side-panel-width: 250px;
-          --gjs-left-width: 250px;
+          --cms-side-panel-width: 0px;
+          --gjs-left-width: 0px;
+          position: relative;
+          height: 100% !important;
+          min-height: ${height}px;
+          background: #dbe4f2;
+        }
+
+        .cms-grapes-shell .gjs-one-bg {
+          background-color: #08101f;
+        }
+
+        .cms-grapes-shell .gjs-two-color {
+          color: #cbd5e1;
+        }
+
+        .cms-grapes-shell .gjs-three-bg {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: #ffffff;
+        }
+
+        .cms-grapes-shell .gjs-four-color {
+          color: #ffffff;
         }
 
         .cms-grapes-shell .gjs-cv-canvas {
-          right: var(--cms-side-panel-width);
+          right: 0;
           transition: right 220ms ease, border-color 180ms ease;
+          background:
+            radial-gradient(circle at top, rgba(148, 163, 184, 0.4), rgba(226, 232, 240, 0.82) 34%, rgba(248, 250, 252, 0.98) 72%);
+          padding: var(--cms-canvas-padding);
+        }
+
+        .cms-grapes-shell .gjs-frame-wrapper {
+          border-radius: 24px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.82);
+          box-shadow: 0 30px 70px rgba(15, 23, 42, 0.18);
+          background: #ffffff;
+        }
+
+        .cms-grapes-shell .gjs-pn-panel {
+          background: linear-gradient(180deg, #08101f 0%, #0f172a 100%);
+          color: #cbd5e1;
+          border: 0;
+        }
+
+        .cms-grapes-shell .gjs-pn-panel.gjs-pn-devices-c {
+          display: none !important;
+        }
+
+        .cms-grapes-shell .gjs-pn-panel.gjs-pn-options {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 8px;
+          padding: 12px 14px;
+          min-height: 62px;
+          box-sizing: border-box;
+          left: 0;
+          right: 0;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+          box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.03);
         }
 
         .cms-grapes-shell .gjs-pn-views-container,
         .cms-grapes-shell .gjs-pn-panel.gjs-pn-views {
-          transition: width 220ms ease, opacity 180ms ease;
+          display: none !important;
+          width: 0 !important;
+          min-width: 0 !important;
+          max-width: 0 !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          overflow: hidden !important;
+          border: 0 !important;
+          box-shadow: none !important;
+        }
+
+        .cms-grapes-shell .gjs-pn-btn {
+          min-width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          border: 1px solid transparent;
+          color: #cbd5e1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+        }
+
+        .cms-grapes-shell .gjs-pn-btn:hover {
+          transform: translateY(-1px);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(148, 163, 184, 0.18);
+          color: #ffffff;
+        }
+
+        .cms-grapes-shell .gjs-pn-btn.gjs-pn-active {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          border-color: rgba(96, 165, 250, 0.45);
+          color: #ffffff;
+          box-shadow: 0 14px 24px rgba(37, 99, 235, 0.28);
+        }
+
+        .cms-grapes-shell .cms-device-btn {
+          min-width: 38px;
         }
 
         .cms-grapes-shell .cms-open-code-btn {
@@ -1515,43 +1908,396 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           letter-spacing: -0.2px;
         }
 
-        .cms-grapes-shell .gjs-pn-views-container {
-          overflow-x: hidden;
-          overflow-y: auto;
+        .cms-grapes-shell .gjs-block-categories {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .cms-grapes-shell .gjs-block-category {
+          margin: 10px 6px 10px 10px;
+          width: auto;
+          border-radius: 20px;
+          overflow: hidden;
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          background: rgba(15, 23, 42, 0.56);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .cms-grapes-shell .gjs-block-category .gjs-title {
+          padding: 12px 14px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: #cbd5e1;
+          background: rgba(255, 255, 255, 0.04);
+          border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .cms-grapes-shell .gjs-block-category .gjs-blocks-c {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          padding: 10px;
         }
 
         .cms-grapes-shell .gjs-block {
-          min-height: 112px;
-          padding: 10px 8px;
-          display: flex;
-          flex-direction: column;
+          width: 100%;
+          min-height: 0;
+          padding: 10px;
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr);
           align-items: center;
-          justify-content: center;
-          gap: 8px;
+          gap: 10px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(148, 163, 184, 0.06));
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 18px;
+          color: #eff6ff;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+          transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+        }
+
+        .cms-grapes-shell .gjs-block:hover {
+          transform: translateY(-2px);
+          border-color: rgba(96, 165, 250, 0.38);
+          box-shadow: 0 18px 26px rgba(15, 23, 42, 0.18);
+          background: linear-gradient(180deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.42));
         }
 
         .cms-grapes-shell .gjs-block .gjs-block__media {
-          min-height: 34px;
+          grid-column: 1;
+          width: 42px;
+          min-width: 42px;
+          height: 42px;
+          min-height: 42px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 34px;
+          font-size: 18px;
           line-height: 1;
           margin-bottom: 0;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          flex: 0 0 auto;
+        }
+
+        .cms-grapes-shell .cms-gjs-block-media {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f8fafc;
         }
 
         .cms-grapes-shell .gjs-block .gjs-block__media svg {
-          width: 40px !important;
-          height: 40px !important;
+          width: 34px !important;
+          height: 34px !important;
         }
 
         .cms-grapes-shell .gjs-block .gjs-block-label {
+          grid-column: 2;
+          display: flex;
+          align-items: center;
           margin-top: 0;
-          line-height: 1.2;
+          line-height: 1.35;
           font-size: 13px;
-          text-align: center;
+          text-align: left;
           white-space: normal;
-          word-break: break-word;
+          word-break: normal;
+          overflow-wrap: anywhere;
+          font-weight: 700;
+          flex: 1 1 auto;
+          min-width: 0;
+          min-height: 42px;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector,
+        .cms-grapes-shell .gjs-layer-manager,
+        .cms-grapes-shell .gjs-trt-traits {
+          margin: 14px;
+          padding: 14px;
+          border-radius: 18px;
+          background: rgba(15, 23, 42, 0.56);
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          color: #e2e8f0;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector {
+          position: relative;
+          box-shadow: 0 16px 32px rgba(8, 15, 30, 0.2);
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background 220ms ease,
+            box-shadow 220ms ease;
+          animation: cms-style-sector-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 14px;
+          right: 14px;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            rgba(96, 165, 250, 0),
+            rgba(96, 165, 250, 0.5),
+            rgba(96, 165, 250, 0)
+          );
+          opacity: 0;
+          transform: translateY(-6px);
+          transition: opacity 220ms ease, transform 220ms ease;
+          pointer-events: none;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(1) {
+          animation-delay: 40ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(2) {
+          animation-delay: 80ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(3) {
+          animation-delay: 120ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(4) {
+          animation-delay: 160ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(5) {
+          animation-delay: 200ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:nth-child(6) {
+          animation-delay: 240ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:hover {
+          transform: translateY(-2px);
+          border-color: rgba(96, 165, 250, 0.28);
+          box-shadow: 0 24px 42px rgba(8, 15, 30, 0.28);
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:hover::before,
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open::before {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open {
+          background: rgba(15, 23, 42, 0.72);
+          border-color: rgba(96, 165, 250, 0.24);
+          box-shadow: 0 22px 40px rgba(8, 15, 30, 0.3);
+        }
+
+        .cms-grapes-shell .gjs-sm-properties,
+        .cms-grapes-shell .gjs-sm-property,
+        .cms-grapes-shell .gjs-sm-label,
+        .cms-grapes-shell .gjs-sm-property__label,
+        .cms-grapes-shell .gjs-layer-item,
+        .cms-grapes-shell .gjs-layer-name,
+        .cms-grapes-shell .gjs-layer-children,
+        .cms-grapes-shell .gjs-trt-trait,
+        .cms-grapes-shell .gjs-trt-trait__label,
+        .cms-grapes-shell .gjs-label,
+        .cms-grapes-shell .gjs-radio-items label,
+        .cms-grapes-shell .gjs-clm-tags,
+        .cms-grapes-shell .gjs-sm-empty,
+        .cms-grapes-shell .gjs-sm-sector .gjs-sm-field,
+        .cms-grapes-shell .gjs-field select,
+        .cms-grapes-shell .gjs-field input,
+        .cms-grapes-shell .gjs-field textarea {
+          color: #e2e8f0;
+        }
+
+        .cms-grapes-shell .gjs-sm-properties {
+          padding: 12px 4px 4px;
+          transform-origin: top center;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-properties {
+          animation: cms-style-sector-open 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property {
+          animation: cms-style-property-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(1) {
+          animation-delay: 25ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(2) {
+          animation-delay: 50ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(3) {
+          animation-delay: 75ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(4) {
+          animation-delay: 100ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(5) {
+          animation-delay: 125ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-property:nth-child(6) {
+          animation-delay: 150ms;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector-title,
+        .cms-grapes-shell .gjs-layer-title,
+        .cms-grapes-shell .gjs-trt-trait__label {
+          color: #f8fafc;
+          font-weight: 700;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector-title {
+          padding: 14px 16px;
+          border-radius: 14px;
+          background: rgba(10, 17, 33, 0.42);
+          transition:
+            background 220ms ease,
+            box-shadow 220ms ease,
+            transform 180ms ease;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector:hover .gjs-sm-sector-title {
+          background: rgba(15, 23, 42, 0.68);
+        }
+
+        .cms-grapes-shell .gjs-sm-sector.gjs-sm-open .gjs-sm-sector-title {
+          background: linear-gradient(
+            180deg,
+            rgba(37, 99, 235, 0.18),
+            rgba(15, 23, 42, 0.52)
+          );
+          box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.14);
+        }
+
+        .cms-grapes-shell .gjs-sm-sector-caret,
+        .cms-grapes-shell .gjs-layer-caret,
+        .cms-grapes-shell .gjs-field-arrow-u,
+        .cms-grapes-shell .gjs-two-color {
+          color: #cbd5e1;
+        }
+
+        .cms-grapes-shell .gjs-sm-sector-caret {
+          transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms ease;
+        }
+
+        .cms-grapes-shell .gjs-field,
+        .cms-grapes-shell .gjs-input-holder input,
+        .cms-grapes-shell .gjs-input-holder select,
+        .cms-grapes-shell .gjs-input-holder textarea {
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          background: rgba(255, 255, 255, 0.06);
+          color: #f8fafc;
+          transition:
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease,
+            transform 180ms ease;
+        }
+
+        .cms-grapes-shell .gjs-field:focus-within,
+        .cms-grapes-shell .gjs-input-holder input:focus,
+        .cms-grapes-shell .gjs-input-holder select:focus,
+        .cms-grapes-shell .gjs-input-holder textarea:focus {
+          border-color: rgba(96, 165, 250, 0.45);
+          background: rgba(15, 23, 42, 0.8);
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+          transform: translateY(-1px);
+        }
+
+        @keyframes cms-style-sector-enter {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes cms-style-sector-open {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.985);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes cms-style-property-enter {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cms-grapes-shell .gjs-sm-sector,
+          .cms-grapes-shell .gjs-sm-sector::before,
+          .cms-grapes-shell .gjs-sm-sector-title,
+          .cms-grapes-shell .gjs-sm-sector-caret,
+          .cms-grapes-shell .gjs-sm-properties,
+          .cms-grapes-shell .gjs-sm-property,
+          .cms-grapes-shell .gjs-field,
+          .cms-grapes-shell .gjs-input-holder input,
+          .cms-grapes-shell .gjs-input-holder select,
+          .cms-grapes-shell .gjs-input-holder textarea {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
+
+        .cms-grapes-shell .gjs-mdl-dialog {
+          max-width: min(96vw, 1400px);
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: 0 34px 90px rgba(15, 23, 42, 0.32);
+        }
+
+        .cms-grapes-shell .gjs-mdl-header {
+          padding: 14px 18px;
+          background: #08101f;
+          color: #ffffff;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .cms-grapes-shell .gjs-mdl-content {
+          background: #111827;
+          color: #ffffff;
+        }
+
+        .cms-grapes-shell .CodeMirror {
+          background: #0b1220;
+          color: #e2e8f0;
+        }
+
+        .cms-grapes-shell .CodeMirror-gutters {
+          background: #08101f;
+          border-right: 1px solid rgba(148, 163, 184, 0.14);
         }
 
         .cms-grapes-shell .cms-side-panel-hidden .gjs-cv-canvas {
@@ -1571,6 +2317,52 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           pointer-events: none !important;
           border: 0 !important;
           box-shadow: none !important;
+        }
+
+        @media (max-width: 1100px) {
+          .cms-grapes-shell__workspace {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+          }
+
+          .cms-grapes-sidebar.is-hidden {
+            display: none;
+          }
+
+          .cms-grapes-shell__edge-toggle {
+            top: 72px;
+          }
+
+          .cms-grapes-sidebar {
+            height: auto;
+            min-height: 320px;
+          }
+
+          .cms-grapes-sidebar--left,
+          .cms-grapes-sidebar--right {
+            border-left: 0;
+            border-right: 0;
+          }
+
+          .cms-grapes-sidebar--left {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+          }
+
+          .cms-grapes-sidebar--right {
+            border-top: 1px solid rgba(148, 163, 184, 0.16);
+          }
+
+        }
+
+        @media (max-width: 768px) {
+          .cms-grapes-shell .gjs-block-category .gjs-blocks-c {
+            grid-template-columns: 1fr;
+          }
+
+          .cms-grapes-shell .gjs-cv-canvas {
+            padding: 16px;
+          }
         }
       `}</style>
     </div>
