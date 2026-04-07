@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@ray-solutions/react-file-manager'],
 	devIndicators: false,
   webpack: (config) => {
     config.watchOptions = {

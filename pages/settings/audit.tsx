@@ -131,7 +131,7 @@ function AuditTrailsPage() {
     // 🔹 OLD VALUES
     {
         key: "old_values",
-        header: "Old Value",
+        header: "From",
       thClassName: "text-nowrap text-center",
       tdClassName: "align-top text-center",
         render: (row) => (
@@ -142,7 +142,7 @@ function AuditTrailsPage() {
     // 🔹 NEW VALUES
     {
         key: "new_values",
-        header: "New Value",
+        header: "To",
       thClassName: "text-nowrap text-center",
       tdClassName: "align-top text-center",
         render: (row) => (
