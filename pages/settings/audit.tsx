@@ -190,7 +190,7 @@ function AuditTrailsPage() {
    * ====================== */
   return (
     <div className="container-fluid px-4 pt-3">
-      <h3 className="mb-3">Audit Trail</h3>
+      <h3 className="mb-3 text-dark">Audit Trail</h3>
 
       <div className="row g-2 align-items-center mb-3">
         <div className="col-12 col-md d-flex justify-content-md-end">
