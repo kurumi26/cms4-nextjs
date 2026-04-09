@@ -13,6 +13,7 @@ export default function LandingTopbar() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoAlt, setLogoAlt] = useState<string>("Logo");
+  const [navAlignment, setNavAlignment] = useState<'left' | 'center' | 'right'>('center');
 
   useEffect(() => {
     let alive = true;
@@ -23,6 +24,7 @@ export default function LandingTopbar() {
         if (!alive) return;
 
         const url = resolveWebsiteAssetUrl((s as any)?.company_logo) ?? null;
+        setNavAlignment((s as any)?.nav_alignment ?? 'center');
         setLogoUrl(url);
         setLogoAlt((s as any)?.website_name || (s as any)?.company_name || "Logo");
       } catch {
@@ -192,6 +194,7 @@ export default function LandingTopbar() {
           <nav
             id="landing-topbar-nav"
             className={`${styles["nav-wrap"]} ${mobileOpen ? styles["nav-wrap-open"] : ""}`}
+            data-align={navAlignment}
           >
             <ul className={styles["nav-list"]}>
               <Menu isMobile={mobileOpen} onNavigate={closeMobileMenu} />

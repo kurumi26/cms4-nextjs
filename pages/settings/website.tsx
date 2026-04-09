@@ -22,6 +22,7 @@ function WebsiteSettingsPage() {
   const [analytics, setAnalytics] = useState("");
   const [googleMap, setGoogleMap] = useState("");
   const [recaptcha, setRecaptcha] = useState("");
+  const [navAlignment, setNavAlignment] = useState<'left' | 'center' | 'right'>('center');
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
@@ -95,6 +96,7 @@ function WebsiteSettingsPage() {
       setAnalytics(data.google_analytics ?? "");
       setGoogleMap(data.google_map ?? "");
       setRecaptcha(data.google_recaptcha_sitekey ?? "");
+      setNavAlignment(data.nav_alignment ?? 'center');
 
       setAddress(data.company_address ?? "");
       setMobile(data.mobile_no ?? "");
@@ -151,6 +153,7 @@ function WebsiteSettingsPage() {
       fd.append("google_analytics", analytics);
       fd.append("google_map", googleMap);
       fd.append("google_recaptcha_sitekey", recaptcha);
+      fd.append("nav_alignment", navAlignment);
 
       if (logoFile) fd.append("company_logo", logoFile);
       if (faviconFile) fd.append("website_favicon", faviconFile);
@@ -420,6 +423,24 @@ function WebsiteSettingsPage() {
                   value={recaptcha}
                   onChange={(e) => setRecaptcha(e.target.value)}
                 />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label">Navigation Alignment</label>
+                <div className="d-flex gap-2">
+                  {(['left', 'center', 'right'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className={`btn ${navAlignment === opt ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      onClick={() => setNavAlignment(opt)}
+                    >
+                      {opt === 'left' && '⬅ Left'}
+                      {opt === 'center' && '↔ Center'}
+                      {opt === 'right' && '➡ Right'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <button
