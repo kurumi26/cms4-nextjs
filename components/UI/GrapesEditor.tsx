@@ -52,6 +52,25 @@ const extractFileList = (input: any): File[] => {
   return [];
 };
 
+const normalizePickerColor = (value: string) => {
+  const raw = String(value || "").trim();
+  if (/^#([0-9a-f]{6})$/i.test(raw)) return raw.toLowerCase();
+  if (/^#([0-9a-f]{3})$/i.test(raw)) {
+    const match = raw.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+    return match ? `#${match[1]}${match[1]}${match[2]}${match[2]}${match[3]}${match[3]}`.toLowerCase() : "#000000";
+  }
+  const rgbMatch = raw.match(/rgba?\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/i);
+  if (rgbMatch) {
+    const toHex = (part: string) => Math.max(0, Math.min(255, Number(part) || 0)).toString(16).padStart(2, "0");
+    return `#${toHex(rgbMatch[1])}${toHex(rgbMatch[2])}${toHex(rgbMatch[3])}`;
+  }
+  return "#000000";
+};
+
+const isNearBlackColor = (value: string) => normalizePickerColor(value) === "#000000";
+
+let activeColorPopoverCleanup: (() => void) | null = null;
+
 const registerCmsBlocks = (editor: any) => {
   const bm = editor.BlockManager;
 
@@ -544,10 +563,12 @@ const DEFAULT_STUDIO_MARKUP = `
 `;
 
 export default function GrapesEditor({ value = "", onChange, height = 800 }: GrapesEditorProps) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
   const lastEmittedRef = useRef<string>("");
   const jsRef = useRef<string>("");
+  const fullscreenSenderRef = useRef<any>(null);
   const leftBlocksRef = useRef<HTMLDivElement | null>(null);
   const leftLayersRef = useRef<HTMLDivElement | null>(null);
   const rightStylesRef = useRef<HTMLDivElement | null>(null);
@@ -562,7 +583,8 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
     if (!hostRef.current || editorRef.current) return;
 
     const { body, css, js } = extractContentParts(value);
-    const previewFrameHeight = `${Math.max(560, height - 120)}px`;
+    const basePreviewFrameHeight = 760;
+    const previewFrameHeight = `${basePreviewFrameHeight}px`;
     jsRef.current = js;
 
     const editor = grapesjs.init({
@@ -580,8 +602,9 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
         ],
       },
       canvas: {
-        styles: [cmsStudioCanvasCss],
+        styles: [],
       },
+      canvasCss: cmsStudioCanvasCss,
       assetManager: {
         upload: false,
         uploadFile: async (event: any) => {
@@ -652,6 +675,358 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       style: css,
     });
 
+    editor.StyleManager.addType("color", {
+      onRender() {
+        // Prevent GrapesJS PropertyColorView from injecting its default text/color input.
+      },
+      setValue(this: any, value: string) {
+        const model = this.model;
+        const result = typeof value === "undefined" || value === "" ? model.getDefaultValue() : value;
+
+        if (this.update) {
+          this.__update(result);
+          return;
+        }
+
+        this.__setValueInput(result);
+      },
+      create({ change }: any) {
+        const root = document.createElement("div");
+        root.className = "cms-gjs-color-field";
+
+        const pickerButton = document.createElement("button");
+        pickerButton.type = "button";
+        pickerButton.className = "cms-gjs-color-field__picker";
+        pickerButton.title = "Choose color";
+        pickerButton.setAttribute("aria-haspopup", "dialog");
+        pickerButton.setAttribute("aria-expanded", "false");
+
+        const pickerMeta = document.createElement("span");
+        pickerMeta.className = "cms-gjs-color-field__meta";
+
+        const pickerPreview = document.createElement("span");
+        pickerPreview.className = "cms-gjs-color-field__preview";
+        pickerMeta.appendChild(pickerPreview);
+
+        const pickerValue = document.createElement("span");
+        pickerValue.className = "cms-gjs-color-field__value";
+        pickerValue.textContent = "#000000";
+        pickerMeta.appendChild(pickerValue);
+
+        const pickerAffordance = document.createElement("span");
+        pickerAffordance.className = "cms-gjs-color-field__affordance";
+        pickerAffordance.setAttribute("aria-hidden", "true");
+
+        pickerButton.appendChild(pickerMeta);
+        pickerButton.appendChild(pickerAffordance);
+
+        const state = {
+          cleanup: null as null | (() => void),
+          picker: null as any,
+          popoverInput: null as HTMLInputElement | null,
+          isSyncingExternal: false,
+        };
+
+        const closePopover = () => {
+          state.cleanup?.();
+        };
+
+        const openPicker = async (event?: Event) => {
+          event?.preventDefault?.();
+          event?.stopPropagation?.();
+
+          if (state.cleanup) {
+            closePopover();
+            return;
+          }
+
+          activeColorPopoverCleanup?.();
+
+          const iroModule = await import("@jaames/iro");
+          const iro = (iroModule as any).default ?? iroModule;
+          if (!document.body) return;
+
+          const popover = document.createElement("div");
+          popover.className = "cms-gjs-color-field__popover";
+
+          const head = document.createElement("div");
+          head.className = "cms-gjs-color-field__popover-head";
+
+          const label = document.createElement("span");
+          label.className = "cms-gjs-color-field__popover-label";
+          label.textContent = "Color";
+
+          const popoverInput = document.createElement("input");
+          popoverInput.type = "text";
+          popoverInput.className = "cms-gjs-color-field__popover-input";
+          popoverInput.placeholder = "#000000";
+
+          const wheelMount = document.createElement("div");
+          wheelMount.className = "cms-gjs-color-field__wheel";
+
+          head.appendChild(label);
+          popover.appendChild(head);
+          popover.appendChild(popoverInput);
+          popover.appendChild(wheelMount);
+          document.body.appendChild(popover);
+
+          const setDisplayValue = (nextValue: string) => {
+            const displayValue = nextValue || "none";
+            pickerPreview.style.background = nextValue ? normalizePickerColor(nextValue) : "transparent";
+            pickerPreview.dataset.empty = nextValue ? "false" : "true";
+            pickerValue.textContent = displayValue;
+            pickerButton.title = displayValue === "none" ? "Choose color" : `Choose color (${displayValue})`;
+            popoverInput.value = nextValue;
+          };
+
+          const positionPopover = () => {
+            const margin = 14;
+            const offset = 10;
+            const rect = pickerButton.getBoundingClientRect();
+            const popoverRect = popover.getBoundingClientRect();
+
+            const left = Math.min(
+              Math.max(rect.right - popoverRect.width, margin),
+              window.innerWidth - popoverRect.width - margin
+            );
+
+            let top = rect.bottom + offset;
+            if (top + popoverRect.height > window.innerHeight - margin) {
+              top = Math.max(margin, rect.top - popoverRect.height - offset);
+            }
+
+            popover.style.left = `${left}px`;
+            popover.style.top = `${top}px`;
+          };
+
+          const emitValue = (nextValue: string, partial: boolean, source: "picker" | "text") => {
+            setDisplayValue(nextValue);
+            change({ value: nextValue, partial, source });
+          };
+
+          const currentValue = pickerValue.textContent === "none" ? "" : String(pickerValue.textContent || "").trim();
+          const currentColor = normalizePickerColor(currentValue);
+          const pickerStartColor = isNearBlackColor(currentColor) ? "#ff3b30" : currentColor;
+          setDisplayValue(currentValue);
+
+          const picker = new iro.ColorPicker(wheelMount, {
+            width: 188,
+            color: pickerStartColor,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.14)",
+            padding: 6,
+            layout: [
+              { component: iro.ui.Wheel },
+              { component: iro.ui.Slider, options: { sliderType: "hue" } },
+              { component: iro.ui.Slider, options: { sliderType: "value" } },
+            ],
+          });
+
+          const handleColorChange = (color: any) => {
+            if (state.isSyncingExternal) return;
+            emitValue(normalizePickerColor(color?.hexString), true, "picker");
+          };
+
+          const handleInputEnd = (color: any) => {
+            if (state.isSyncingExternal) return;
+            emitValue(normalizePickerColor(color?.hexString), false, "picker");
+          };
+
+          const handleTextInput = () => {
+            emitValue(String(popoverInput.value || "").trim(), true, "text");
+          };
+
+          const handleTextChange = () => {
+            const nextValue = String(popoverInput.value || "").trim();
+            emitValue(nextValue, false, "text");
+            const nextPickerColor = normalizePickerColor(nextValue);
+            if (state.picker?.color && normalizePickerColor(state.picker.color.hexString) !== nextPickerColor) {
+              state.isSyncingExternal = true;
+              state.picker.color.hexString = nextPickerColor;
+              state.isSyncingExternal = false;
+            }
+          };
+
+          const handlePointerDown = (nextEvent: MouseEvent) => {
+            const target = nextEvent.target as Node | null;
+            if (!target) return;
+            if (popover.contains(target) || pickerButton.contains(target)) return;
+            closePopover();
+          };
+
+          const handleKeyDown = (nextEvent: KeyboardEvent) => {
+            if (nextEvent.key === "Escape") {
+              closePopover();
+            }
+          };
+
+          const handleViewportChange = () => {
+            positionPopover();
+          };
+
+          picker.on("color:change", handleColorChange);
+          picker.on("input:end", handleInputEnd);
+          popoverInput.addEventListener("input", handleTextInput);
+          popoverInput.addEventListener("change", handleTextChange);
+
+          state.picker = picker;
+          state.popoverInput = popoverInput;
+          pickerButton.setAttribute("aria-expanded", "true");
+
+          document.addEventListener("mousedown", handlePointerDown, true);
+          document.addEventListener("keydown", handleKeyDown);
+          window.addEventListener("resize", handleViewportChange);
+          window.addEventListener("scroll", handleViewportChange, true);
+
+          const cleanupPopover = () => {
+            picker.off("color:change", handleColorChange);
+            picker.off("input:end", handleInputEnd);
+            popoverInput.removeEventListener("input", handleTextInput);
+            popoverInput.removeEventListener("change", handleTextChange);
+            document.removeEventListener("mousedown", handlePointerDown, true);
+            document.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("resize", handleViewportChange);
+            window.removeEventListener("scroll", handleViewportChange, true);
+            popover.remove();
+            pickerButton.setAttribute("aria-expanded", "false");
+            state.cleanup = null;
+            state.picker = null;
+            state.popoverInput = null;
+            if (activeColorPopoverCleanup === cleanupPopover) {
+              activeColorPopoverCleanup = null;
+            }
+          };
+
+          state.cleanup = cleanupPopover;
+          activeColorPopoverCleanup = cleanupPopover;
+          window.requestAnimationFrame(positionPopover);
+          window.setTimeout(positionPopover, 0);
+          window.setTimeout(() => {
+            popoverInput.focus({ preventScroll: true });
+            popoverInput.select();
+          }, 0);
+        };
+
+        pickerButton.addEventListener("click", (event) => {
+          void openPicker(event);
+        });
+        pickerButton.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            void openPicker(event);
+          }
+        });
+
+        window.requestAnimationFrame(() => {
+          const fieldShell = root.closest(".gjs-field");
+          if (!fieldShell) return;
+          fieldShell.classList.remove("gjs-field", "gjs-field-color");
+          fieldShell.classList.add("cms-gjs-color-field-shell");
+        });
+
+        root.appendChild(pickerButton);
+        (root as any).__cmsColorState = state;
+        return root;
+      },
+      emit({ updateStyle }: any, { event, value, partial, source }: any) {
+        const target = event?.target as HTMLInputElement | null;
+        const nextValue = String(value ?? target?.value ?? "").trim();
+        if (!nextValue) {
+          updateStyle("", { partial });
+          return;
+        }
+        updateStyle(source === "picker" ? normalizePickerColor(nextValue) : nextValue, { partial });
+      },
+      update({ value, el }: any) {
+        const pickerPreview = el.querySelector(".cms-gjs-color-field__preview") as HTMLSpanElement | null;
+        const pickerValue = el.querySelector(".cms-gjs-color-field__value") as HTMLSpanElement | null;
+        const nextValue = String(value || "").trim();
+        const nextPickerColor = normalizePickerColor(nextValue);
+        const state = (el as any).__cmsColorState as
+          | {
+              picker: any;
+              popoverInput: HTMLInputElement | null;
+              isSyncingExternal: boolean;
+            }
+          | undefined;
+        if (pickerPreview) {
+          pickerPreview.style.background = nextValue ? nextPickerColor : "transparent";
+          pickerPreview.dataset.empty = nextValue ? "false" : "true";
+        }
+        if (pickerValue) {
+          pickerValue.textContent = nextValue || "none";
+        }
+        if (state?.popoverInput) {
+          state.popoverInput.value = nextValue;
+        }
+        if (state?.picker?.color) {
+          const currentPickerColor = normalizePickerColor(state.picker.color.hexString);
+          if (currentPickerColor !== nextPickerColor) {
+            state.isSyncingExternal = true;
+            state.picker.color.hexString = nextPickerColor;
+            state.isSyncingExternal = false;
+          }
+        }
+      },
+      destroy({ el }: any) {
+        const state = (el as any)?.__cmsColorState as { cleanup?: (() => void) | null } | undefined;
+        state?.cleanup?.();
+      },
+    });
+
+    const syncExistingColorPropertyViews = () => {
+      const colorView = editor.StyleManager.getType("color")?.view;
+      if (!colorView) return;
+
+      const seen = new WeakSet<object>();
+
+      const syncProperties = (collection: any) => {
+        const items = Array.isArray(collection) ? collection : collection?.models;
+        if (!items?.length) return;
+
+        items.forEach((property: any) => {
+          if (!property || typeof property !== "object" || seen.has(property)) return;
+          seen.add(property);
+
+          if (property.get?.("type") === "color") {
+            property.typeView = colorView;
+          }
+
+          syncProperties(property.get?.("properties") || property.properties);
+
+          const layers = property.layers?.models;
+          if (!layers?.length) return;
+
+          layers.forEach((layer: any) => {
+            syncProperties(layer?.get?.("properties") || layer?.properties);
+          });
+        });
+      };
+
+      const sectors = editor.StyleManager.getSectors?.({ array: true }) || [];
+      sectors.forEach((sector: any) => {
+        syncProperties(sector?.get?.("properties") || sector?.properties);
+      });
+    };
+
+    const suppressNativeStyleColorInputs = () => {
+      const stylesRoot = rightStylesRef.current;
+      if (!stylesRoot) return;
+
+      stylesRoot.querySelectorAll('input[type="color"]').forEach((input) => {
+        const nativeInput = input as HTMLInputElement;
+        nativeInput.tabIndex = -1;
+        nativeInput.disabled = true;
+        nativeInput.setAttribute("aria-hidden", "true");
+        nativeInput.dataset.cmsSuppressedColorInput = "true";
+      });
+
+      stylesRoot.querySelectorAll(".gjs-property.gjs-color .gjs-input-holder").forEach((holder) => {
+        const inputHolder = holder as HTMLElement;
+        inputHolder.style.display = "none";
+        inputHolder.setAttribute("aria-hidden", "true");
+      });
+    };
+
     registerCmsBlocks(editor);
     registerAdvancedCmsBlocks(editor);
 
@@ -685,13 +1060,71 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
       renderInto(leftBlocksRef.current, safeRender(() => editor.BlockManager.render()));
       renderInto(leftLayersRef.current, isEditorReady ? safeRender(() => editor.LayerManager.render()) : undefined);
+      syncExistingColorPropertyViews();
       renderInto(rightStylesRef.current, safeRender(() => editor.StyleManager.render()));
       renderInto(rightTraitsRef.current, safeRender(() => editor.TraitManager.render()));
+      suppressNativeStyleColorInputs();
     };
 
     syncBlockCategories();
     requestAnimationFrame(syncBlockCategories);
     setTimeout(syncBlockCategories, 120);
+
+    const applyProductShowcaseTopSpacing = () => {
+      const wrapper = editor.getWrapper?.();
+      if (!wrapper?.find) return;
+
+      wrapper.find("section").forEach((section: any) => {
+        const markup = String(section?.toHTML?.() || "");
+        if (!markup.includes("Create a cleaner, premium product spotlight section.")) return;
+
+        const style = section.getStyle?.() || {};
+        if (String(style["padding-top"] || "").trim() === "88px") return;
+
+        section.addStyle({
+          "padding-top": "88px",
+        });
+      });
+    };
+
+    const syncFrameWrapperStyle = () => {
+      const editorRoot = editor.getContainer?.() as HTMLElement | null;
+      const frameWrapper = editorRoot?.querySelector?.(".gjs-frame-wrapper") as HTMLElement | null;
+      const frameElement = editorRoot?.querySelector?.(".gjs-frame") as HTMLElement | null;
+      if (!frameWrapper) return;
+
+      const isFullscreen = editor.Commands.isActive("fullscreen") || Boolean(document.fullscreenElement);
+      if (!isFullscreen) {
+        frameWrapper.style.removeProperty("left");
+        frameWrapper.style.removeProperty("top");
+        frameWrapper.style.removeProperty("height");
+        frameWrapper.style.removeProperty("min-height");
+
+        if (frameElement) {
+          frameElement.style.removeProperty("height");
+          frameElement.style.removeProperty("min-height");
+        }
+
+        return;
+      }
+
+      const targetHeight = `${Math.max(900, window.innerHeight - 96)}px`;
+
+      frameWrapper.style.left = "0px";
+      frameWrapper.style.top = "15px";
+      frameWrapper.style.height = targetHeight;
+      frameWrapper.style.minHeight = targetHeight;
+
+      if (frameElement) {
+        frameElement.style.height = targetHeight;
+        frameElement.style.minHeight = targetHeight;
+      }
+    };
+
+    const queueFrameWrapperStyleSync = () => {
+      requestAnimationFrame(syncFrameWrapperStyle);
+      window.setTimeout(syncFrameWrapperStyle, 120);
+    };
 
     const buildContent = (ed: any) => {
       const html = ed.getHtml() || "";
@@ -701,6 +1134,99 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       const jsTag = script ? `\n<script>${script}</script>` : "";
       return `${html}${cssTag}${jsTag}`.trim();
     };
+
+    const getFullscreenElement = () => {
+      const fullscreenDocument = document as Document & {
+        webkitFullscreenElement?: Element | null;
+        mozFullScreenElement?: Element | null;
+        msFullscreenElement?: Element | null;
+      };
+
+      return (
+        fullscreenDocument.fullscreenElement ||
+        fullscreenDocument.webkitFullscreenElement ||
+        fullscreenDocument.mozFullScreenElement ||
+        fullscreenDocument.msFullscreenElement ||
+        null
+      );
+    };
+
+    const requestElementFullscreen = (target: HTMLElement) => {
+      const fullscreenTarget = target as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        mozRequestFullScreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      };
+
+      if (fullscreenTarget.requestFullscreen) {
+        return fullscreenTarget.requestFullscreen();
+      }
+      if (fullscreenTarget.webkitRequestFullscreen) {
+        return fullscreenTarget.webkitRequestFullscreen();
+      }
+      if (fullscreenTarget.mozRequestFullScreen) {
+        return fullscreenTarget.mozRequestFullScreen();
+      }
+      if (fullscreenTarget.msRequestFullscreen) {
+        return fullscreenTarget.msRequestFullscreen();
+      }
+    };
+
+    const exitElementFullscreen = () => {
+      const fullscreenDocument = document as Document & {
+        webkitExitFullscreen?: () => Promise<void> | void;
+        mozCancelFullScreen?: () => Promise<void> | void;
+        msExitFullscreen?: () => Promise<void> | void;
+      };
+
+      if (fullscreenDocument.exitFullscreen) {
+        return fullscreenDocument.exitFullscreen();
+      }
+      if (fullscreenDocument.webkitExitFullscreen) {
+        return fullscreenDocument.webkitExitFullscreen();
+      }
+      if (fullscreenDocument.mozCancelFullScreen) {
+        return fullscreenDocument.mozCancelFullScreen();
+      }
+      if (fullscreenDocument.msExitFullscreen) {
+        return fullscreenDocument.msExitFullscreen();
+      }
+    };
+
+    const isShellFullscreen = () => {
+      const shell = shellRef.current;
+      return Boolean(shell && getFullscreenElement() === shell);
+    };
+
+    if (editor.Commands.has("fullscreen")) {
+      editor.Commands.extend("fullscreen", {
+        run(this: any, ed: any, sender: any, opts: any = {}) {
+          fullscreenSenderRef.current = sender || null;
+
+          const requestedTarget = opts?.target;
+          const fallbackTarget =
+            requestedTarget && typeof requestedTarget === "object" && requestedTarget.nodeType === 1
+              ? requestedTarget
+              : typeof requestedTarget === "string"
+                ? document.querySelector(requestedTarget)
+                : null;
+
+          const targetEl = shellRef.current || fallbackTarget || ed.getContainer();
+          if (!targetEl) return;
+
+          void requestElementFullscreen(targetEl as HTMLElement);
+        },
+        stop(this: any, _ed: any, sender: any) {
+          const resolvedSender = sender || fullscreenSenderRef.current;
+          resolvedSender?.set?.("active", false);
+          fullscreenSenderRef.current = null;
+
+          if (getFullscreenElement()) {
+            void exitElementFullscreen();
+          }
+        },
+      });
+    }
 
     const openCodeModal = async (ed: any) => {
         const modal = ed.Modal;
@@ -1304,6 +1830,8 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     const syncInitialStudioState = () => {
       syncEditorChromeState();
+      applyProductShowcaseTopSpacing();
+      queueFrameWrapperStyleSync();
       mountStudioPanels();
       syncBlockCategories();
     };
@@ -1316,6 +1844,7 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
         setIsRightSidebarHidden(false);
         editor.setDevice("Desktop");
         hideLegacyViewsUi();
+        queueFrameWrapperStyleSync();
         mountStudioPanels();
         syncBlockCategories();
         syncDeviceButtons();
@@ -1324,11 +1853,32 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
       }
     };
 
+    const handleFrameWrapperRefresh = () => {
+      queueFrameWrapperStyleSync();
+    };
+
+    const handleBrowserFullscreenChange = () => {
+      handleFrameWrapperRefresh();
+
+      if (!isShellFullscreen() && editor.Commands.isActive("fullscreen")) {
+        editor.Commands.stop("fullscreen", {
+          sender: fullscreenSenderRef.current || undefined,
+        });
+      }
+    };
+
     requestAnimationFrame(syncEditorChromeState);
     setTimeout(syncEditorChromeState, 80);
+    handleFrameWrapperRefresh();
     editor.on("load", syncInitialStudioState);
     editor.on("load", syncStudioDefaults);
     editor.on("change:device", syncDeviceButtons);
+    editor.on("load", handleFrameWrapperRefresh);
+    editor.on("change:device", handleFrameWrapperRefresh);
+    editor.on("command:run:fullscreen", handleFrameWrapperRefresh);
+    editor.on("command:stop:fullscreen", handleFrameWrapperRefresh);
+    window.addEventListener("resize", handleFrameWrapperRefresh);
+    document.addEventListener("fullscreenchange", handleBrowserFullscreenChange);
 
     const ensureUrlTraits = (component: any) => {
       if (!component) return;
@@ -1457,10 +2007,17 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
     return () => {
       try {
+        activeColorPopoverCleanup?.();
         editor.off("update", emit);
         editor.off("load", syncInitialStudioState);
         editor.off("load", syncStudioDefaults);
         editor.off("change:device", syncDeviceButtons);
+        editor.off("load", handleFrameWrapperRefresh);
+        editor.off("change:device", handleFrameWrapperRefresh);
+        editor.off("command:run:fullscreen", handleFrameWrapperRefresh);
+        editor.off("command:stop:fullscreen", handleFrameWrapperRefresh);
+        window.removeEventListener("resize", handleFrameWrapperRefresh);
+        document.removeEventListener("fullscreenchange", handleBrowserFullscreenChange);
         editor.destroy();
       } catch {
         // ignore destroy errors
@@ -1526,6 +2083,7 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
   return (
     <div
+      ref={shellRef}
       className={`cms-grapes-shell${isLeftSidebarHidden ? " cms-grapes-shell--left-hidden" : ""}${isRightSidebarHidden ? " cms-grapes-shell--right-hidden" : ""}`}
     >
       <div className="cms-grapes-shell__workspace">
@@ -1617,6 +2175,28 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           overflow: hidden;
           background: #dbe4f2;
           box-shadow: 0 28px 64px rgba(15, 23, 42, 0.14);
+        }
+
+        .cms-grapes-shell:fullscreen,
+        .cms-grapes-shell:-webkit-full-screen {
+          width: 100vw;
+          height: 100vh;
+          max-width: none;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+
+        .cms-grapes-shell:fullscreen .cms-grapes-shell__workspace,
+        .cms-grapes-shell:-webkit-full-screen .cms-grapes-shell__workspace,
+        .cms-grapes-shell:fullscreen .cms-grapes-sidebar,
+        .cms-grapes-shell:-webkit-full-screen .cms-grapes-sidebar,
+        .cms-grapes-shell:fullscreen .cms-grapes-shell__host,
+        .cms-grapes-shell:-webkit-full-screen .cms-grapes-shell__host,
+        .cms-grapes-shell:fullscreen .gjs-editor,
+        .cms-grapes-shell:-webkit-full-screen .gjs-editor {
+          height: 100vh !important;
+          min-height: 100vh !important;
         }
 
         .cms-grapes-shell.cms-grapes-shell--left-hidden {
@@ -1735,6 +2315,27 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
 
         .cms-grapes-sidebar__panel.is-active {
           display: block;
+        }
+
+        .cms-grapes-sidebar--right input[type="color"] {
+          position: absolute !important;
+          width: 0 !important;
+          height: 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          visibility: hidden !important;
+        }
+
+        .cms-grapes-sidebar--right .gjs-field-colorp,
+        .cms-grapes-sidebar--right .gjs-sm-colorp-c,
+        .cms-grapes-sidebar--right .gjs-field-color-picker,
+        .cms-grapes-sidebar--right .gjs-sm-color-picker {
+          display: none !important;
+          pointer-events: none !important;
+        }
+
+        .cms-grapes-sidebar--right .gjs-property.gjs-color .gjs-input-holder {
+          display: none !important;
         }
 
         .cms-grapes-shell__host {
@@ -2217,6 +2818,184 @@ export default function GrapesEditor({ value = "", onChange, height = 800 }: Gra
           background: rgba(15, 23, 42, 0.8);
           box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
           transform: translateY(-1px);
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field-shell {
+          width: 100%;
+          min-height: 0;
+          padding: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field-shell:focus-within {
+          box-shadow: none;
+          transform: none;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field {
+          display: block;
+          width: 100%;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__picker {
+          width: 100%;
+          min-height: 40px;
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          background: rgba(255, 255, 255, 0.06);
+          color: #f8fafc;
+          transition:
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease,
+            transform 180ms ease;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__picker {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          justify-content: space-between;
+          padding: 6px 10px;
+          cursor: pointer;
+          appearance: none;
+          text-align: left;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__meta {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 1 1 auto;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__preview {
+          display: inline-block;
+          width: 28px;
+          height: 28px;
+          flex: 0 0 28px;
+          border-radius: 8px;
+          background: #000000;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.35);
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__preview[data-empty="true"] {
+          background:
+            linear-gradient(45deg, rgba(148, 163, 184, 0.18) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.18) 75%),
+            linear-gradient(45deg, rgba(148, 163, 184, 0.18) 25%, transparent 25%, transparent 75%, rgba(148, 163, 184, 0.18) 75%);
+          background-position: 0 0, 6px 6px;
+          background-size: 12px 12px;
+          background-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__value {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: #e2e8f0;
+          font-size: 12px;
+          line-height: 1;
+          font-family: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__affordance {
+          width: 10px;
+          height: 10px;
+          flex: 0 0 10px;
+          margin-right: 2px;
+          border-right: 2px solid rgba(148, 163, 184, 0.72);
+          border-bottom: 2px solid rgba(148, 163, 184, 0.72);
+          transform: rotate(45deg) translateY(-1px);
+          transition: transform 180ms ease, border-color 180ms ease;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__picker:hover .cms-gjs-color-field__affordance,
+        .cms-grapes-shell .cms-gjs-color-field__picker:focus .cms-gjs-color-field__affordance,
+        .cms-grapes-shell .cms-gjs-color-field__picker[aria-expanded="true"] .cms-gjs-color-field__affordance {
+          border-right-color: #e2e8f0;
+          border-bottom-color: #e2e8f0;
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__picker[aria-expanded="true"] .cms-gjs-color-field__affordance {
+          transform: rotate(-135deg) translateY(-1px);
+        }
+
+        .cms-grapes-shell .cms-gjs-color-field__picker:focus,
+        .cms-grapes-shell .cms-gjs-color-field__picker[aria-expanded="true"] {
+          outline: none;
+          border-color: rgba(96, 165, 250, 0.45);
+          background: rgba(15, 23, 42, 0.8);
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+          transform: translateY(-1px);
+        }
+
+        .cms-gjs-color-field__popover {
+          position: fixed;
+          z-index: 2147483647;
+          width: 224px;
+          padding: 14px;
+          border-radius: 18px;
+          border: 1px solid rgba(96, 165, 250, 0.18);
+          background: linear-gradient(180deg, rgba(8, 16, 31, 0.98), rgba(15, 23, 42, 0.98));
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+          backdrop-filter: blur(12px);
+        }
+
+        .cms-gjs-color-field__popover-head {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          margin-bottom: 10px;
+        }
+
+        .cms-gjs-color-field__popover-label {
+          color: #94a3b8;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .cms-gjs-color-field__popover-input {
+          width: 100%;
+          min-height: 40px;
+          margin-bottom: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          background: rgba(255, 255, 255, 0.06);
+          color: #f8fafc;
+          font-family: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+          transition:
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .cms-gjs-color-field__popover-input:focus {
+          outline: none;
+          border-color: rgba(96, 165, 250, 0.45);
+          background: rgba(15, 23, 42, 0.8);
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .cms-gjs-color-field__wheel {
+          width: 100%;
+        }
+
+        .cms-gjs-color-field__wheel .IroColorPicker {
+          width: 100% !important;
+        }
+
+        .cms-gjs-color-field__wheel svg {
+          display: block;
+          max-width: 100%;
+          height: auto;
         }
 
         @keyframes cms-style-sector-enter {

@@ -2,6 +2,15 @@ import { FlatItem, MenuItem } from "./types";
 
 export const INDENT = 30;
 
+export const readOpenInNewTab = (item: any) => {
+  const value = item?.openInNewTab ?? item?.open_in_new_tab ?? item?.newTab ?? item?.targetBlank;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  return value === true || value === 1;
+};
+
 export const flattenTree = (
   items: MenuItem[],
   depth = 0,
@@ -13,6 +22,7 @@ export const flattenTree = (
       label: item.label,
       type: item.type,
       target: item.target,
+      openInNewTab: readOpenInNewTab(item),
       depth,
       parentId,
     },
@@ -29,6 +39,7 @@ export const buildTree = (flat: FlatItem[]): MenuItem[] => {
       label: i.label,
       type: i.type,
       target: i.target,
+      openInNewTab: readOpenInNewTab(i),
       children: [],
     })
   );

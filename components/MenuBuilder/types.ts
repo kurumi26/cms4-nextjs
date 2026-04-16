@@ -11,6 +11,7 @@ export type MenuItem = {
   label: string;
   type: MenuItemType;
   target?: string; // URL for custom links
+  openInNewTab?: boolean;
   children: MenuItem[];
 };
 
@@ -19,6 +20,7 @@ export type FlatItem = {
   label: string;
   type: MenuItemType;
   target?: string;
+  openInNewTab?: boolean;
   depth: number;
   parentId: number | null;
 };

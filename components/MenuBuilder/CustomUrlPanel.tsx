@@ -10,6 +10,7 @@ interface Props {
 export default function CustomUrlPanel({ onAdd }: Props) {
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
+  const [openInNewTab, setOpenInNewTab] = useState(false);
 
   const handleAdd = () => {
     if (!label.trim() || !url.trim()) return;
@@ -19,11 +20,13 @@ export default function CustomUrlPanel({ onAdd }: Props) {
       label,
       type: "url",
       target: url,
+      openInNewTab,
       children: [],
     });
 
     setLabel("");
     setUrl("");
+    setOpenInNewTab(false);
   };
 
   return (
@@ -46,6 +49,19 @@ export default function CustomUrlPanel({ onAdd }: Props) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
+      </div>
+
+      <div className="form-check mb-3">
+        <input
+          id="custom-url-open-new-tab"
+          className="form-check-input"
+          type="checkbox"
+          checked={openInNewTab}
+          onChange={(e) => setOpenInNewTab(e.target.checked)}
+        />
+        <label className="form-check-label" htmlFor="custom-url-open-new-tab">
+          Open Link in New Tab
+        </label>
       </div>
 
       <button

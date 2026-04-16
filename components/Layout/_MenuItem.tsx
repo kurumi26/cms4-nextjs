@@ -17,6 +17,15 @@ export default function MenuItem({
 
   const href = item.target;
   const isInternal = item.type === "page";
+  const opensInNewTab =
+    item.openInNewTab === true ||
+    item.openInNewTab === 1 ||
+    String(item.openInNewTab ?? item.open_in_new_tab ?? item.newTab ?? "")
+      .trim()
+      .toLowerCase() === "true" ||
+    String(item.openInNewTab ?? item.open_in_new_tab ?? item.newTab ?? "")
+      .trim()
+      .toLowerCase() === "1";
   const hasChildren = item.children && item.children.length > 0;
 
   const normalizePath = (url: string) => {
@@ -58,8 +67,8 @@ export default function MenuItem({
           <a
             href={href}
             className="menu-link"
-            target="_blank"
-            rel="noopener noreferrer"
+            target={opensInNewTab ? "_blank" : undefined}
+            rel={opensInNewTab ? "noopener noreferrer" : undefined}
             onClick={handleLinkClick}
           >
             <span>{item.label.toUpperCase()}</span>

@@ -57,6 +57,9 @@ export type PublicMenuItem = {
   label: string;
   type: "page" | "url";
   target: string;
+  openInNewTab?: boolean | number | string;
+  open_in_new_tab?: boolean | number | string;
+  newTab?: boolean | number | string;
   children?: PublicMenuItem[];
 };
 
