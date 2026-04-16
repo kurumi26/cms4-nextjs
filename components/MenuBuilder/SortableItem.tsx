@@ -25,6 +25,7 @@ export default function SortableItem({
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(item.label);
   const [target, setTarget] = useState(item.target ?? "");
+  const [openInNewTab, setOpenInNewTab] = useState(!!item.openInNewTab);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -39,7 +40,7 @@ export default function SortableItem({
         ? {
             ...i,
             label,
-            ...(item.type === "url" ? { target } : {}),
+            ...(item.type === "url" ? { target, openInNewTab } : {}),
           }
         : i
     );
@@ -66,6 +67,7 @@ export default function SortableItem({
           {item.target && (
             <div className="text-muted small">
               {item.target}
+              {item.openInNewTab ? " • Opens in new tab" : ""}
             </div>
           )}
         </div>
@@ -113,14 +115,32 @@ export default function SortableItem({
                 </div>
 
                 {item.type === "url" && (
-                  <div className="mb-3">
-                    <label className="form-label">Target URL</label>
-                    <input
-                      className="form-control"
-                      value={target}
-                      onChange={(e) => setTarget(e.target.value)}
-                    />
-                  </div>
+                  <>
+                    <div className="mb-3">
+                      <label className="form-label">Target URL</label>
+                      <input
+                        className="form-control"
+                        value={target}
+                        onChange={(e) => setTarget(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-check">
+                      <input
+                        id={`menu-item-open-new-tab-${item.id}`}
+                        className="form-check-input"
+                        type="checkbox"
+                        checked={openInNewTab}
+                        onChange={(e) => setOpenInNewTab(e.target.checked)}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor={`menu-item-open-new-tab-${item.id}`}
+                      >
+                        Open Link in New Tab
+                      </label>
+                    </div>
+                  </>
                 )}
               </div>
 

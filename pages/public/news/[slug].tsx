@@ -83,7 +83,13 @@ export async function getServerSideProps({ params }: any) {
           for (const it of items) {
             const label = it.title || it.name || it.label || it.text || "Untitled";
             const href = it.url || it.link || it.path || (it.page ? `/pages/${it.page.slug || it.page.id}` : "#");
-            html += `<li><a href=\"${href}\">${label}</a>`;
+            const openInNewTabValue = it?.openInNewTab ?? it?.open_in_new_tab ?? it?.newTab;
+            const openInNewTab =
+              openInNewTabValue === true ||
+              openInNewTabValue === 1 ||
+              ["true", "1", "yes"].includes(String(openInNewTabValue ?? "").trim().toLowerCase());
+            const targetAttrs = openInNewTab ? ' target="_blank" rel="noopener noreferrer"' : "";
+            html += `<li><a href=\"${href}\"${targetAttrs}>${label}</a>`;
             const children = it.children || it.items || it.child || [];
             if (Array.isArray(children) && children.length) {
               html += renderItems(children);

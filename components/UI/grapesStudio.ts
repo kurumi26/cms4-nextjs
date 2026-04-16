@@ -404,7 +404,7 @@ export const registerAdvancedCmsBlocks = (editor: any) => {
     category: "CMS Commerce",
     attributes: { class: "fa fa-shopping-bag" },
     content: `
-      <section style="padding:64px 24px;background:#f8fafc;">
+      <section style="padding:88px 24px 64px;background:#f8fafc;">
         <div style="max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center;">
           <div style="padding:28px;border-radius:30px;background:linear-gradient(135deg,#ffffff,#eff6ff);border:1px solid #dbeafe;box-shadow:0 24px 54px rgba(37,99,235,.12);min-height:360px;display:flex;align-items:center;justify-content:center;">
             <div style="width:78%;aspect-ratio:1/1;border-radius:28px;background:linear-gradient(145deg,#0f172a,#2563eb);box-shadow:0 30px 60px rgba(37,99,235,.26);"></div>

@@ -7,6 +7,7 @@ import ConfirmModal from "@/components/UI/ConfirmModal";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { isDefaultProtectedPage } from "@/lib/defaultPages";
 
 interface PageRow {
   id: number;
@@ -45,6 +46,10 @@ export default function ManagePages() {
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[]>([]);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const silentSortFetchRef = useRef(false);
+  const hasMountedSearchRef = useRef(false);
+  const activeFetchKeyRef = useRef<string | null>(null);
+  const latestFetchSeqRef = useRef(0);
+  const lastRateLimitToastAtRef = useRef(0);
 
   const applySort = (next: { sortBy?: string; sortOrder?: string }) => {
     const nextSortBy = next.sortBy ?? sortBy;
@@ -139,6 +144,33 @@ export default function ManagePages() {
     }
   };
 
+  const getPageViewUrl = (row: PageRow) => {
+    const status = normalizePageStatus(row);
+    if (status === "published" && row.slug) {
+      return `/public/${row.slug}`;
+    }
+    return `/pages/preview/${row.id}`;
+  };
+
+  const getPageViewHint = (row: PageRow) => {
+    const status = normalizePageStatus(row);
+    if (status === "published" && row.slug) {
+      return `${FRONTEND_URL}/public/${row.slug}`;
+    }
+    return "Private preview available in admin";
+  };
+
+  const isProtectedRow = (row: PageRow) => isDefaultProtectedPage(row) && !isRowDeleted(row);
+
+  const selectablePageIds = pages
+    .filter((row) => !isProtectedRow(row))
+    .map((row) => row.id);
+
+  const actionableSelectedIds = selectedIds.filter((id) => {
+    const row = pages.find((page) => page.id === id);
+    return row ? !isProtectedRow(row) : true;
+  });
+
   const sortRowsClientSide = (rows: PageRow[], sortByValue: string, sortOrderValue: string) => {
     const order = (sortOrderValue ?? "desc").toString().toLowerCase() === "asc" ? 1 : -1;
     const by = (sortByValue ?? "modified").toString().toLowerCase();
@@ -228,7 +260,7 @@ export default function ManagePages() {
   };
 
   const bulkUpdateStatus = async (status: "published" | "private") => {
-    if (selectedIds.length === 0) {
+    if (actionableSelectedIds.length === 0) {
       toast.error("Select at least one page");
       return;
     }
@@ -240,7 +272,7 @@ export default function ManagePages() {
     try {
       setLoading(true);
       const results = await Promise.allSettled(
-        selectedIds.map(async (id) => {
+        actionableSelectedIds.map(async (id) => {
           try {
             await updatePage(id, { status });
           } catch {
@@ -261,7 +293,7 @@ export default function ManagePages() {
   };
 
   const openBulkDeleteConfirm = () => {
-    if (selectedIds.length === 0) {
+    if (actionableSelectedIds.length === 0) {
       toast.error("Select at least one page");
       return;
     }
@@ -269,7 +301,7 @@ export default function ManagePages() {
       toast.error("Bulk delete is disabled in Trash view");
       return;
     }
-    setBulkDeleteIds(selectedIds);
+    setBulkDeleteIds(actionableSelectedIds);
     setBulkDeleteModalOpen(true);
   };
 
@@ -298,16 +330,31 @@ export default function ManagePages() {
   };
 
   const fetchPages = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string; silent?: boolean }) => {
-    try {
-      const silent = overrides?.silent ?? false;
-      if (!silent) setLoading(true);
+    const silent = overrides?.silent ?? false;
+    const useSearch = overrides?.search ?? search;
+    const usePage = overrides?.page ?? currentPage;
+    const usePerPage = overrides?.perPage ?? perPage;
+    const useSortBy = overrides?.sortBy ?? sortBy;
+    const useSortOrder = overrides?.sortOrder ?? sortOrder;
+    const useShowDeleted = overrides?.showDeleted ?? showDeleted;
+    const requestKey = JSON.stringify({
+      search: useSearch,
+      page: usePage,
+      perPage: usePerPage,
+      sortBy: useSortBy,
+      sortOrder: useSortOrder,
+      showDeleted: useShowDeleted,
+    });
 
-      const useSearch = overrides?.search ?? search;
-      const usePage = overrides?.page ?? currentPage;
-      const usePerPage = overrides?.perPage ?? perPage;
-      const useSortBy = overrides?.sortBy ?? sortBy;
-      const useSortOrder = overrides?.sortOrder ?? sortOrder;
-      const useShowDeleted = overrides?.showDeleted ?? showDeleted;
+    if (activeFetchKeyRef.current === requestKey) {
+      return;
+    }
+
+    activeFetchKeyRef.current = requestKey;
+    const fetchSeq = ++latestFetchSeqRef.current;
+
+    try {
+      if (!silent) setLoading(true);
 
       const deletedFlag = useShowDeleted ? 1 : 0;
 
@@ -355,6 +402,10 @@ export default function ManagePages() {
         rows = apiRows.filter(isRowDeleted);
       }
 
+      if (fetchSeq !== latestFetchSeqRef.current) {
+        return;
+      }
+
       // Merge in any locally-cached recently deleted rows so Trash view feels immediate
       if (useShowDeleted && recentlyDeletedPages.length > 0) {
         const byId = new Map<number, PageRow>();
@@ -373,15 +424,42 @@ export default function ManagePages() {
       setSelectAll(false);
       setCurrentPage(res.data.meta.current_page);
       setTotalPages(res.data.meta.last_page);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 429) {
+        const now = Date.now();
+        if (!silent && now - lastRateLimitToastAtRef.current > 3000) {
+          toast.error("Too many page requests. Please wait a moment and try again.");
+          lastRateLimitToastAtRef.current = now;
+        }
+        return;
+      }
+
+      const serverMsg = err?.response?.data?.message || err?.message;
+      if (!silent) {
+        toast.error(serverMsg || "Failed to load pages");
+      }
+      console.error("Failed to load pages", err);
     } finally {
+      if (activeFetchKeyRef.current === requestKey) {
+        activeFetchKeyRef.current = null;
+      }
       if (!(overrides?.silent ?? false)) setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!hasMountedSearchRef.current) {
+      hasMountedSearchRef.current = true;
+      return;
+    }
+
     const timeout = setTimeout(() => {
-      setCurrentPage(1);
-      fetchPages();
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+      void fetchPages({ page: 1, search });
     }, 400);
 
     return () => clearTimeout(timeout);
@@ -394,13 +472,28 @@ export default function ManagePages() {
   }, [currentPage, perPage, showDeleted, sortBy, sortOrder]);
 
   const handleApplyFilters = (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number }) => {
+    const willTriggerEffect =
+      sortBy !== filters.sortBy ||
+      sortOrder !== filters.sortOrder ||
+      perPage !== filters.perPage ||
+      showDeleted !== filters.showDeleted ||
+      currentPage !== 1;
+
     setSortBy(filters.sortBy);
     setSortOrder(filters.sortOrder);
     setPerPage(filters.perPage);
     setShowDeleted(filters.showDeleted);
     setCurrentPage(1);
-    // fetch immediately using the new filter values to avoid state update race
-    fetchPages({ sortBy: filters.sortBy, sortOrder: filters.sortOrder, perPage: filters.perPage, showDeleted: filters.showDeleted, page: 1 });
+
+    if (!willTriggerEffect) {
+      void fetchPages({
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        perPage: filters.perPage,
+        showDeleted: filters.showDeleted,
+        page: 1,
+      });
+    }
   };
 
   const openRestoreConfirm = (id: number, title?: string) => {
@@ -420,7 +513,6 @@ export default function ManagePages() {
       if (showDeleted) {
         setShowDeleted(false);
         setCurrentPage(1);
-        fetchPages({ showDeleted: false, page: 1 });
       } else {
         fetchPages();
       }
@@ -436,10 +528,12 @@ export default function ManagePages() {
       header: (
         <input
           type="checkbox"
-          checked={selectAll}
+          checked={selectablePageIds.length > 0 && selectablePageIds.every((id) => selectedIds.includes(id))}
+          disabled={selectablePageIds.length === 0}
           onChange={() => {
-            if (!selectAll) {
-              setSelectedIds(pages.map((p) => p.id));
+            const nextChecked = !(selectablePageIds.length > 0 && selectablePageIds.every((id) => selectedIds.includes(id)));
+            if (nextChecked) {
+              setSelectedIds(selectablePageIds);
               setSelectAll(true);
             } else {
               setSelectedIds([]);
@@ -452,7 +546,10 @@ export default function ManagePages() {
         <input
           type="checkbox"
           checked={selectedIds.includes(row.id)}
+          disabled={isProtectedRow(row)}
+          title={isProtectedRow(row) ? "Default pages cannot be selected" : undefined}
           onChange={() => {
+            if (isProtectedRow(row)) return;
             setSelectedIds((prev) =>
               prev.includes(row.id) ? prev.filter((id) => id !== row.id) : [...prev, row.id]
             );
@@ -473,7 +570,7 @@ export default function ManagePages() {
             </div>
           ) : (
             <a
-              href={`/public/${row.slug}`}
+              href={getPageViewUrl(row)}
               target="_blank"
               rel="noreferrer"
               className="text-primary fw-bold"
@@ -483,7 +580,7 @@ export default function ManagePages() {
           )}
 
           <div style={{ fontSize: "0.8rem", color: "#6c757d" }}>
-            {FRONTEND_URL}/public/{row.slug}
+            {getPageViewHint(row)}
           </div>
         </div>
       ),
@@ -516,7 +613,7 @@ export default function ManagePages() {
               {/* View */}
               <button
                 className="btn btn-link p-0 me-2 text-secondary"
-                onClick={() => window.open(`/public/${row.slug}`, "_blank")}
+                onClick={() => window.open(getPageViewUrl(row), "_blank", "noopener,noreferrer")}
                 title="View"
               >
                 <i className="fas fa-eye"></i>
@@ -531,7 +628,7 @@ export default function ManagePages() {
                 <i className="fas fa-edit"></i>
               </button>
 
-              <SettingsMenu row={row} />
+              {!isProtectedRow(row) && <SettingsMenu row={row} />}
 
               {isRowDeleted(row) && (
                 <button
@@ -676,7 +773,6 @@ export default function ManagePages() {
                       const value = Number(e.target.value);
                       setPerPage(value);
                       setCurrentPage(1);
-                      fetchPages({ perPage: value, page: 1 });
                     }}
                     aria-label="Show entries"
                   >
@@ -691,7 +787,7 @@ export default function ManagePages() {
                 className="list-group-item list-group-item-action"
                 onClick={() => bulkUpdateStatus("published")}
                 type="button"
-                disabled={showDeleted || selectedIds.length === 0}
+                disabled={showDeleted || actionableSelectedIds.length === 0}
               >
                 Publish
               </button>
@@ -699,7 +795,7 @@ export default function ManagePages() {
                 className="list-group-item list-group-item-action"
                 onClick={() => bulkUpdateStatus("private")}
                 type="button"
-                disabled={showDeleted || selectedIds.length === 0}
+                disabled={showDeleted || actionableSelectedIds.length === 0}
               >
                 Private
               </button>
@@ -707,7 +803,7 @@ export default function ManagePages() {
                 className="list-group-item list-group-item-action text-danger"
                 onClick={openBulkDeleteConfirm}
                 type="button"
-                disabled={showDeleted || selectedIds.length === 0}
+                disabled={showDeleted || actionableSelectedIds.length === 0}
               >
                 Delete
               </button>
@@ -758,7 +854,6 @@ export default function ManagePages() {
         onItemsPerPageChange={(n: number) => {
           setPerPage(n);
           setCurrentPage(1);
-          fetchPages({ perPage: n, page: 1 });
         }}
       />
 

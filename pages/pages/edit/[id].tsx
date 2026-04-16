@@ -11,6 +11,7 @@ import SelectPreset from "@/components/UI/SelectPreset";
 import dynamic from "next/dynamic";
 import { composeContentFromGrapes, extractGrapesParts } from "@/lib/grapesContent";
 import Tooltip from "@/components/UI/Tooltip";
+import { isDefaultProtectedPage } from "@/lib/defaultPages";
 
 const GrapesEditor = dynamic(() => import("@/components/UI/GrapesEditor"), { ssr: false });
 
@@ -57,6 +58,8 @@ function EditPage() {
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [defaultPageLocked, setDefaultPageLocked] = useState(false);
+  const [lockedStatus, setLockedStatus] = useState<"published" | "private" | "draft">("published");
 
   const handleEditorTypeChange = (nextType: "tinymce" | "grapesjs") => {
     if (nextType === "tinymce" && !tinyContent && grapesContent) {
@@ -93,6 +96,15 @@ function EditPage() {
         setGrapesContent(composedContent);
         setEditorType(isGrapes ? "grapesjs" : "tinymce");
         setVisibility(page.status === "published");
+        setLockedStatus(page.status === "draft" ? "draft" : page.status === "private" ? "private" : "published");
+        setDefaultPageLocked(
+          isDefaultProtectedPage({
+            slug: page.slug,
+            label: page.label,
+            title: page.name,
+            url: page.url,
+          })
+        );
         setSeoTitle(page.meta_title || "");
         setSeoDescription(page.meta_description || "");
         setSeoKeywords(page.meta_keyword || "");
@@ -136,7 +148,7 @@ function EditPage() {
         grapes_html: isGrapes || hasGrapesData ? grapesParts.grapes_html : undefined,
         grapes_css: isGrapes || hasGrapesData ? grapesParts.grapes_css : undefined,
         grapes_js: isGrapes || hasGrapesData ? grapesParts.grapes_js : undefined,
-        status: visibility ? "published" : "private",
+        status: defaultPageLocked ? lockedStatus : visibility ? "published" : "private",
         meta_title: seoTitle || undefined,
         meta_description: seoDescription || undefined,
         meta_keyword: seoKeywords || undefined,
@@ -306,13 +318,20 @@ function EditPage() {
               className="form-check-input"
               type="checkbox"
               checked={visibility}
-              onChange={() => setVisibility(!visibility)}
+              disabled={defaultPageLocked}
+              onChange={() => {
+                if (defaultPageLocked) return;
+                setVisibility(!visibility);
+              }}
             />
             <label className="form-check-label d-flex align-items-center">
               {visibility ? "Published" : "Private"}
               <Tooltip text="Published pages are visible to visitors. Private pages remain hidden." />
             </label>
           </div>
+          {defaultPageLocked && (
+            <div className="small text-muted mb-3">Default pages cannot change visibility from the editor.</div>
+          )}
         </div>
       </div>
 

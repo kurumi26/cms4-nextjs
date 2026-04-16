@@ -94,6 +94,14 @@ function ManageNews() {
     }
   };
 
+  const getNewsViewUrl = (row: NewsRow) => {
+    const status = normalizeStatus(row);
+    if (status === "published" && row.slug) {
+      return `/public/news/${row.slug}`;
+    }
+    return `/news/preview/${row.id}`;
+  };
+
   const sortRowsClientSide = (rows: any[], sortByKey: string, order: string) => {
     const direction = String(order).toLowerCase() === "asc" ? 1 : -1;
     const copy = [...rows];
@@ -465,11 +473,7 @@ function ManageNews() {
                 title="View"
                 type="button"
                 onClick={() => {
-                  if (!row.slug) {
-                    toast.error("No slug available to view");
-                    return;
-                  }
-                  window.open(`/public/news/${row.slug}`, "_blank", "noopener,noreferrer");
+                  window.open(getNewsViewUrl(row), "_blank", "noopener,noreferrer");
                 }}
               >
                 <i className="fas fa-eye" />

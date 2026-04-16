@@ -9,6 +9,7 @@ import {
   layoutPresetService,
   LayoutPreset,
 } from "@/services/layoutPresetService";
+import ConfirmModal from "@/components/UI/ConfirmModal";
 import { toast } from "@/lib/toast";
 
 function PresetPage() {
@@ -24,30 +25,148 @@ function PresetPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [recentlyDeletedPresets, setRecentlyDeletedPresets] = useState<LayoutPreset[]>(() => {
+    try {
+      if (typeof window === "undefined") return [];
+      const raw = localStorage.getItem("recentlyDeletedPresets_layout_presets");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as LayoutPreset[];
+      // prune entries older than 14 days
+      const cutoff = Date.now() - 1000 * 60 * 60 * 24 * 14;
+      return parsed.filter((p: any) => {
+        try {
+          return p?.deleted_at ? new Date(p.deleted_at).getTime() >= cutoff : true;
+        } catch {
+          return true;
+        }
+      });
+    } catch {
+      return [];
+    }
+  });
+
+  // persist recently deleted presets so Trash view survives page refresh
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem("recentlyDeletedPresets_layout_presets", JSON.stringify(recentlyDeletedPresets));
+    } catch {
+      // ignore
+    }
+  }, [recentlyDeletedPresets]);
 
   /* =========================
    Fetch Presets
   ========================== */
-  const fetchPresets = async () => {
+  const isRowDeleted = (row: any) => {
+    if (row?.deleted_at) return true;
+    if (row?.is_deleted) return true;
+    const visibility = (row?.visibility ?? "").toString().trim().toLowerCase();
+    if (visibility === "deleted") return true;
+    const status = ((row as any)?.status ?? "").toString().trim().toLowerCase();
+    if (status === "deleted") return true;
+    return false;
+  };
+
+  const markRowDeletedLocal = (row: any) => {
+    const nowIso = new Date().toISOString();
+    return {
+      ...row,
+      deleted_at: row.deleted_at ?? nowIso,
+      is_deleted: true,
+      visibility: row.visibility ?? "Deleted",
+      status: (row as any).status ?? "Deleted",
+    } as LayoutPreset;
+  };
+
+  const fetchPresets = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string; silent?: boolean }) => {
     try {
-      setLoading(true);
+      const silent = overrides?.silent ?? false;
+      if (!silent) setLoading(true);
 
-      const res = await layoutPresetService.getAll({
-        search,
-        page: currentPage,
-        per_page: perPage,
-      });
+      const useSearch = overrides?.search ?? search;
+      const usePage = overrides?.page ?? currentPage;
+      const usePerPage = overrides?.perPage ?? perPage;
+      const useSortBy = overrides?.sortBy ?? sortBy;
+      const useSortOrder = (overrides?.sortOrder
+        ? (String(overrides.sortOrder).toLowerCase() === "asc" ? "asc" : "desc")
+        : sortOrder) as "asc" | "desc";
+      const useShowDeleted = overrides?.showDeleted ?? showDeleted;
 
-      const rows: LayoutPreset[] = Array.isArray(res?.data?.data)
-      ? res.data.data
-      : [];
+      const deletedFlag = useShowDeleted ? 1 : 0;
+
+      const params: any = {
+        search: useSearch,
+        page: usePage,
+        per_page: usePerPage,
+        sort_by: useSortBy === "modified" ? "name" : useSortBy,
+        sort_order: useSortOrder,
+        ...(deletedFlag
+          ? {
+              show_deleted: deletedFlag,
+              with_trashed: 1,
+              only_trashed: 1,
+              only_deleted: 1,
+            }
+          : {}),
+      };
+
+      let res: any;
+      try {
+        res = await layoutPresetService.getAll(params as any);
+      } catch (err: any) {
+        console.error("layoutPresets.getAll failed", err?.response?.status, err?.response?.data || err?.message);
+        // If the backend rejects complex params (422/500), retry with a minimal param set.
+        const simpleParams: any = {
+          search: useSearch,
+          page: usePage,
+          per_page: usePerPage,
+        };
+
+        try {
+          res = await layoutPresetService.getAll(simpleParams);
+        } catch (err2: any) {
+          console.error("layoutPresets.getAll fallback failed", err2?.response?.status, err2?.response?.data || err2?.message);
+          const serverMsg = err2?.response?.data?.message || err?.response?.data?.message || err2?.message || err?.message;
+          toast.error(serverMsg || "Failed to load presets");
+          return;
+        }
+      }
+
+      let apiRows: LayoutPreset[] = Array.isArray(res?.data?.data) ? res.data.data : [];
+      let rows: LayoutPreset[] = useShowDeleted ? apiRows.filter(isRowDeleted) : apiRows.filter((r) => !isRowDeleted(r));
+
+      if (useShowDeleted && rows.length === 0) {
+        const fallbackParams: any = {
+          ...params,
+          with_trashed: 1,
+        };
+
+        res = await layoutPresetService.getAll(fallbackParams);
+        apiRows = Array.isArray(res?.data?.data) ? res.data.data : [];
+        rows = apiRows.filter(isRowDeleted);
+      }
+
+      if (useShowDeleted && recentlyDeletedPresets.length > 0) {
+        const byId = new Map<number, LayoutPreset>();
+        for (const r of rows) byId.set((r as any).id, r);
+        for (const r of recentlyDeletedPresets) {
+          if (!byId.has((r as any).id) && isRowDeleted(r)) byId.set((r as any).id, r);
+        }
+        rows = Array.from(byId.values());
+      }
+
+      rows = sortRowsClientSide(rows, useSortBy === "modified" ? "name" : useSortBy, useSortOrder);
 
       setPresets(rows);
-      setTotalPages(res?.data?.last_page ?? 1);
+      setSelectedIds([]);
+      setCurrentPage(res?.data?.meta?.current_page ?? res?.data?.current_page ?? usePage);
+      setTotalPages(res?.data?.meta?.last_page ?? res?.data?.last_page ?? 1);
     } catch (err) {
       toast.error("Failed to load presets");
     } finally {
-      setLoading(false);
+      if (!(overrides?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -81,6 +200,36 @@ function PresetPage() {
       document.getElementById("presetModal")!
     );
     modal.show();
+  };
+
+  const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [restoreId, setRestoreId] = useState<number | null>(null);
+  const [restoreTitle, setRestoreTitle] = useState<string | null>(null);
+
+  const openRestoreConfirm = (id: number, title?: string) => {
+    setRestoreId(id);
+    setRestoreTitle(title ?? null);
+    setRestoreModalOpen(true);
+  };
+
+  const doRestore = async () => {
+    if (!restoreId) return;
+    try {
+      await layoutPresetService.restore(restoreId);
+      toast.success("Preset restored");
+      setRestoreModalOpen(false);
+      setRecentlyDeletedPresets((prev) => prev.filter((p) => p.id !== restoreId));
+      if (showDeleted) {
+        setShowDeleted(false);
+        setCurrentPage(1);
+        fetchPresets({ showDeleted: false, page: 1 });
+      } else {
+        fetchPresets();
+      }
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message || err?.message;
+      toast.error(serverMsg || "Failed to restore preset");
+    }
   };
 
   const openEditModal = async (preset: LayoutPreset) => {
@@ -158,7 +307,7 @@ function PresetPage() {
   useEffect(() => {
     const timeout = setTimeout(fetchPresets, 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
   useEffect(() => {
     return () => {
@@ -170,7 +319,7 @@ function PresetPage() {
 
   useEffect(() => {
     setSelectedIds([]);
-  }, [search, currentPage, perPage, sortBy, sortOrder]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
 
   /* =========================
    Sorting (Client Side)
@@ -213,15 +362,58 @@ function PresetPage() {
   /* =========================
    Delete
   ========================== */
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this preset?")) return;
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteTitle, setDeleteTitle] = useState<string | null>(null);
+
+  const openDeleteConfirm = (id: number, title?: string) => {
+    setDeleteId(id);
+    setDeleteTitle(title ?? null);
+    setDeleteModalOpen(true);
+  };
+
+  const rememberDeletedById = async (id: number) => {
+    const fromList = presets.find((p) => p.id === id);
+    if (fromList) {
+      const deletedRow = markRowDeletedLocal(fromList);
+      setRecentlyDeletedPresets((prev) => {
+        const next = [deletedRow, ...prev.filter((p) => p.id !== id)];
+        return next.slice(0, 50);
+      });
+      return;
+    }
 
     try {
-      await layoutPresetService.delete(id);
-      toast.success("Preset deleted");
-      fetchPresets();
+      const res = await layoutPresetService.getById(id);
+      const deletedRow = markRowDeletedLocal(res.data?.data ?? res.data);
+      setRecentlyDeletedPresets((prev) => {
+        const next = [deletedRow, ...prev.filter((p) => p.id !== id)];
+        return next.slice(0, 50);
+      });
     } catch {
-      toast.error("Failed to delete preset");
+      // ignore
+    }
+  };
+
+  const deletePresetSoftFirst = async (id: number) => {
+    try {
+      await layoutPresetService.postDelete(id);
+      return;
+    } catch (err1: any) {
+      console.warn("postDelete failed", err1?.response?.status, err1?.response?.data || err1?.message);
+      try {
+        await layoutPresetService.postMethodDelete(id);
+        return;
+      } catch (err2: any) {
+        console.warn("postMethodDelete failed", err2?.response?.status, err2?.response?.data || err2?.message);
+        try {
+          await layoutPresetService.postDeleteByPayload(id);
+          return;
+        } catch (err3: any) {
+          console.warn("postDeleteByPayload failed", err3?.response?.status, err3?.response?.data || err3?.message);
+          await layoutPresetService.delete(id);
+        }
+      }
     }
   };
 
@@ -273,7 +465,17 @@ function PresetPage() {
       sortField: "name",
       defaultSortOrder: "asc",
       render: (row) => (
-        <span className="fw-bold text-primary">{row.name}</span>
+        <div>
+          {showDeleted || isRowDeleted(row) ? (
+            <div className="d-flex align-items-center gap-2">
+              <span className="fw-bold text-muted" style={{ textDecoration: "line-through" }}>
+                {row.name}
+              </span>
+            </div>
+          ) : (
+            <span className="fw-bold text-primary">{row.name}</span>
+          )}
+        </div>
       ),
     },
     {
@@ -302,38 +504,61 @@ function PresetPage() {
       header: "Status",
       sortable: true,
       sortField: "is_active",
-      render: (row) => (
-        <span
-          className={`badge ${
-            row.is_active ? "bg-success" : "bg-secondary"
-          }`}
-        >
-          {row.is_active ? "Active" : "Inactive"}
-        </span>
-      ),
+      render: (row) => {
+        if (showDeleted || isRowDeleted(row)) {
+          return <span className="badge bg-danger">Deleted</span>;
+        }
+        return (
+          <span className={`badge ${row.is_active ? "bg-success" : "bg-secondary"}`}>
+            {row.is_active ? "Active" : "Inactive"}
+          </span>
+        );
+      },
     },
     {
       key: "options",
       header: "Options",
       render: (row) => (
         <>
-          <button
-            className="btn btn-link p-0 me-2 text-secondary"
-            title="Edit"
-            onClick={() => openEditModal(row)}
-            type="button"
-          >
-            <i className="fas fa-edit" />
-          </button>
+          {showDeleted ? (
+            <button
+              className="btn btn-link p-0 text-success"
+              onClick={() => openRestoreConfirm(row.id, row.name)}
+              title="Restore"
+            >
+              <i className="fas fa-trash-restore"></i>
+            </button>
+          ) : (
+            <>
+              <button
+                className="btn btn-link p-0 me-2 text-secondary"
+                title="Edit"
+                onClick={() => openEditModal(row)}
+                type="button"
+              >
+                <i className="fas fa-edit" />
+              </button>
 
-          <button
-            className="btn btn-link p-0 text-danger"
-            title="Delete"
-            onClick={() => handleDelete(row.id)}
-            type="button"
-          >
-            <i className="fas fa-trash" />
-          </button>
+              <button
+                className="btn btn-link p-0 text-danger"
+                title="Delete"
+                onClick={() => openDeleteConfirm(row.id, row.name)}
+                type="button"
+              >
+                <i className="fas fa-trash" />
+              </button>
+
+              {isRowDeleted(row) && (
+                <button
+                  className="btn btn-link p-0 ms-2 text-success"
+                  onClick={() => openRestoreConfirm(row.id, row.name)}
+                  title="Restore"
+                >
+                  <i className="fas fa-trash-restore"></i>
+                </button>
+              )}
+            </>
+          )}
         </>
       ),
     },
@@ -384,16 +609,18 @@ function PresetPage() {
         onFiltersOpenChange={(open) => {
           if (!open) setShowAdvancedModal(false);
         }}
-        externalOpenAsModal={true}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage }) => {
-          setSortBy(sBy === "modified" ? "name" : sBy);
-          setSortOrder((String(sOrder).toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc");
-          setPerPage(sPerPage);
-          setCurrentPage(1);
-        }}
-        initialSortBy={sortBy}
-        initialSortOrder={sortOrder}
-        initialPerPage={perPage}
+          externalOpenAsModal={true}
+          onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sShowDeleted, perPage: sPerPage }) => {
+            setSortBy(sBy === "modified" ? "name" : sBy);
+            setSortOrder((String(sOrder).toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc");
+            setPerPage(sPerPage);
+            setShowDeleted(!!sShowDeleted);
+            setCurrentPage(1);
+          }}
+          initialSortBy={sortBy}
+          initialSortOrder={sortOrder}
+          initialShowDeleted={showDeleted}
+          initialPerPage={perPage}
       />
 
       <DataTable<LayoutPreset>
@@ -415,6 +642,58 @@ function PresetPage() {
           setSortOrder(nextOrder);
           setCurrentPage(1);
         }}
+      />
+
+      {showDeleted && (
+        <div className="alert alert-warning d-flex align-items-center justify-content-between mt-3" role="alert">
+          <div>
+            <strong>Trash view:</strong> showing deleted presets only.
+          </div>
+          <button className="btn btn-sm btn-outline-secondary" onClick={() => setShowDeleted(false)}>
+            Back to list
+          </button>
+        </div>
+      )}
+
+      <ConfirmModal
+        show={restoreModalOpen}
+        title="Restore preset"
+        message={<>You want to restore <strong>{restoreTitle}</strong>?</>}
+        confirmLabel="Restore"
+        cancelLabel="Cancel"
+        danger={false}
+        confirmVariant="success"
+        accentVariant="success"
+        onConfirm={doRestore}
+        onCancel={() => setRestoreModalOpen(false)}
+      />
+
+      <ConfirmModal
+        show={deleteModalOpen}
+        title="Move preset to Trash"
+        message={<>Move <strong>{deleteTitle}</strong> to Trash? You can restore it later from the deleted list.</>}
+        confirmLabel="Trash"
+        cancelLabel="Cancel"
+        danger={true}
+        onConfirm={async () => {
+          if (!deleteId) return;
+          try {
+            setLoading(true);
+            await deletePresetSoftFirst(deleteId);
+            await rememberDeletedById(deleteId);
+            toast.success("Preset deleted");
+            setDeleteModalOpen(false);
+            fetchPresets();
+            return;
+          } catch (err: any) {
+            const serverMsg = err?.response?.data?.message || err?.message;
+            toast.error(serverMsg || 'Failed to delete preset');
+            return;
+          } finally {
+            setLoading(false);
+          }
+        }}
+        onCancel={() => setDeleteModalOpen(false)}
       />
 
       <div className="modal fade" id="presetModal" tabIndex={-1}>
