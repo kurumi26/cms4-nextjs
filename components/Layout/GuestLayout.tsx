@@ -4,12 +4,19 @@ import Banner from "./_Banner";
 import { PublicAlbum } from "@/services/publicPageService";
 import ToastHost from "@/components/UI/ToastHost";
 import Head from "next/head";
+import { useEffect, useState } from "react";
+import { getWebsiteSettingsCached, subscribeWebsiteSettingsUpdated } from "@/lib/websiteSettings"; // adjust import path
 
 interface LandingPageLayoutProps {
   children: React.ReactNode;
   pageData?: {
     title?: string;
     album?: PublicAlbum | null;
+    meta?: {
+      title?: string | null;
+      description?: string | null;
+      keywords?: string | null;
+    };
   };
   layout?: {
     fullWidth?: boolean;
@@ -25,10 +32,36 @@ export default function LandingPageLayout({
     ? "container-fluid px-0"
     : "container";
 
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    const refresh = async (opts?: { force?: boolean }) => {
+      try {
+        const s = await getWebsiteSettingsCached({ force: opts?.force === true });
+        if (!alive) return;
+        setCompanyName((s as any)?.company_name || null);
+      } catch {
+        // ignore
+      }
+    };
+
+    refresh({ force: false });
+    const unsub = subscribeWebsiteSettingsUpdated(() => refresh({ force: true }));
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
+
+  const baseTitle = pageData?.meta?.title || pageData?.title || "Page";
+  const tabTitle = companyName ? `${baseTitle} | ${companyName}` : baseTitle;
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <Head>
-        {/* Public/front-end template styles only (kept out of admin pages) */}
+        <title>{tabTitle}</title>
         <link rel="stylesheet" href="/css/public-css.css" />
         <link rel="stylesheet" href="/css/custom.css" />
         <link rel="stylesheet" href="/css/product.css" />

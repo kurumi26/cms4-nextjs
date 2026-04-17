@@ -565,7 +565,7 @@ export default function ManagePages() {
           {showDeleted || isRowDeleted(row) ? (
             <div className="d-flex align-items-center gap-2">
               <span className="fw-bold text-muted" style={{ textDecoration: "line-through" }}>
-                {row.label}
+                {row.title}
               </span>
             </div>
           ) : (
@@ -575,7 +575,7 @@ export default function ManagePages() {
               rel="noreferrer"
               className="text-primary fw-bold"
             >
-              {row.label}
+              {row.title}
             </a>
           )}
 
