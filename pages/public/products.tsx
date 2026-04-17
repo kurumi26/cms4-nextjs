@@ -24,16 +24,17 @@ type Props = {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ProductsPublicPage({ products, categories, pageData }: Props) {
-	const [clientProducts, setClientProducts] = useState<Product[]>(products ?? []);
+	const [clientProducts, setClientProducts] = useState<Product[]>(
+	(products ?? []).filter((p) => (p.status ?? "active") === "active")
+	);
 	const [clientCategories, setClientCategories] = useState<ProductCategory[]>(categories ?? []);
 	const [activeCategory, setActiveCategory] = useState<string>("*");
 	const [search, setSearch] = useState<string>("");
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 	const [loading, setLoading] = useState(!products?.length && !categories?.length);
 
-	// Sync if SSR props change
 	useEffect(() => {
-		setClientProducts(products ?? []);
+		setClientProducts((products ?? []).filter((p) => (p.status ?? "active") === "active"));
 		setClientCategories(categories ?? []);
 	}, [products, categories]);
 
@@ -49,8 +50,9 @@ export default function ProductsPublicPage({ products, categories, pageData }: P
 					fetchPublicProducts(),
 					fetchPublicCategories(),
 				]);
+				// In the client-side fallback fetch:
 				if (!cancelled) {
-					setClientProducts(nextProducts);
+					setClientProducts(nextProducts.filter((p) => (p.status ?? "active") === "active"));
 					setClientCategories(nextCategories);
 				}
 			} catch {
@@ -355,26 +357,26 @@ function lineClamp(lines: number): React.CSSProperties {
 // ─── SSR ─────────────────────────────────────────────────────────────────────
 
 export async function getServerSideProps() {
-	try {
-		const [pageRes, products, categories] = await Promise.all([
-			getPublicPageBySlug("products"),
-			fetchPublicProducts(),
-			fetchPublicCategories(),
-		]);
+  try {
+    const [pageRes, products, categories] = await Promise.all([
+      getPublicPageBySlug("products"),
+      fetchPublicProducts(),
+      fetchPublicCategories(),
+    ]);
 
-		return {
-			props: {
-				pageData: pageRes.data ?? null,
-				products,
-				categories,
-			},
-		};
-	} catch (error: any) {
-		console.error("PUBLIC PRODUCTS SSR ERROR:", error?.response?.data ?? error);
-		return {
-			props: { pageData: null, products: [], categories: [] },
-		};
-	}
+    return {
+      props: {
+        pageData: pageRes.data ?? null,
+        products: (products ?? []).filter((p: Product) => (p.status ?? "active") === "active"), // ← add filter
+        categories,
+      },
+    };
+  } catch (error: any) {
+    console.error("PUBLIC PRODUCTS SSR ERROR:", error?.response?.data ?? error);
+    return {
+      props: { pageData: null, products: [], categories: [] },
+    };
+  }
 }
 
 ProductsPublicPage.Layout = LandingPageLayout;
