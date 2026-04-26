@@ -4,6 +4,7 @@ import Topbar from './_Topbar2';
 import ToastHost from "@/components/UI/ToastHost";
 import Head from "next/head";
 import { syncAuthTokenCookieFromStorage } from "@/lib/authToken";
+import { getWebsiteSettingsCached, subscribeWebsiteSettingsUpdated } from "@/lib/websiteSettings"; // adjust import path
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -32,6 +33,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
 
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+
+    const refresh = async (opts?: { force?: boolean }) => {
+      try {
+        const s = await getWebsiteSettingsCached({ force: opts?.force === true });
+        if (!alive) return;
+        setCompanyName((s as any)?.company_name || null);
+      } catch {
+        // ignore
+      }
+    };
+
+    refresh({ force: false });
+    const unsub = subscribeWebsiteSettingsUpdated(() => refresh({ force: true }));
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
+
+  const tabTitle = companyName;
+
   return (
     <div
       className={`cms-admin-layout d-flex vh-100 bg-light ${
@@ -39,6 +64,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       }`}
     >
       <Head>
+        <title>{tabTitle}</title>
         {/* Admin-only styles: loaded here to avoid affecting GuestLayout */}
          <link rel="stylesheet" href="/css/custom.css" />
          <link rel="stylesheet" href="/css/admin.css" />
