@@ -1,6 +1,7 @@
 import "bootstrap/dist/css/bootstrap.min.css"; //AdminLayout
 import "@fortawesome/fontawesome-free/css/all.min.css"; //AdminLayout
 import "grapesjs/dist/css/grapes.min.css";
+import "animate.css";
 
 // NOTE: Admin template styles are loaded in AdminLayout via <link href="/css/admin.css" />
 // to prevent global CSS from merging into GuestLayout.

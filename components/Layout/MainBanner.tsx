@@ -63,7 +63,34 @@ export default function MainBanner({ album }: MainBannerProps) {
     return isBannerVisible(banner);
   });
   const [current, setCurrent] = useState(0);
+  const [exiting, setExiting] = useState<number | null>(null);
   const [fontOverrides, setFontOverrides] = useState<Record<string, any>>({});
+
+  const normalizeAnimationName = (value: any) => {
+    if (!value) return "";
+    const raw = String(value).trim();
+    if (!raw) return "";
+    return raw.replace(/^animate__/, "").replace(/[^a-zA-Z0-9_-]/g, "");
+  };
+
+  const transitionInClass = normalizeAnimationName(
+    (album as any).transition_in_value ?? (album as any).transitionInValue
+  );
+  const transitionOutClass = normalizeAnimationName(
+    (album as any).transition_out_value ?? (album as any).transitionOutValue
+  );
+  const animationDurationMs = 900;
+
+  const goToBanner = (next: number) => {
+    if (!banners.length || next === current) return;
+    const outgoing = current;
+    setExiting(outgoing);
+    setCurrent(next);
+
+    window.setTimeout(() => {
+      setExiting((value) => (value === outgoing ? null : value));
+    }, animationDurationMs);
+  };
 
   useEffect(() => {
     try {
@@ -78,20 +105,20 @@ export default function MainBanner({ album }: MainBannerProps) {
     }
   }, []);
 
-  const interval =
-    typeof album.transition === "number"
-      ? album.transition * 1000
-      : 5000;
+  const transitionSeconds = Number(album.transition);
+  const interval = Number.isFinite(transitionSeconds) && transitionSeconds > 0
+    ? transitionSeconds * 1000
+    : 5000;
 
   useEffect(() => {
     if (!banners.length) return;
 
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % banners.length);
+      goToBanner((current + 1) % banners.length);
     }, interval);
 
     return () => clearInterval(timer);
-  }, [banners.length, interval]);
+  }, [banners.length, current, interval]);
 
   if (!banners.length) return null;
 
@@ -252,23 +279,33 @@ export default function MainBanner({ album }: MainBannerProps) {
     <>
       <section className={styles.bannerSection}>
       {/* 🖼 SLIDER STRIP */}
-      <div
-        className={styles.sliderStrip}
-        style={{
-          width: `${banners.length * 100}%`,
-          transform: `translateX(-${current * (100 / banners.length)}%)`,
-        }}
-      >
-        {banners.map((banner, index) => (
-          <div
-            key={index}
-            className={styles.slide}
-            style={{
-              width: `${100 / banners.length}%`,
-              backgroundImage: `url(${banner.image_url})`,
-            }}
-          />
-        ))}
+      <div className={styles.sliderStrip}>
+        {banners.map((banner, index) => {
+          const isActive = index === current;
+          const isExiting = index === exiting;
+          const animationClass = isExiting
+            ? transitionOutClass
+            : isActive
+              ? transitionInClass
+              : "";
+
+          return (
+            <div
+              key={banner.id ?? index}
+              className={[
+                styles.slide,
+                isActive ? styles.slideActive : "",
+                isExiting ? styles.slideExiting : "",
+                animationClass ? "animate__animated" : "",
+                animationClass ? `animate__${animationClass}` : "",
+              ].filter(Boolean).join(" ")}
+              style={{
+                backgroundImage: `url(${banner.image_url})`,
+                ["--animate-duration" as any]: `${animationDurationMs}ms`,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* overlay */}
@@ -306,7 +343,7 @@ export default function MainBanner({ album }: MainBannerProps) {
         {banners.map((_, index) => (
           <span
             key={index}
-            onClick={() => setCurrent(index)}
+            onClick={() => goToBanner(index)}
             className={`${styles.dot} ${index === current ? ' ' + styles.active : ''}`}
           />
         ))}

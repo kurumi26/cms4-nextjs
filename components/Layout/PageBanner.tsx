@@ -14,8 +14,36 @@ export default function PageBanner({
 }: PageBannerProps) {
   const banners = album?.banners || [];
   const [current, setCurrent] = useState(0);
+  const [exiting, setExiting] = useState<number | null>(null);
 
   const activeBanner: any = banners[current];
+  const bannerTitle = activeBanner?.title?.trim() || "";
+  const bannerDescription = activeBanner?.description?.trim() || "";
+  const normalizeAnimationName = (value: any) => {
+    if (!value) return "";
+    const raw = String(value).trim();
+    if (!raw) return "";
+    return raw.replace(/^animate__/, "").replace(/[^a-zA-Z0-9_-]/g, "");
+  };
+
+  const transitionInClass = normalizeAnimationName(
+    (album as any)?.transition_in_value ?? (album as any)?.transitionInValue
+  );
+  const transitionOutClass = normalizeAnimationName(
+    (album as any)?.transition_out_value ?? (album as any)?.transitionOutValue
+  );
+  const animationDurationMs = 900;
+
+  const goToBanner = (next: number) => {
+    if (!banners.length || next === current) return;
+    const outgoing = current;
+    setExiting(outgoing);
+    setCurrent(next);
+
+    window.setTimeout(() => {
+      setExiting((value) => (value === outgoing ? null : value));
+    }, animationDurationMs);
+  };
 
   const titleFont =
     activeBanner?.title_font ??
@@ -102,20 +130,20 @@ export default function PageBanner({
         } as const)
       : undefined;
 
-  const interval =
-    typeof album?.transition === "number"
-      ? album.transition * 1000
-      : 5000;
+  const transitionSeconds = Number(album?.transition);
+  const interval = Number.isFinite(transitionSeconds) && transitionSeconds > 0
+    ? transitionSeconds * 1000
+    : 5000;
 
   useEffect(() => {
     if (!banners.length) return;
 
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % banners.length);
+      goToBanner((current + 1) % banners.length);
     }, interval);
 
     return () => clearInterval(timer);
-  }, [banners.length, interval]);
+  }, [banners.length, current, interval]);
 
   // 🖼 Banner with images
   if (banners.length > 0) {
@@ -128,22 +156,36 @@ export default function PageBanner({
         }}
       >
         {/* Background Images */}
-        {banners.map((banner, index) => (
-          <div
-            key={index}
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: `url(${banner.image_url})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: index === current ? 1 : 0,
-              transition: "opacity 0.9s ease-in-out",
-              transform: index === current ? "scale(1)" : "scale(1.02)",
-              zIndex: 0,
-            }}
-          />
-        ))}
+        {banners.map((banner, index) => {
+          const isActive = index === current;
+          const isExiting = index === exiting;
+          const animationClass = isExiting
+            ? transitionOutClass
+            : isActive
+              ? transitionInClass
+              : "";
+
+          return (
+            <div
+              key={banner.id ?? index}
+              className={[
+                animationClass ? "animate__animated" : "",
+                animationClass ? `animate__${animationClass}` : "",
+              ].filter(Boolean).join(" ")}
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `url(${banner.image_url})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                opacity: isActive || isExiting ? 1 : 0,
+                transform: isActive ? "scale(1)" : "scale(1.02)",
+                zIndex: isExiting ? 2 : isActive ? 1 : 0,
+                ["--animate-duration" as any]: `${animationDurationMs}ms`,
+              }}
+            />
+          );
+        })}
 
         {/* Gradient Overlay */}
         <div
@@ -170,28 +212,55 @@ export default function PageBanner({
             paddingBottom: 40,
           }}
         >
+          {bannerTitle && (
+            <div
+              className="mb-3"
+              style={{
+                textShadow: "0 3px 16px rgba(0,0,0,0.58)",
+                ...(titleStyle || {}),
+              }}
+            >
+              {bannerTitle}
+            </div>
+          )}
+
           <h1
-            className="mb-3"
+            className="fw-bold mb-3"
             style={{
               textShadow: "0 4px 20px rgba(0,0,0,0.6)",
-              ...(titleStyle || {}),
             }}
           >
             {title}
           </h1>
 
-          <p
-            className="lead mb-0"
-            style={{
-              maxWidth: 720,
-              margin: "0 auto",
-              opacity: 0.95,
-              textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-              ...(subtitleStyle || {}),
-            }}
-          >
-            {subtitle}
-          </p>
+          {subtitle && (
+            <p
+              className="lead mb-3"
+              style={{
+                maxWidth: 720,
+                margin: "0 auto",
+                opacity: 0.95,
+                textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
+
+          {bannerDescription && (
+            <p
+              className="lead mb-0"
+              style={{
+                maxWidth: 720,
+                margin: "0 auto",
+                opacity: 0.95,
+                textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+                ...(subtitleStyle || {}),
+              }}
+            >
+              {bannerDescription}
+            </p>
+          )}
         </div>
       </section>
     );

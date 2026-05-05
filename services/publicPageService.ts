@@ -28,6 +28,8 @@ export interface PublicAlbum {
   transition?: string;
   transition_in?: string;
   transition_out?: string;
+  transition_in_value?: string;
+  transition_out_value?: string;
   banners: PublicBanner[];
 }
 
