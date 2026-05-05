@@ -500,6 +500,21 @@ function ManageMenus() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Menu Name" },
+          {
+            name: "status",
+            label: "Menu Status",
+            type: "select",
+            options: [
+              { label: "- All Statuses -", value: "" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+          },
+          { name: "dateModifiedFrom", label: "Date Modified (From)", type: "date" },
+          { name: "dateModifiedTo", label: "Date Modified (To)", type: "date" },
+        ]}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);

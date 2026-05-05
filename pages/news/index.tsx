@@ -566,6 +566,33 @@ function ManageNews() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "title", label: "Title" },
+          { name: "category", label: "Category" },
+          {
+            name: "type",
+            label: "Type",
+            type: "select",
+            options: [
+              { label: "- All Types -", value: "" },
+              { label: "Featured", value: "featured" },
+              { label: "Regular", value: "regular" },
+            ],
+          },
+          {
+            name: "visibility",
+            label: "Visibility",
+            type: "select",
+            options: [
+              { label: "- All Visibility -", value: "" },
+              { label: "Published", value: "published" },
+              { label: "Private", value: "private" },
+              { label: "Draft", value: "draft" },
+            ],
+          },
+          { name: "updatedFrom", label: "Updated (From)", type: "date" },
+          { name: "updatedTo", label: "Updated (To)", type: "date" },
+        ]}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);

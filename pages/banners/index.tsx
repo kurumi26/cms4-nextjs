@@ -353,6 +353,12 @@ function ManageAlbums() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Album Name" },
+          { name: "totalImages", label: "Total Images" },
+          { name: "dateUpdatedFrom", label: "Date Updated (From)", type: "date" },
+          { name: "dateUpdatedTo", label: "Date Updated (To)", type: "date" },
+        ]}
         initialSortBy={sortBy === 'updated_at' ? 'modified' : (sortBy === 'name' ? 'title' : sortBy)}
         initialSortOrder={sortOrder}
         initialShowDeleted={showDeleted}

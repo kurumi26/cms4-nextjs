@@ -296,6 +296,21 @@ export default function ManageProducts() {
             if (!open) setShowAdvancedSearch(false);
           }}
           externalOpenAsModal={true}
+          advancedFields={[
+            { name: "name", label: "Product Name" },
+            { name: "category", label: "Category" },
+            { name: "price", label: "Price" },
+            {
+              name: "status",
+              label: "Status",
+              type: "select",
+              options: [
+                { label: "- All Statuses -", value: "" },
+                { label: "Active", value: "active" },
+                { label: "Inactive", value: "inactive" },
+              ],
+            },
+          ]}
           actionsMenu={(
             <>
               <button

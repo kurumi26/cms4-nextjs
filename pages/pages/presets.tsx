@@ -737,7 +737,21 @@ function PresetPage() {
         onFiltersOpenChange={(open) => {
           if (!open) setShowAdvancedModal(false);
         }}
-          externalOpenAsModal={true}
+        externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Preset Name" },
+          { name: "category", label: "Category" },
+          {
+            name: "status",
+            label: "Status",
+            type: "select",
+            options: [
+              { label: "- All Statuses -", value: "" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+          },
+        ]}
           onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sShowDeleted, perPage: sPerPage }) => {
             setSortBy(sBy === "modified" ? "name" : sBy);
             setSortOrder((String(sOrder).toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc");

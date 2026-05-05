@@ -504,6 +504,11 @@ function ManageCategories() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Category Name" },
+          { name: "slug", label: "URL" },
+          { name: "articlesCount", label: "Total News" },
+        ]}
         onApplyFilters={({ sortBy: nextSortBy, sortOrder: nextSortOrder, showDeleted: nextShowDeleted, perPage: nextPerPage }) => {
           setSortBy(mapFilterSortToCategorySort(nextSortBy));
           setSortOrder(nextSortOrder === "desc" ? "desc" : "asc");

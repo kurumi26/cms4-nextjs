@@ -284,6 +284,21 @@ function ManageUsers() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Name" },
+          { name: "email", label: "Email" },
+          { name: "role", label: "Role" },
+          {
+            name: "status",
+            label: "Status",
+            type: "select",
+            options: [
+              { label: "- All Statuses -", value: "" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+          },
+        ]}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sInactiveOnly, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);

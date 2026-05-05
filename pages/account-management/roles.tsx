@@ -305,6 +305,12 @@ function ManageRoles() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedFields={[
+          { name: "name", label: "Role Name" },
+          { name: "description", label: "Description" },
+          { name: "updatedFrom", label: "Last Updated (From)", type: "date" },
+          { name: "updatedTo", label: "Last Updated (To)", type: "date" },
+        ]}
         onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(String(sOrder).toLowerCase() === "asc" ? "asc" : "desc");

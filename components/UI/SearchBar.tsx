@@ -1,5 +1,15 @@
 import React, { useRef, useState } from "react";
 
+export type AdvancedSearchField = {
+  name: string;
+  label: string;
+  type?: "text" | "date" | "select";
+  placeholder?: string;
+  options?: Array<{ label: string; value: string }>;
+};
+
+type AdvancedSearchValues = Record<string, string>;
+
 interface SearchBarProps {
   placeholder?: string;
   value?: string;
@@ -9,7 +19,7 @@ interface SearchBarProps {
   // optional actions menu to render when Actions is clicked
   actionsMenu?: React.ReactNode;
   // optional callback when filters are applied
-  onApplyFilters?: (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number }) => void;
+  onApplyFilters?: (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number; advancedValues?: AdvancedSearchValues }) => void;
   // initial filter values (kept in sync)
   initialSortBy?: string;
   initialSortOrder?: string;
@@ -32,7 +42,33 @@ interface SearchBarProps {
   filtersAsModal?: boolean;
   // when externally opening filters, force modal rendering for that open action
   externalOpenAsModal?: boolean;
+  advancedFields?: AdvancedSearchField[];
+  advancedSearchTitle?: string;
+  onAdvancedSearch?: (values: AdvancedSearchValues) => void;
 }
+
+const defaultAdvancedFields: AdvancedSearchField[] = [
+  { name: "title", label: "Title" },
+  { name: "label", label: "Label" },
+  { name: "content", label: "Content" },
+  { name: "album", label: "Album", type: "select", options: [{ label: "- All Albums -", value: "" }] },
+  { name: "lastModifiedBy", label: "Last Modified by", type: "select", options: [{ label: "- All Users -", value: "" }] },
+  {
+    name: "visibility",
+    label: "Visibility",
+    type: "select",
+    options: [
+      { label: "- Published & Private -", value: "" },
+      { label: "Published", value: "published" },
+      { label: "Private", value: "private" },
+    ],
+  },
+  { name: "seoTitle", label: "SEO Title" },
+  { name: "seoDescription", label: "SEO Description" },
+  { name: "seoKeyword", label: "SEO Keyword" },
+  { name: "dateFrom", label: "Date Modified (From)", type: "date" },
+  { name: "dateTo", label: "Date Modified (To)", type: "date" },
+];
 
 export default function SearchBar({
   placeholder = "Search...",
@@ -55,6 +91,9 @@ export default function SearchBar({
   onFiltersOpenChange,
   filtersAsModal = false,
   externalOpenAsModal = false,
+  advancedFields = defaultAdvancedFields,
+  advancedSearchTitle = "Advanced Search",
+  onAdvancedSearch,
 }: SearchBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -70,17 +109,8 @@ export default function SearchBar({
   const [sortOrder, setSortOrder] = useState<string>(initialSortOrder ?? "desc");
   const [showDeleted, setShowDeleted] = useState<boolean>(initialShowDeleted ?? false);
   const [perPage, setPerPage] = useState<number>(initialPerPage ?? 10);
-  const [advancedTitle, setAdvancedTitle] = useState("");
-  const [advancedLabel, setAdvancedLabel] = useState("");
-  const [advancedContent, setAdvancedContent] = useState("");
-  const [advancedAlbum, setAdvancedAlbum] = useState("");
-  const [advancedLastModifiedBy, setAdvancedLastModifiedBy] = useState("");
-  const [advancedVisibility, setAdvancedVisibility] = useState("");
-  const [advancedSeoTitle, setAdvancedSeoTitle] = useState("");
-  const [advancedSeoDescription, setAdvancedSeoDescription] = useState("");
-  const [advancedSeoKeyword, setAdvancedSeoKeyword] = useState("");
-  const [advancedDateFrom, setAdvancedDateFrom] = useState("");
-  const [advancedDateTo, setAdvancedDateTo] = useState("");
+  const [advancedValues, setAdvancedValues] = useState<AdvancedSearchValues>({});
+  const advancedFieldNames = advancedFields.map((field) => field.name).join("|");
 
   // keep internal filter state in sync when parent changes initial props
   React.useEffect(() => {
@@ -106,6 +136,16 @@ export default function SearchBar({
   React.useEffect(() => {
     setRenderFiltersAsModal(filtersAsModal);
   }, [filtersAsModal]);
+
+  React.useEffect(() => {
+    setAdvancedValues((current) => {
+      const next: AdvancedSearchValues = {};
+      for (const field of advancedFields) {
+        next[field.name] = current[field.name] ?? "";
+      }
+      return next;
+    });
+  }, [advancedFieldNames]);
 
   React.useEffect(() => {
     if (!showFilters || renderFiltersAsModal || filtersPos) return;
@@ -155,23 +195,24 @@ export default function SearchBar({
   };
 
   const resetAdvancedForm = () => {
-    setAdvancedTitle("");
-    setAdvancedLabel("");
-    setAdvancedContent("");
-    setAdvancedAlbum("");
-    setAdvancedLastModifiedBy("");
-    setAdvancedVisibility("");
-    setAdvancedSeoTitle("");
-    setAdvancedSeoDescription("");
-    setAdvancedSeoKeyword("");
-    setAdvancedDateFrom("");
-    setAdvancedDateTo("");
+    const next = Object.fromEntries(advancedFields.map((field) => [field.name, ""]));
+    setAdvancedValues(next);
     onChange?.("");
   };
 
   const handleAdvancedSearch = () => {
-    onChange?.(advancedTitle);
-    applyFilters();
+    const nextValues = Object.fromEntries(
+      advancedFields.map((field) => [field.name, advancedValues[field.name] ?? ""])
+    );
+    const searchValue = advancedFields
+      .map((field) => nextValues[field.name])
+      .find((fieldValue) => fieldValue.trim() !== "");
+
+    onChange?.(searchValue ?? "");
+    onAdvancedSearch?.(nextValues);
+    onApplyFilters?.({ sortBy, sortOrder, showDeleted, perPage, advancedValues: nextValues });
+    setShowFilters(false);
+    onFiltersOpenChange?.(false);
   };
 
   const resetFilters = () => {
@@ -227,72 +268,48 @@ export default function SearchBar({
                 <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
                   <div className="modal-content">
                     <div className="modal-header">
-                      <h5 className="modal-title">Advanced Search</h5>
+                      <h5 className="modal-title">{advancedSearchTitle}</h5>
                     </div>
 
                     <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-                      <div className="mb-3">
-                        <label className="form-label">Title</label>
-                        <input type="text" className="form-control" value={advancedTitle} onChange={(e) => setAdvancedTitle(e.target.value)} />
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Label</label>
-                        <input type="text" className="form-control" value={advancedLabel} onChange={(e) => setAdvancedLabel(e.target.value)} />
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Content</label>
-                        <input type="text" className="form-control" value={advancedContent} onChange={(e) => setAdvancedContent(e.target.value)} />
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Album</label>
-                        <select className="form-select" value={advancedAlbum} onChange={(e) => setAdvancedAlbum(e.target.value)}>
-                          <option value="">- All Albums -</option>
-                        </select>
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Last Modified by</label>
-                        <select className="form-select" value={advancedLastModifiedBy} onChange={(e) => setAdvancedLastModifiedBy(e.target.value)}>
-                          <option value="">- All Users -</option>
-                        </select>
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">Visibility</label>
-                        <select className="form-select" value={advancedVisibility} onChange={(e) => setAdvancedVisibility(e.target.value)}>
-                          <option value="">- Published &amp; Private -</option>
-                          <option value="published">Published</option>
-                          <option value="private">Private</option>
-                        </select>
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">SEO Title</label>
-                        <input type="text" className="form-control" value={advancedSeoTitle} onChange={(e) => setAdvancedSeoTitle(e.target.value)} />
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">SEO Description</label>
-                        <input type="text" className="form-control" value={advancedSeoDescription} onChange={(e) => setAdvancedSeoDescription(e.target.value)} />
-                      </div>
-
-                      <div className="mb-3">
-                        <label className="form-label">SEO Keyword</label>
-                        <input type="text" className="form-control" value={advancedSeoKeyword} onChange={(e) => setAdvancedSeoKeyword(e.target.value)} />
-                      </div>
-
                       <div className="row g-3">
-                        <div className="col-md-6">
-                          <label className="form-label">Date Modified (From)</label>
-                          <input type="date" className="form-control" value={advancedDateFrom} onChange={(e) => setAdvancedDateFrom(e.target.value)} />
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Date Modified (To)</label>
-                          <input type="date" className="form-control" value={advancedDateTo} onChange={(e) => setAdvancedDateTo(e.target.value)} />
-                        </div>
+                        {advancedFields.map((field) => {
+                          const fieldType = field.type ?? "text";
+                          const value = advancedValues[field.name] ?? "";
+                          const fieldId = `advanced-${field.name}`;
+                          const updateValue = (nextValue: string) => {
+                            setAdvancedValues((current) => ({ ...current, [field.name]: nextValue }));
+                          };
+
+                          return (
+                            <div key={field.name} className={fieldType === "date" ? "col-md-6" : "col-12"}>
+                              <label className="form-label" htmlFor={fieldId}>{field.label}</label>
+                              {fieldType === "select" ? (
+                                <select
+                                  id={fieldId}
+                                  className="form-select"
+                                  value={value}
+                                  onChange={(e) => updateValue(e.target.value)}
+                                >
+                                  {(field.options ?? [{ label: "- All -", value: "" }]).map((option) => (
+                                    <option key={`${field.name}-${option.value}`} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  id={fieldId}
+                                  type={fieldType}
+                                  className="form-control"
+                                  placeholder={field.placeholder}
+                                  value={value}
+                                  onChange={(e) => updateValue(e.target.value)}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
