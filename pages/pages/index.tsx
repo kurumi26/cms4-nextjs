@@ -21,6 +21,8 @@ interface PageRow {
   is_deleted?: boolean;
 }
 
+type PageAdvancedSearchValues = Record<string, string>;
+
 export default function ManagePages() {
   const router = useRouter();
   const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL!;
@@ -34,6 +36,7 @@ export default function ManagePages() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [sortBy, setSortBy] = useState<string>('modified');
   const [sortOrder, setSortOrder] = useState<string>('desc');
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<PageAdvancedSearchValues>({});
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
@@ -329,9 +332,10 @@ export default function ManagePages() {
     }
   };
 
-  const fetchPages = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string; silent?: boolean }) => {
+  const fetchPages = async (overrides?: { sortBy?: string; sortOrder?: string; perPage?: number; showDeleted?: boolean; page?: number; search?: string; advancedSearchValues?: PageAdvancedSearchValues; silent?: boolean }) => {
     const silent = overrides?.silent ?? false;
     const useSearch = overrides?.search ?? search;
+    const useAdvancedSearchValues = overrides?.advancedSearchValues ?? advancedSearchValues;
     const usePage = overrides?.page ?? currentPage;
     const usePerPage = overrides?.perPage ?? perPage;
     const useSortBy = overrides?.sortBy ?? sortBy;
@@ -339,6 +343,7 @@ export default function ManagePages() {
     const useShowDeleted = overrides?.showDeleted ?? showDeleted;
     const requestKey = JSON.stringify({
       search: useSearch,
+      advancedSearchValues: useAdvancedSearchValues,
       page: usePage,
       perPage: usePerPage,
       sortBy: useSortBy,
@@ -360,6 +365,17 @@ export default function ManagePages() {
 
       const params: any = {
         search: useSearch,
+        title: useAdvancedSearchValues.title || undefined,
+        label: useAdvancedSearchValues.label || undefined,
+        content: useAdvancedSearchValues.content || undefined,
+        album: useAdvancedSearchValues.album || undefined,
+        last_modified_by: useAdvancedSearchValues.lastModifiedBy || undefined,
+        visibility: useAdvancedSearchValues.visibility || undefined,
+        seo_title: useAdvancedSearchValues.seoTitle || undefined,
+        seo_description: useAdvancedSearchValues.seoDescription || undefined,
+        seo_keyword: useAdvancedSearchValues.seoKeyword || undefined,
+        date_modified_from: useAdvancedSearchValues.dateFrom || undefined,
+        date_modified_to: useAdvancedSearchValues.dateTo || undefined,
         page: usePage,
         per_page: usePerPage,
         // sorting
@@ -389,6 +405,17 @@ export default function ManagePages() {
       if (useShowDeleted && rows.length === 0) {
         const fallbackParams: any = {
           search: useSearch,
+          title: useAdvancedSearchValues.title || undefined,
+          label: useAdvancedSearchValues.label || undefined,
+          content: useAdvancedSearchValues.content || undefined,
+          album: useAdvancedSearchValues.album || undefined,
+          last_modified_by: useAdvancedSearchValues.lastModifiedBy || undefined,
+          visibility: useAdvancedSearchValues.visibility || undefined,
+          seo_title: useAdvancedSearchValues.seoTitle || undefined,
+          seo_description: useAdvancedSearchValues.seoDescription || undefined,
+          seo_keyword: useAdvancedSearchValues.seoKeyword || undefined,
+          date_modified_from: useAdvancedSearchValues.dateFrom || undefined,
+          date_modified_to: useAdvancedSearchValues.dateTo || undefined,
           page: usePage,
           per_page: usePerPage,
           sort_by: useSortBy,
@@ -469,20 +496,23 @@ export default function ManagePages() {
     const silent = silentSortFetchRef.current;
     silentSortFetchRef.current = false;
     fetchPages({ silent });
-  }, [currentPage, perPage, showDeleted, sortBy, sortOrder]);
+  }, [currentPage, perPage, showDeleted, sortBy, sortOrder, advancedSearchValues]);
 
-  const handleApplyFilters = (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number }) => {
+  const handleApplyFilters = (filters: { sortBy: string; sortOrder: string; showDeleted: boolean; perPage: number; advancedValues?: PageAdvancedSearchValues }) => {
+    const nextAdvancedSearchValues = filters.advancedValues ?? advancedSearchValues;
     const willTriggerEffect =
       sortBy !== filters.sortBy ||
       sortOrder !== filters.sortOrder ||
       perPage !== filters.perPage ||
       showDeleted !== filters.showDeleted ||
-      currentPage !== 1;
+      currentPage !== 1 ||
+      JSON.stringify(advancedSearchValues) !== JSON.stringify(nextAdvancedSearchValues);
 
     setSortBy(filters.sortBy);
     setSortOrder(filters.sortOrder);
     setPerPage(filters.perPage);
     setShowDeleted(filters.showDeleted);
+    setAdvancedSearchValues(nextAdvancedSearchValues);
     setCurrentPage(1);
 
     if (!willTriggerEffect) {
@@ -491,6 +521,7 @@ export default function ManagePages() {
         sortOrder: filters.sortOrder,
         perPage: filters.perPage,
         showDeleted: filters.showDeleted,
+        advancedSearchValues: nextAdvancedSearchValues,
         page: 1,
       });
     }
@@ -832,10 +863,12 @@ export default function ManagePages() {
             </div>
           )}
         filtersOpen={showAdvancedModal}
-          onFiltersOpenChange={(open) => {
+        onFiltersOpenChange={(open) => {
             if (!open) setShowAdvancedModal(false);
           }}
           externalOpenAsModal={true}
+          advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         onApplyFilters={handleApplyFilters}
         initialShowDeleted={showDeleted}
         initialPerPage={perPage}

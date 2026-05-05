@@ -7,6 +7,8 @@ import { useRouter } from "next/router";
 import { toast } from "@/lib/toast";
 import Link from "next/link";
 
+type AdvancedSearchValues = Record<string, string>;
+
 function ManageCustomers() {
   const router = useRouter();
 
@@ -21,6 +23,7 @@ function ManageCustomers() {
   const [sortOrder, setSortOrder] = useState<string>("asc");
   const [showInactiveOnly, setShowInactiveOnly] = useState<boolean>(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const silentSortFetchRef = useRef(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -67,11 +70,13 @@ function ManageCustomers() {
 
       const res = await getCustomers({
         search,
+        name: advancedSearchValues.name || undefined,
+        email: advancedSearchValues.email || undefined,
+        status: advancedSearchValues.status || (showInactiveOnly ? "inactive" : undefined),
         page: currentPage,
         per_page: perPage,
         sort_by: sortBy,
         sort_order: sortOrder,
-        status: showInactiveOnly ? "Inactive" : undefined,
       }, { silent });
 
       const apiRows: CustomerRow[] = Array.isArray(res?.data?.data) ? res.data.data : [];
@@ -127,7 +132,7 @@ function ManageCustomers() {
     silentSortFetchRef.current = false;
     const timeout = setTimeout(() => fetchCustomers({ silent }), 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly, advancedSearchValues]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -282,11 +287,28 @@ function ManageCustomers() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sInactiveOnly, perPage: sPerPage }) => {
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
+        advancedFields={[
+          { name: "name", label: "Name" },
+          { name: "email", label: "Email" },
+          {
+            name: "status",
+            label: "Status",
+            type: "select",
+            options: [
+              { label: "- All Statuses -", value: "" },
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ],
+          },
+        ]}
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sInactiveOnly, perPage: sPerPage, advancedValues }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
           setShowInactiveOnly(sInactiveOnly);
           setPerPage(sPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
         initialSortBy={sortBy === "updated_at" ? "modified" : sortBy === "name" ? "title" : sortBy}

@@ -18,6 +18,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 
 type NewsRow = ArticleRow & { slug?: string };
+type AdvancedSearchValues = Record<string, string>;
 
 function ManageNews() {
   const router = useRouter();
@@ -40,6 +41,7 @@ function ManageNews() {
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const silentSortFetchRef = useRef(false);
 
   const isRowDeleted = (row: any) => {
@@ -139,6 +141,12 @@ function ManageNews() {
       const deletedFlag = showDeleted ? 1 : 0;
       const params: any = {
         search,
+        title: advancedSearchValues.title || undefined,
+        category: advancedSearchValues.category || undefined,
+        type: advancedSearchValues.type || undefined,
+        visibility: advancedSearchValues.visibility || undefined,
+        updated_from: advancedSearchValues.updatedFrom || undefined,
+        updated_to: advancedSearchValues.updatedTo || undefined,
         page: currentPage,
         per_page: perPage,
         sort_by: sortBy,
@@ -180,7 +188,7 @@ function ManageNews() {
     silentSortFetchRef.current = false;
     const timeout = setTimeout(() => fetchArticles({ silent }), 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted, advancedSearchValues]);
 
   useEffect(() => {
     // avoid keeping selection across data changes
@@ -566,6 +574,8 @@ function ManageNews() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "title", label: "Title" },
           { name: "category", label: "Category" },
@@ -593,11 +603,12 @@ function ManageNews() {
           { name: "updatedFrom", label: "Updated (From)", type: "date" },
           { name: "updatedTo", label: "Updated (To)", type: "date" },
         ]}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage, advancedValues }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
           setShowDeleted(sDeleted);
           setPerPage(sPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
         initialSortBy={sortBy === "updated_at" ? "modified" : sortBy === "name" ? "title" : sortBy}

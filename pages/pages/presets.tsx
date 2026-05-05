@@ -13,6 +13,8 @@ import ConfirmModal from "@/components/UI/ConfirmModal";
 import CategoryCombobox from "@/components/UI/CategoryCombobox";
 import { toast } from "@/lib/toast";
 
+type AdvancedSearchValues = Record<string, string>;
+
 function PresetPage() {
   const [presets, setPresets] = useState<LayoutPreset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,7 @@ function PresetPage() {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -100,6 +103,9 @@ function PresetPage() {
 
       const params: any = {
         search: useSearch,
+        name: advancedSearchValues.name || undefined,
+        category: advancedSearchValues.category || undefined,
+        status: advancedSearchValues.status || undefined,
         page: usePage,
         per_page: usePerPage,
         sort_by: useSortBy === "modified" ? "name" : useSortBy,
@@ -400,7 +406,7 @@ function PresetPage() {
   useEffect(() => {
     const timeout = setTimeout(fetchPresets, 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted, advancedSearchValues]);
 
   useEffect(() => {
     return () => {
@@ -738,6 +744,8 @@ function PresetPage() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "name", label: "Preset Name" },
           { name: "category", label: "Category" },
@@ -752,11 +760,12 @@ function PresetPage() {
             ],
           },
         ]}
-          onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sShowDeleted, perPage: sPerPage }) => {
+          onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sShowDeleted, perPage: sPerPage, advancedValues }) => {
             setSortBy(sBy === "modified" ? "name" : sBy);
             setSortOrder((String(sOrder).toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc");
             setPerPage(sPerPage);
             setShowDeleted(!!sShowDeleted);
+            setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
             setCurrentPage(1);
           }}
           initialSortBy={sortBy}

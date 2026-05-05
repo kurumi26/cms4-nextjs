@@ -20,6 +20,7 @@ export const layoutPresetService = {
     with_trashed?: number;
     only_trashed?: number;
     only_deleted?: number;
+    [key: string]: any;
   }) {
     return axiosInstance.get("/layout-presets", {
       params,

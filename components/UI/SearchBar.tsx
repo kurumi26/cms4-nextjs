@@ -45,6 +45,7 @@ interface SearchBarProps {
   advancedFields?: AdvancedSearchField[];
   advancedSearchTitle?: string;
   onAdvancedSearch?: (values: AdvancedSearchValues) => void;
+  advancedSearchUpdatesInput?: boolean;
 }
 
 const defaultAdvancedFields: AdvancedSearchField[] = [
@@ -58,9 +59,10 @@ const defaultAdvancedFields: AdvancedSearchField[] = [
     label: "Visibility",
     type: "select",
     options: [
-      { label: "- Published & Private -", value: "" },
+      { label: "- All Visibility -", value: "" },
       { label: "Published", value: "published" },
       { label: "Private", value: "private" },
+      { label: "Draft", value: "draft" },
     ],
   },
   { name: "seoTitle", label: "SEO Title" },
@@ -94,6 +96,7 @@ export default function SearchBar({
   advancedFields = defaultAdvancedFields,
   advancedSearchTitle = "Advanced Search",
   onAdvancedSearch,
+  advancedSearchUpdatesInput = true,
 }: SearchBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -197,6 +200,7 @@ export default function SearchBar({
   const resetAdvancedForm = () => {
     const next = Object.fromEntries(advancedFields.map((field) => [field.name, ""]));
     setAdvancedValues(next);
+    onAdvancedSearch?.(next);
     onChange?.("");
   };
 
@@ -208,7 +212,9 @@ export default function SearchBar({
       .map((field) => nextValues[field.name])
       .find((fieldValue) => fieldValue.trim() !== "");
 
-    onChange?.(searchValue ?? "");
+    if (advancedSearchUpdatesInput) {
+      onChange?.(searchValue ?? "");
+    }
     onAdvancedSearch?.(nextValues);
     onApplyFilters?.({ sortBy, sortOrder, showDeleted, perPage, advancedValues: nextValues });
     setShowFilters(false);

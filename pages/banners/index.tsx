@@ -10,6 +10,8 @@ import ConfirmModal from "@/components/UI/ConfirmModal";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
+type AdvancedSearchValues = Record<string, string>;
+
 function ManageAlbums() {
   const router = useRouter();
 
@@ -36,6 +38,7 @@ function ManageAlbums() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
   const [exitOptions, setExitOptions] = useState<OptionItem[]>([]);
   const silentSortFetchRef = useRef(false);
@@ -91,6 +94,10 @@ function ManageAlbums() {
 
       const res = await getAlbums({
         search,
+        name: advancedSearchValues.name || undefined,
+        total_images: advancedSearchValues.totalImages || undefined,
+        date_updated_from: advancedSearchValues.dateUpdatedFrom || undefined,
+        date_updated_to: advancedSearchValues.dateUpdatedTo || undefined,
         page: currentPage,
         per_page: perPage,
         sort_by: sortBy,
@@ -122,7 +129,7 @@ function ManageAlbums() {
     silentSortFetchRef.current = false;
     const timeout = setTimeout(() => fetchAlbums({ silent }), 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted, advancedSearchValues]);
 
   /* ======================
    * Columns
@@ -353,6 +360,8 @@ function ManageAlbums() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "name", label: "Album Name" },
           { name: "totalImages", label: "Total Images" },
@@ -363,11 +372,12 @@ function ManageAlbums() {
         initialSortOrder={sortOrder}
         initialShowDeleted={showDeleted}
         initialPerPage={perPage}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage, advancedValues }) => {
           setSortBy(sBy === 'modified' ? 'updated_at' : sBy === 'title' ? 'name' : sBy);
           setSortOrder(sOrder);
           setShowDeleted(sDeleted);
           setPerPage(sPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
       />

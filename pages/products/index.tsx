@@ -8,6 +8,8 @@ import ConfirmModal from "@/components/UI/ConfirmModal";
 import SearchBar from "@/components/UI/SearchBar";
 import DataTable, { Column } from "@/components/UI/DataTable";
 
+type AdvancedSearchValues = Record<string, string>;
+
 export default function ManageProducts() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
@@ -23,6 +25,7 @@ export default function ManageProducts() {
   const [sortOrder, setSortOrder] = useState<any>("asc");
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const [showPublicPreview, setShowPublicPreview] = useState<boolean>(false);
   const silentSortFetchRef = useRef(false);
 
@@ -69,7 +72,17 @@ export default function ManageProducts() {
       const effectiveShowDeleted = opts?.showDeleted ?? showDeleted;
       const svc = await import("@/services/productService");
 
-      const baseParams: any = { per_page: perPage, page: currentPage, search, sort_by: sortBy, sort_order: sortOrder };
+      const baseParams: any = {
+        per_page: perPage,
+        page: currentPage,
+        search,
+        name: advancedSearchValues.name || undefined,
+        category: advancedSearchValues.category || undefined,
+        price: advancedSearchValues.price || undefined,
+        status: advancedSearchValues.status || undefined,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      };
 
       const requestOnce = async (extra: any) => {
         const res = await svc.getProducts({ ...baseParams, ...extra }, { silent });
@@ -160,7 +173,7 @@ export default function ManageProducts() {
     silentSortFetchRef.current = false;
     const t = setTimeout(() => fetchProducts({ showDeleted, silent }), 200);
     return () => clearTimeout(t);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted, advancedSearchValues]);
 
   const handleDelete = async (id: string | number) => {
     setPendingDeleteId(id);
@@ -296,6 +309,8 @@ export default function ManageProducts() {
             if (!open) setShowAdvancedSearch(false);
           }}
           externalOpenAsModal={true}
+          advancedSearchUpdatesInput={false}
+          onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
           advancedFields={[
             { name: "name", label: "Product Name" },
             { name: "category", label: "Category" },
@@ -339,12 +354,13 @@ export default function ManageProducts() {
               </button>
             </>
           )}
-          onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage, showDeleted: sDeleted }) => {
+          onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage, showDeleted: sDeleted, advancedValues }) => {
             setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
             setSortOrder(sOrder);
             setPerPage(sPerPage);
             setCurrentPage(1);
             setShowDeleted(sDeleted);
+            setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
             fetchProducts({ showDeleted: sDeleted });
           }}
           initialSortBy={sortBy as any}

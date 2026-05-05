@@ -23,7 +23,7 @@ export const createPage = async (payload: CreatePagePayload) => {
 };
 
 export const getPages = (
-  params?: { search?: string; page?: number; per_page?: number; show_deleted?: number | boolean },
+  params?: Record<string, any>,
   options?: { silent?: boolean }
 ) => {
   return axiosInstance.get("/pages", {

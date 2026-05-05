@@ -39,7 +39,7 @@ export interface AlbumRow {
 }
 
 export const getAlbums = (
-  params?: {search?: string;page?: number;per_page?: number; sort_by?: string; sort_order?: string; show_deleted?: boolean | number},
+  params?: Record<string, any>,
   options?: { silent?: boolean }
 ) => {
   return axiosInstance.get("/albums", {

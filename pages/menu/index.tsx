@@ -8,6 +8,8 @@ import { useRouter } from "next/router";
 import { toast } from "@/lib/toast";
 import Link from "next/link";
 
+type AdvancedSearchValues = Record<string, string>;
+
 function ManageMenus() {
   const router = useRouter();
 
@@ -34,6 +36,7 @@ function ManageMenus() {
   const [restoreTarget, setRestoreTarget] = useState<MenuRow | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const silentSortFetchRef = useRef(false);
 
   /* ======================
@@ -86,6 +89,10 @@ function ManageMenus() {
 
       const baseParams: any = {
         search,
+        name: advancedSearchValues.name || undefined,
+        status: advancedSearchValues.status || undefined,
+        date_modified_from: advancedSearchValues.dateModifiedFrom || undefined,
+        date_modified_to: advancedSearchValues.dateModifiedTo || undefined,
         page: effectivePage,
         per_page: perPage,
         sort_by: sortBy,
@@ -239,7 +246,7 @@ function ManageMenus() {
     silentSortFetchRef.current = false;
     const timeout = setTimeout(() => fetchMenus({ silent }), 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, showDeleted, advancedSearchValues]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -500,6 +507,8 @@ function ManageMenus() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "name", label: "Menu Name" },
           {
@@ -515,11 +524,12 @@ function ManageMenus() {
           { name: "dateModifiedFrom", label: "Date Modified (From)", type: "date" },
           { name: "dateModifiedTo", label: "Date Modified (To)", type: "date" },
         ]}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage }) => {
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, showDeleted: sDeleted, perPage: sPerPage, advancedValues }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(sOrder);
           setShowDeleted(sDeleted);
           setPerPage(sPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
         initialSortBy={sortBy === "updated_at" ? "modified" : sortBy === "name" ? "title" : sortBy}

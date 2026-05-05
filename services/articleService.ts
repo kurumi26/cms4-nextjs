@@ -184,6 +184,7 @@ interface GetArticlesParams {
   with_trashed?: boolean | number;
   only_trashed?: boolean | number;
   only_deleted?: boolean | number;
+  [key: string]: any;
 }
 
 export const getArticles = async (params: GetArticlesParams, options?: { silent?: boolean }) => {

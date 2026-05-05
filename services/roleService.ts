@@ -25,6 +25,7 @@ export const getRoles = (params: {
   search?: string;
   page?: number;
   per_page?: number;
+  [key: string]: any;
 }) => {
   return axiosInstance.get("/roles", { params });
 };

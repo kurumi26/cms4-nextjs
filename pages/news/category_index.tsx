@@ -17,6 +17,8 @@ import {
   restoreArticleCategory,
 } from "@/services/articleService";
 
+type AdvancedSearchValues = Record<string, string>;
+
 function ManageCategories() {
   const router = useRouter();
 
@@ -31,6 +33,7 @@ function ManageCategories() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showDeleted, setShowDeleted] = useState(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<NewsCategoryRow | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -132,6 +135,9 @@ function ManageCategories() {
       const effectivePage = opts?.page ?? currentPage;
       const baseParams: any = {
         search,
+        name: advancedSearchValues.name || undefined,
+        slug: advancedSearchValues.slug || undefined,
+        articles_count: advancedSearchValues.articlesCount || undefined,
         page: effectivePage,
         per_page: perPage,
       };
@@ -329,7 +335,7 @@ function ManageCategories() {
   useEffect(() => {
     const timeout = setTimeout(fetchCategories, 400);
     return () => clearTimeout(timeout);
-  }, [search, currentPage, perPage, showDeleted]);
+  }, [search, currentPage, perPage, showDeleted, advancedSearchValues]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -504,16 +510,19 @@ function ManageCategories() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "name", label: "Category Name" },
           { name: "slug", label: "URL" },
           { name: "articlesCount", label: "Total News" },
         ]}
-        onApplyFilters={({ sortBy: nextSortBy, sortOrder: nextSortOrder, showDeleted: nextShowDeleted, perPage: nextPerPage }) => {
+        onApplyFilters={({ sortBy: nextSortBy, sortOrder: nextSortOrder, showDeleted: nextShowDeleted, perPage: nextPerPage, advancedValues }) => {
           setSortBy(mapFilterSortToCategorySort(nextSortBy));
           setSortOrder(nextSortOrder === "desc" ? "desc" : "asc");
           setShowDeleted(!!nextShowDeleted);
           setPerPage(nextPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
         initialSortBy={mapCategorySortToFilterSort(sortBy)}

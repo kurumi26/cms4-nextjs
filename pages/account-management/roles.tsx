@@ -12,6 +12,7 @@ import {
 } from "@/services/roleService";
 
 type SortOrder = "asc" | "desc";
+type AdvancedSearchValues = Record<string, string>;
 
 function ManageRoles() {
   const [roles, setRoles] = useState<RoleRow[]>([]);
@@ -24,6 +25,7 @@ function ManageRoles() {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const silentSortFetchRef = useRef(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -63,6 +65,10 @@ function ManageRoles() {
 
       const res = await getRoles({
         search,
+        name: advancedSearchValues.name || undefined,
+        description: advancedSearchValues.description || undefined,
+        updated_from: advancedSearchValues.updatedFrom || undefined,
+        updated_to: advancedSearchValues.updatedTo || undefined,
         page: currentPage,
         per_page: perPage,
       });
@@ -84,7 +90,7 @@ function ManageRoles() {
     const timeout = setTimeout(() => fetchRoles({ silent }), 400);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, currentPage, perPage, sortBy, sortOrder]);
+  }, [search, currentPage, perPage, sortBy, sortOrder, advancedSearchValues]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -305,16 +311,19 @@ function ManageRoles() {
           if (!open) setShowAdvancedModal(false);
         }}
         externalOpenAsModal={true}
+        advancedSearchUpdatesInput={false}
+        onAdvancedSearch={(values) => setAdvancedSearchValues(values)}
         advancedFields={[
           { name: "name", label: "Role Name" },
           { name: "description", label: "Description" },
           { name: "updatedFrom", label: "Last Updated (From)", type: "date" },
           { name: "updatedTo", label: "Last Updated (To)", type: "date" },
         ]}
-        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage }) => {
+        onApplyFilters={({ sortBy: sBy, sortOrder: sOrder, perPage: sPerPage, advancedValues }) => {
           setSortBy(sBy === "modified" ? "updated_at" : sBy === "title" ? "name" : sBy);
           setSortOrder(String(sOrder).toLowerCase() === "asc" ? "asc" : "desc");
           setPerPage(sPerPage);
+          setAdvancedSearchValues(advancedValues ?? advancedSearchValues);
           setCurrentPage(1);
         }}
         initialSortBy={sortBy === "updated_at" ? "modified" : sortBy === "name" ? "title" : sortBy}
