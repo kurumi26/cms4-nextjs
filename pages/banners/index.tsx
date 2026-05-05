@@ -165,7 +165,14 @@ function ManageAlbums() {
       sortField: "name",
       defaultSortOrder: "asc",
       render: (row) => (
-        <span className="fw-bold text-primary">{row.name}</span>
+        <span className={showDeleted || isRowDeleted(row) ? "fw-bold text-decoration-line-through text-muted" : "fw-bold text-primary"}>
+          {row.name}
+          {(showDeleted || isRowDeleted(row)) && (
+            <span className="badge bg-danger ms-2" style={{ fontSize: 11, verticalAlign: "middle" }}>
+              Deleted
+            </span>
+          )}
+        </span>
       ),
     },
     {
@@ -187,27 +194,33 @@ function ManageAlbums() {
       header: "Options",
       render: (row) => (
         <>
-          <button
-            className="btn btn-link p-0 me-2 text-secondary"
-            title="Edit"
-            onClick={() => router.push(`/banners/edit/${row.id}`)}
-          >
-            <i className="fas fa-edit" />
-          </button>
-          <button
-            className="btn btn-link p-0 text-secondary"
-            title="Settings: click to open actions (Quick Edit/Delete) for this album"
-            aria-label="Settings: click to open actions"
-            onClick={(e) => {
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              setMenuPos({ top: rect.bottom + window.scrollY, left: rect.left });
-              setSelected(row);
-              setName(row.name);
-              setShowSettingsMenu(true);
-            }}
-          >
-            <i className="fas fa-cogs" />
-          </button>
+          {showDeleted || isRowDeleted(row) ? (
+            <span className="text-muted small">Deleted</span>
+          ) : (
+            <>
+              <button
+                className="btn btn-link p-0 me-2 text-secondary"
+                title="Edit"
+                onClick={() => router.push(`/banners/edit/${row.id}`)}
+              >
+                <i className="fas fa-edit" />
+              </button>
+              <button
+                className="btn btn-link p-0 text-secondary"
+                title="Settings: click to open actions (Quick Edit/Delete) for this album"
+                aria-label="Settings: click to open actions"
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setMenuPos({ top: rect.bottom + window.scrollY, left: rect.left });
+                  setSelected(row);
+                  setName(row.name);
+                  setShowSettingsMenu(true);
+                }}
+              >
+                <i className="fas fa-cogs" />
+              </button>
+            </>
+          )}
 
 
         </>
