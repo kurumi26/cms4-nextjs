@@ -8,6 +8,7 @@ import grapesjsPluginForms from "grapesjs-plugin-forms";
 import {
   cmsStudioCanvasCss,
   configureStudioCategories,
+  normalizeStudioCategory,
   registerAdvancedCmsBlocks,
   resolveCmsBlockMedia,
 } from "./grapesStudio";
@@ -78,10 +79,12 @@ const registerCmsBlocks = (editor: any) => {
     if (bm.get(id)) return;
     const nextAttributes = { ...(config?.attributes || {}) };
     const iconClass = nextAttributes.class;
+    const normalizedCategory = normalizeStudioCategory(config?.category);
     delete nextAttributes.class;
 
     bm.add(id, {
       ...config,
+      category: normalizedCategory || config?.category,
       attributes: Object.keys(nextAttributes).length ? nextAttributes : undefined,
       media: config?.media || resolveCmsBlockMedia(iconClass),
     });

@@ -74,15 +74,33 @@ export const resolveCmsBlockMedia = (iconClass?: string) => {
   return `<div class="cms-gjs-block-media"><i class="${resolved}"></i></div>`;
 };
 
+export const CMS_PRESETS_CATEGORY = "Presets";
+
+const LEGACY_PRESET_CATEGORIES = new Set([
+  "CMS Page Starters",
+  "CMS Sections",
+  "CMS Business",
+  "CMS Social Proof",
+  "CMS Forms",
+  "CMS Commerce",
+]);
+
+export const normalizeStudioCategory = (category?: string) => {
+  const label = String(category || "").trim();
+  return LEGACY_PRESET_CATEGORIES.has(label) ? CMS_PRESETS_CATEGORY : label;
+};
+
 const addBlock = (editor: any, id: string, config: any) => {
   const bm = editor.BlockManager;
   if (bm.get(id)) return;
   const nextAttributes = { ...(config?.attributes || {}) };
   const iconClass = nextAttributes.class;
+  const normalizedCategory = normalizeStudioCategory(config?.category);
   delete nextAttributes.class;
 
   bm.add(id, {
     ...config,
+    category: normalizedCategory || config?.category,
     attributes: Object.keys(nextAttributes).length ? nextAttributes : undefined,
     media: config?.media || resolveCmsBlockMedia(iconClass),
   });
@@ -93,12 +111,7 @@ export const configureStudioCategories = (editor: any) => {
   if (!categories) return;
 
   const order = [
-    "CMS Page Starters",
-    "CMS Sections",
-    "CMS Business",
-    "CMS Social Proof",
-    "CMS Forms",
-    "CMS Commerce",
+    CMS_PRESETS_CATEGORY,
     "CMS Media",
     "CMS Utility",
     "Basic",
@@ -111,8 +124,12 @@ export const configureStudioCategories = (editor: any) => {
   };
 
   const apply = (category: any) => {
-    const label = String(category?.get?.("id") || category?.get?.("label") || "");
+    const label = normalizeStudioCategory(String(category?.get?.("id") || category?.get?.("label") || ""));
     category?.set?.("open", false);
+    if (label === CMS_PRESETS_CATEGORY) {
+      category?.set?.("id", CMS_PRESETS_CATEGORY);
+      category?.set?.("label", CMS_PRESETS_CATEGORY);
+    }
     category?.set?.("order", rank(label));
   };
 
