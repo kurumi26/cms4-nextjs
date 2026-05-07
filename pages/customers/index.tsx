@@ -94,6 +94,8 @@ function ManageCustomers() {
         search,
         name: advancedSearchValues.name || undefined,
         email: advancedSearchValues.email || undefined,
+        date_registered_from: advancedSearchValues.dateRegisteredFrom || undefined,
+        date_registered_to: advancedSearchValues.dateRegisteredTo || undefined,
         status: getRequestedStatus(),
         page: currentPage,
         per_page: perPage,
@@ -326,6 +328,8 @@ function ManageCustomers() {
         advancedFields={[
           { name: "name", label: "Name" },
           { name: "email", label: "Email" },
+          { name: "dateRegisteredFrom", label: "Date Registered (From)", type: "date" },
+          { name: "dateRegisteredTo", label: "Date Registered (To)", type: "date" },
           {
             name: "status",
             label: "Status",
