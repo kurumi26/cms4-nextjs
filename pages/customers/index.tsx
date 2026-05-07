@@ -27,6 +27,7 @@ function ManageCustomers() {
   const silentSortFetchRef = useRef(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [updatingIds, setUpdatingIds] = useState<number[]>([]);
 
   const getRequestedStatus = () => {
     if (showInactiveOnly) return "inactive";
@@ -121,6 +122,16 @@ function ManageCustomers() {
 
   const isActiveCustomer = (row: CustomerRow) => String(row.status ?? "").toLowerCase() === "active";
 
+  const applyCustomerStatus = (rows: CustomerRow[], ids: number[], active: boolean) => {
+    const idSet = new Set(ids);
+    const nextStatus = active ? "Active" : "Inactive";
+    const requestedStatus = getRequestedStatus();
+
+    return rows
+      .map((row) => (idSet.has(row.id) ? { ...row, status: nextStatus } : row))
+      .filter((row) => String(row.status ?? "").toLowerCase() === requestedStatus);
+  };
+
   const toggleSelectAll = (checked: boolean) => {
     if (checked) setSelectedIds(customers.map((u) => u.id));
     else setSelectedIds([]);
@@ -132,23 +143,41 @@ function ManageCustomers() {
 
   const bulkSetActive = async (active: boolean) => {
     if (selectedIds.length === 0) return;
+    const ids = selectedIds;
+    const previousCustomers = customers;
+
+    setUpdatingIds((prev) => Array.from(new Set([...prev, ...ids])));
+    setCustomers((rows) => applyCustomerStatus(rows, ids, active));
+    setSelectedIds([]);
+
     try {
-      await Promise.all(selectedIds.map((id) => toggleCustomerActive(id, active)));
-      toast.success(`${active ? "Activated" : "Deactivated"} ${selectedIds.length} customer(s)`);
-      setSelectedIds([]);
-      fetchCustomers();
+      await Promise.all(ids.map((id) => toggleCustomerActive(id, active)));
+      toast.success(`${active ? "Activated" : "Deactivated"} ${ids.length} customer(s)`);
     } catch (err: any) {
+      setCustomers(previousCustomers);
+      setSelectedIds(ids);
       toast.error(err?.response?.data?.message || "Failed to update selected customers");
+    } finally {
+      setUpdatingIds((prev) => prev.filter((id) => !ids.includes(id)));
     }
   };
 
   const handleToggleActive = async (row: CustomerRow) => {
+    const nextActive = !isActiveCustomer(row);
+    const previousCustomers = customers;
+
+    setUpdatingIds((prev) => Array.from(new Set([...prev, row.id])));
+    setCustomers((rows) => applyCustomerStatus(rows, [row.id], nextActive));
+    setSelectedIds((prev) => prev.filter((id) => id !== row.id));
+
     try {
-      await toggleCustomerActive(row.id, !isActiveCustomer(row));
-      toast.success(`Customer ${!isActiveCustomer(row) ? "activated" : "deactivated"}`);
-      fetchCustomers();
+      await toggleCustomerActive(row.id, nextActive);
+      toast.success(`Customer ${nextActive ? "activated" : "deactivated"}`);
     } catch (err: any) {
+      setCustomers(previousCustomers);
       toast.error(err?.response?.data?.message || "Failed to update customer status");
+    } finally {
+      setUpdatingIds((prev) => prev.filter((id) => id !== row.id));
     }
   };
 
@@ -253,8 +282,10 @@ function ManageCustomers() {
             className="btn btn-link p-0"
             title={isActiveCustomer(row) ? "Deactivate" : "Activate"}
             onClick={() => handleToggleActive(row)}
+            disabled={updatingIds.includes(row.id)}
             style={{
               color: isActiveCustomer(row) ? "#198754" : "#6c757d",
+              opacity: updatingIds.includes(row.id) ? 0.5 : 1,
             }}
             type="button"
           >
@@ -282,7 +313,7 @@ function ManageCustomers() {
               className="list-group-item list-group-item-action"
               onClick={() => bulkSetActive(true)}
               type="button"
-              disabled={selectedIds.length === 0 || loading}
+              disabled={selectedIds.length === 0 || loading || updatingIds.length > 0}
             >
               Activate
             </button>
@@ -290,7 +321,7 @@ function ManageCustomers() {
               className="list-group-item list-group-item-action"
               onClick={() => bulkSetActive(false)}
               type="button"
-              disabled={selectedIds.length === 0 || loading}
+              disabled={selectedIds.length === 0 || loading || updatingIds.length > 0}
             >
               Deactivate
             </button>
