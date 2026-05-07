@@ -3,6 +3,7 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import { useRouter } from "next/router";
 import { getCustomer } from "@/services/customerService";
 import { toast } from "@/lib/toast";
+import { readCustomerDetailCache, writeCustomerDetailCache } from "@/lib/customerCache";
 
 const INITIAL_LIMIT = 10;
 
@@ -12,16 +13,28 @@ function ViewCustomer() {
 
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [hasRequested, setHasRequested] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (!id) return;
 
-    setLoading(true);
-    getCustomer(Number(id))
-      .then((u) => setCustomer(u))
+    const customerId = Number(id);
+    const cachedCustomer = readCustomerDetailCache(customerId);
+    if (cachedCustomer) setCustomer(cachedCustomer);
+
+    setHasRequested(false);
+    setLoading(!cachedCustomer);
+    getCustomer(customerId, { silent: Boolean(cachedCustomer) })
+      .then((u) => {
+        setCustomer(u);
+        writeCustomerDetailCache(u);
+      })
       .catch(() => toast.error("Failed to load customer"))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setHasRequested(true);
+        setLoading(false);
+      });
   }, [id]);
 
   const statusLabel = (u: any) => {
@@ -55,13 +68,14 @@ function ViewCustomer() {
   const allAudits = customer?.audits ?? [];
   const visibleAudits = showAll ? allAudits : allAudits.slice(0, INITIAL_LIMIT);
   const hasMore = allAudits.length > INITIAL_LIMIT;
+  const firstName = customer?.fname ?? customer?.name ?? "-";
 
   return (
     <div className="container-fluid px-4 pt-3">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h3 className="mb-0">View Customer</h3>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary" onClick={() => router.back()} type="button">
+          <button className="btn btn-outline-secondary" onClick={() => router.push("/customers")} type="button">
             Back
           </button>
           {typeof id === "string" && (
@@ -74,7 +88,7 @@ function ViewCustomer() {
 
       {loading && <div className="alert alert-light">Loading...</div>}
 
-      {!loading && !customer && <div className="alert alert-warning">Customer not found.</div>}
+      {hasRequested && !loading && !customer && <div className="alert alert-warning">Customer not found.</div>}
 
       {!loading && customer && (
         <>
@@ -83,7 +97,7 @@ function ViewCustomer() {
               <div className="row g-3">
                 <div className="col-md-6">
                   <label className="form-label">First Name</label>
-                  <div className="form-control bg-light">{customer.fname ?? "-"}</div>
+                  <div className="form-control bg-light">{firstName}</div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Last Name</label>

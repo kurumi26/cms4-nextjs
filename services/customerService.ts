@@ -22,8 +22,10 @@ export const getCustomers = async (params: any, options?: { silent?: boolean }) 
   return res.data;
 };
 
-export const getCustomer = async (id: number) => {
-  const res = await axiosInstance.get(`/customers/${id}`);
+export const getCustomer = async (id: number, options?: { silent?: boolean }) => {
+  const res = await axiosInstance.get(`/customers/${id}`, {
+    headers: options?.silent ? { "X-No-Loading": true } : undefined,
+  });
   return res.data.data;
 };
 

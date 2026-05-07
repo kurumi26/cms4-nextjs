@@ -3,6 +3,7 @@ import AdminLayout from "@/components/Layout/AdminLayout";
 import { useRouter } from "next/router";
 import { getCustomer, updateCustomer } from "@/services/customerService";
 import { toast } from "@/lib/toast";
+import { readCustomerDetailCache, writeCustomerDetailCache } from "@/lib/customerCache";
 
 function EditCustomer() {
   const router = useRouter();
@@ -14,8 +15,15 @@ function EditCustomer() {
   useEffect(() => {
     if (!id) return;
 
-    getCustomer(Number(id))
-      .then((customer) => setForm(customer))
+    const customerId = Number(id);
+    const cachedCustomer = readCustomerDetailCache(customerId);
+    if (cachedCustomer) setForm(cachedCustomer);
+
+    getCustomer(customerId, { silent: Boolean(cachedCustomer) })
+      .then((customer) => {
+        setForm(customer);
+        writeCustomerDetailCache(customer);
+      })
       .catch(() => toast.error("Failed to load customer"));
   }, [id]);
 
@@ -23,6 +31,7 @@ function EditCustomer() {
     try {
       setLoading(true);
       await updateCustomer(Number(id), form);
+      writeCustomerDetailCache({ ...form, id: Number(id) });
       toast.success("Customer updated");
       router.push("/customers");
     } catch {

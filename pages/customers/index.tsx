@@ -6,19 +6,22 @@ import { getCustomers, toggleCustomerActive, CustomerRow } from "@/services/cust
 import { useRouter } from "next/router";
 import { toast } from "@/lib/toast";
 import Link from "next/link";
+import { readCustomerListCache, writeCustomerDetailCache, writeCustomerListCache } from "@/lib/customerCache";
 
 type AdvancedSearchValues = Record<string, string>;
 
 function ManageCustomers() {
   const router = useRouter();
 
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const listCache = typeof window !== "undefined" ? readCustomerListCache() : null;
+
+  const [customers, setCustomers] = useState<CustomerRow[]>(() => listCache?.rows ?? []);
   const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(() => listCache?.currentPage ?? 1);
+  const [totalPages, setTotalPages] = useState(() => listCache?.totalPages ?? 1);
+  const [perPage, setPerPage] = useState(() => listCache?.perPage ?? 10);
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<string>("asc");
   const [showInactiveOnly, setShowInactiveOnly] = useState<boolean>(false);
@@ -112,9 +115,16 @@ function ManageCustomers() {
         : apiRows;
 
       const sortedRows = sortRowsClientSide(filteredRows, sortBy, sortOrder);
+      const nextTotalPages = res?.meta?.last_page ?? 1;
 
       setCustomers(sortedRows);
-      setTotalPages(res?.meta?.last_page ?? 1);
+      setTotalPages(nextTotalPages);
+      writeCustomerListCache({
+        rows: sortedRows,
+        totalPages: nextTotalPages,
+        currentPage,
+        perPage,
+      });
     } finally {
       if (!(opts?.silent ?? false)) setLoading(false);
     }
@@ -179,6 +189,11 @@ function ManageCustomers() {
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== row.id));
     }
+  };
+
+  const openCustomer = (row: CustomerRow, path: string) => {
+    writeCustomerDetailCache(row);
+    router.push(path);
   };
 
   useEffect(() => {
@@ -263,7 +278,8 @@ function ManageCustomers() {
           <button
             className="btn btn-link p-0 me-2 text-secondary"
             title="View"
-            onClick={() => router.push(`/customers/view/${row.id}`)}
+            onMouseEnter={() => router.prefetch(`/customers/view/${row.id}`)}
+            onClick={() => openCustomer(row, `/customers/view/${row.id}`)}
             type="button"
           >
             <i className="fas fa-eye" />
@@ -272,7 +288,8 @@ function ManageCustomers() {
           <button
             className="btn btn-link p-0 me-2 text-secondary"
             title="Edit"
-            onClick={() => router.push(`/customers/edit/${row.id}`)}
+            onMouseEnter={() => router.prefetch(`/customers/edit/${row.id}`)}
+            onClick={() => openCustomer(row, `/customers/edit/${row.id}`)}
             type="button"
           >
             <i className="fas fa-edit" />
