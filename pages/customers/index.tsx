@@ -28,6 +28,11 @@ function ManageCustomers() {
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+  const getRequestedStatus = () => {
+    if (showInactiveOnly) return "inactive";
+    return advancedSearchValues.status || "active";
+  };
+
   const sortRowsClientSide = (rows: CustomerRow[], sortByKey: string, order: string) => {
     const direction = String(order).toLowerCase() === "asc" ? 1 : -1;
     const copy = [...rows];
@@ -72,7 +77,7 @@ function ManageCustomers() {
         search,
         name: advancedSearchValues.name || undefined,
         email: advancedSearchValues.email || undefined,
-        status: advancedSearchValues.status || (showInactiveOnly ? "inactive" : undefined),
+        status: getRequestedStatus(),
         page: currentPage,
         per_page: perPage,
         sort_by: sortBy,
@@ -80,9 +85,10 @@ function ManageCustomers() {
       }, { silent });
 
       const apiRows: CustomerRow[] = Array.isArray(res?.data?.data) ? res.data.data : [];
+      const requestedStatus = getRequestedStatus();
 
-      const filteredRows = showInactiveOnly
-        ? apiRows.filter((u) => String(u.status ?? "").toLowerCase() !== "active")
+      const filteredRows = requestedStatus
+        ? apiRows.filter((u) => String(u.status ?? "").toLowerCase() === requestedStatus)
         : apiRows;
 
       const sortedRows = sortRowsClientSide(filteredRows, sortBy, sortOrder);
@@ -297,8 +303,7 @@ function ManageCustomers() {
             label: "Status",
             type: "select",
             options: [
-              { label: "- All Statuses -", value: "" },
-              { label: "Active", value: "active" },
+              { label: "Active", value: "" },
               { label: "Inactive", value: "inactive" },
             ],
           },
