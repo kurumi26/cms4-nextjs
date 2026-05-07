@@ -28,6 +28,8 @@ function ManageCustomers() {
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const silentSortFetchRef = useRef(false);
+  const fetchRequestRef = useRef(0);
+  const hasCustomerRowsRef = useRef(Boolean(listCache?.rows?.length));
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
@@ -90,6 +92,9 @@ function ManageCustomers() {
   };
 
   const fetchCustomers = async (opts?: { silent?: boolean }) => {
+    const requestId = fetchRequestRef.current + 1;
+    fetchRequestRef.current = requestId;
+
     try {
       const silent = opts?.silent ?? false;
       if (!silent) setLoading(true);
@@ -117,7 +122,10 @@ function ManageCustomers() {
       const sortedRows = sortRowsClientSide(filteredRows, sortBy, sortOrder);
       const nextTotalPages = res?.meta?.last_page ?? 1;
 
+      if (requestId !== fetchRequestRef.current) return;
+
       setCustomers(sortedRows);
+      hasCustomerRowsRef.current = sortedRows.length > 0;
       setTotalPages(nextTotalPages);
       writeCustomerListCache({
         rows: sortedRows,
@@ -126,7 +134,7 @@ function ManageCustomers() {
         perPage,
       });
     } finally {
-      if (!(opts?.silent ?? false)) setLoading(false);
+      if (requestId === fetchRequestRef.current && !(opts?.silent ?? false)) setLoading(false);
     }
   };
 
@@ -199,7 +207,9 @@ function ManageCustomers() {
   useEffect(() => {
     const silent = silentSortFetchRef.current;
     silentSortFetchRef.current = false;
-    const timeout = setTimeout(() => fetchCustomers({ silent }), 400);
+    const fetchSilently = silent || hasCustomerRowsRef.current;
+    const delay = search.trim() ? 150 : 250;
+    const timeout = setTimeout(() => fetchCustomers({ silent: fetchSilently }), delay);
     return () => clearTimeout(timeout);
   }, [search, currentPage, perPage, sortBy, sortOrder, showInactiveOnly, advancedSearchValues]);
 
