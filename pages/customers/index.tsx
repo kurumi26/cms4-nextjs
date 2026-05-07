@@ -39,6 +39,13 @@ function ManageCustomers() {
 
     const getName = (r: CustomerRow) => (r?.name ?? "").toString().toLowerCase();
     const getEmail = (r: CustomerRow) => (r?.email ?? "").toString().toLowerCase();
+    const getType = (r: CustomerRow) => (r?.type ?? r?.role ?? "").toString().toLowerCase();
+    const getDateRegisteredMs = (r: CustomerRow) => {
+      const raw = r?.created_at ?? r?.date_registered;
+      if (!raw) return 0;
+      const ms = new Date(raw).getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    };
     const getModifiedMs = (r: any) => {
       const raw = r?.updated_at ?? r?.updated_at_formatted ?? r?.updated;
       if (!raw) return 0;
@@ -53,6 +60,16 @@ function ManageCustomers() {
         if (av < bv) return -1 * direction;
         if (av > bv) return 1 * direction;
         return 0;
+      }
+      if (sortByKey === "type") {
+        const av = getType(a);
+        const bv = getType(b);
+        if (av < bv) return -1 * direction;
+        if (av > bv) return 1 * direction;
+        return 0;
+      }
+      if (sortByKey === "created_at") {
+        return (getDateRegisteredMs(a) - getDateRegisteredMs(b)) * direction;
       }
       if (sortByKey === "updated_at") {
         return (getModifiedMs(a) - getModifiedMs(b)) * direction;
@@ -181,8 +198,19 @@ function ManageCustomers() {
       ),
     },
     {
-      key: "role",
-      header: "Role",
+      key: "type",
+      header: "Type",
+      sortable: true,
+      sortField: "type",
+      render: (row) => row.type ?? row.role ?? "Customer",
+    },
+    {
+      key: "date_registered",
+      header: "Date Registered",
+      sortable: true,
+      sortField: "created_at",
+      defaultSortOrder: "desc",
+      render: (row) => row.date_registered ?? (row.created_at ? new Date(row.created_at).toLocaleDateString() : ""),
     },
     {
       key: "status",

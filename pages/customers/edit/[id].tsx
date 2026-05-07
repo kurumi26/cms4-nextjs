@@ -73,8 +73,8 @@ function EditCustomer() {
       </div>
 
       <div className="form-group mb-4">
-        <label className="col-form-label">Role</label>
-        <input className="form-control" value="customer" disabled />
+        <label className="col-form-label">Type</label>
+        <input className="form-control" value={form.type ?? "Customer"} disabled />
       </div>
 
       <div className="btn-group">

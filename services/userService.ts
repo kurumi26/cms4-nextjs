@@ -16,7 +16,10 @@ export interface UserRow {
   id: number;
   name: string;
   email: string;
+  type?: string;
   role: string;
+  created_at?: string;
+  date_registered?: string;
   status: string;
 }
 

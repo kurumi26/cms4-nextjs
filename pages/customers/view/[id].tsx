@@ -96,8 +96,12 @@ function ViewCustomer() {
                   </div>
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label">Role</label>
-                  <div className="form-control bg-light">{customer.role ?? "customer"}</div>
+                  <label className="form-label">Type</label>
+                  <div className="form-control bg-light">{customer.type ?? "Customer"}</div>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label">Date Registered</label>
+                  <div className="form-control bg-light">{customer.date_registered ?? "-"}</div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Status</label>
