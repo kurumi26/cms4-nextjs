@@ -68,16 +68,11 @@ async function tryEndpoints(endpoints: string[], params?: Record<string, any>): 
 const PRODUCT_ENDPOINTS = [
 	"/public-products",
 	"/public/products",
-	"/products",
-	"/api/products",
 ];
 
 const CATEGORY_ENDPOINTS = [
 	"/public-product-categories",
-	"/fetch-product-categories",
-	"/product-categories",
-	"/categories?type=product",
-	"/categories",
+	"/public/product-categories",
 ];
 
 export async function fetchPublicProducts(): Promise<Product[]> {

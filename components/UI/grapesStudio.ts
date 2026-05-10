@@ -436,7 +436,7 @@ export const registerAdvancedCmsBlocks = (editor: any) => {
               <li>Two-button CTA for compare and purchase actions</li>
             </ul>
             <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-              <div style="font-size:38px;font-weight:800;color:#0f172a;">$149</div>
+              <div style="font-size:38px;font-weight:800;color:#0f172a;">₱149</div>
               <span style="padding:8px 12px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:800;font-size:13px;">Best seller</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:20px;">

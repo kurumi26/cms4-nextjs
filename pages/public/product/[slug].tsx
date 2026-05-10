@@ -3,6 +3,8 @@ import { axiosInstance } from "@/services/axios";
 import { getPublicPageBySlug } from "@/services/publicPageService";
 import { toast } from "@/lib/toast";
 import { useEffect, useMemo, useState } from "react";
+import { addPublicCartItem, productToCartItem } from "@/lib/publicCart";
+import { getStoredCustomer } from "@/services/publicCustomerService";
 
 type Props = {
 	product: any | null;
@@ -101,7 +103,7 @@ function formatPrice(value: any): string {
 	if (value === null || value === undefined || value === "") return "";
 	const num = typeof value === "number" ? value : Number(value);
 	if (!Number.isFinite(num)) return String(value);
-	return `$${num.toFixed(2)}`;
+	return num.toLocaleString("en-PH", { style: "currency", currency: "PHP" });
 }
 
 function resolveImageUrl(src: any): string | undefined {
@@ -177,22 +179,9 @@ async function fetchProductBySlugOrId(slugOrId: string): Promise<any | null> {
 		return resp.data;
 	};
 
-	const isNumericId = /^\d+$/.test(slugOrId);
-
-	// If it's numeric, try the real detail endpoint first.
-	if (isNumericId) {
-		try {
-			const payload = await tryGet(`/products/${encodeURIComponent(slugOrId)}`);
-			const data = unwrapPayload(payload);
-			if (data && typeof data === "object" && !Array.isArray(data)) return data;
-		} catch {
-			// fall through to list fetch
-		}
-	}
-
-	// Otherwise (or if id lookup failed), fetch list once and match by id/slug.
+	// Fetch the public list once and match by id/slug.
 	try {
-		const payload = await tryGet("/products", { per_page: 1000 });
+		const payload = await tryGet("/public-products", { per_page: 1000 });
 		const arr = extractArray(payload);
 		const needle = String(slugOrId);
 		const found = arr.find((p: any) => {
@@ -339,22 +328,18 @@ export default function PublicProductDetail({ product, slugOrId }: Props) {
 	};
 
 	const handleAddToCart = () => {
+		if (!getStoredCustomer()) {
+			window.location.href = `/public/login?redirect=${encodeURIComponent(`/public/product/${slugOrId}`)}`;
+			return;
+		}
 		const finalQty = clampQty(qty);
-		upsertCartItem({
-			key,
-			id: clientProduct?.id ? String(clientProduct.id) : undefined,
-			slug: clientProduct?.slug ? String(clientProduct.slug) : undefined,
-			name: title,
-			price: priceNumber,
-			qty: finalQty,
-			image: selectedImage,
-		});
+		addPublicCartItem(productToCartItem({ ...clientProduct, image_url: selectedImage }, finalQty));
 		toast.success(`Added ${finalQty} to cart`);
 	};
 
 	const handleBuyNow = () => {
 		handleAddToCart();
-		toast.info("Checkout is coming soon. Item added to cart.");
+		if (getStoredCustomer()) window.location.href = "/public/checkout";
 	};
 
 	return (
@@ -467,6 +452,28 @@ export default function PublicProductDetail({ product, slugOrId }: Props) {
 								) : (
 									<p className="txt14">No description.</p>
 								)}
+
+								<div className="bo-rad-10" style={{ border: "1px solid #eee", padding: 16, marginTop: 22 }}>
+									<div className="d-flex align-items-center justify-content-between" style={{ gap: 12 }}>
+										<span className="txt14" style={{ fontWeight: 600, margin: 0 }}>Quantity</span>
+										<div className="d-flex align-items-center" style={{ gap: 8 }}>
+											<button type="button" onClick={() => setQty((q) => clampQty(q - 1))} className="btn btn-outline-secondary" aria-label="Decrease quantity">-</button>
+											<input
+												type="number"
+												min={1}
+												max={99}
+												value={qty}
+												onChange={(e) => setQty(clampQty(Number(e.target.value)))}
+												style={{ width: 68, height: 38, borderRadius: 6, border: "1px solid #ddd", textAlign: "center" }}
+											/>
+											<button type="button" onClick={() => setQty((q) => clampQty(q + 1))} className="btn btn-outline-secondary" aria-label="Increase quantity">+</button>
+										</div>
+									</div>
+									<div className="d-flex flex-wrap" style={{ gap: 12, marginTop: 14 }}>
+										<button type="button" onClick={handleAddToCart} className="btn btn-success" style={{ minHeight: 42, fontWeight: 700 }}>Add to Cart</button>
+										<button type="button" onClick={handleBuyNow} className="btn btn-outline-secondary" style={{ minHeight: 42, fontWeight: 700 }}>Buy Now</button>
+									</div>
+								</div>
 
 								{/* <hr style={{ opacity: 0.12, margin: "22px 0" }} /> */}
 

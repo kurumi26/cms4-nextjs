@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
+import ConfirmModal from "@/components/UI/ConfirmModal";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
 import { toast } from "@/lib/toast";
@@ -31,6 +32,8 @@ function ManageRoles() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RoleRow | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -153,13 +156,18 @@ function ManageRoles() {
     }
   };
 
-  const handleDeleteRole = async (role: RoleRow) => {
-    if (!confirm(`Are you sure you want to delete "${role.name}"?`)) return;
+  const handleDeleteRole = (role: RoleRow) => {
+    setDeleteTarget(role);
+  };
+
+  const confirmDeleteRole = async () => {
+    if (!deleteTarget) return;
 
     try {
-      await deleteRole(role.id);
+      await deleteRole(deleteTarget.id);
       toast.success("Role deleted successfully.");
-      setSelectedIds((prev) => prev.filter((id) => id !== role.id));
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+      setDeleteTarget(null);
       fetchRoles();
     } catch (err: any) {
       console.error(err);
@@ -167,14 +175,19 @@ function ManageRoles() {
     }
   };
 
-  const bulkDeleteRoles = async () => {
+  const bulkDeleteRoles = () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} role(s)?`)) return;
+    setConfirmBulkDelete(true);
+  };
 
+  const confirmDeleteSelectedRoles = async () => {
+    if (selectedIds.length === 0) return;
+    const idsToDelete = [...selectedIds];
     try {
-      await Promise.all(selectedIds.map((id) => deleteRole(id)));
-      toast.success(`Deleted ${selectedIds.length} role(s)`);
+      await Promise.all(idsToDelete.map((id) => deleteRole(id)));
+      toast.success(`Deleted ${idsToDelete.length} role(s)`);
       setSelectedIds([]);
+      setConfirmBulkDelete(false);
       fetchRoles();
     } catch (err: any) {
       console.error(err);
@@ -396,6 +409,24 @@ function ManageRoles() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        show={!!deleteTarget}
+        title="Delete Role"
+        message={<>Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?</>}
+        confirmLabel="Delete"
+        onConfirm={confirmDeleteRole}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmModal
+        show={confirmBulkDelete}
+        title="Delete Selected Roles"
+        message={<>Are you sure you want to delete <strong>{selectedIds.length}</strong> selected role(s)?</>}
+        confirmLabel="Delete"
+        onConfirm={confirmDeleteSelectedRoles}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

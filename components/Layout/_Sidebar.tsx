@@ -118,6 +118,13 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
         { label: "Coupons", icon: "fa-solid fa-ticket", href: "/coupons" },
         { label: "Sales Transaction", icon: "fa-solid fa-receipt", href: "/sales-transactions" },
         {
+          label: "Job Orders", icon: "fa-solid fa-list-check", href: "/job-orders",
+          children: [
+            { label: "Manage Job Orders", href: "/job-orders" },
+            { label: "Create Job Orders", href: "/job-orders/create" },
+          ],
+        },
+        {
           label: "Products", icon: "fa-solid fa-boxes-stacked", href: "/products",
           children: [
             { label: "Manage Products", href: "/products" },

@@ -4,6 +4,8 @@ import Link from "next/link";
 import Menu from "./_Menu";
 import styles from "@/styles/_topbar.module.css";
 import { getWebsiteSettingsCached, resolveWebsiteAssetUrl, subscribeWebsiteSettingsUpdated } from "@/lib/websiteSettings";
+import { cartCount, readPublicCart } from "@/lib/publicCart";
+import { getStoredCustomer } from "@/services/publicCustomerService";
 
 export default function LandingTopbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -14,6 +16,8 @@ export default function LandingTopbar() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoAlt, setLogoAlt] = useState<string>("Logo");
   const [navAlignment, setNavAlignment] = useState<'left' | 'center' | 'right'>('center');
+  const [customerName, setCustomerName] = useState("");
+  const [cartItemsCount, setCartItemsCount] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -37,6 +41,24 @@ export default function LandingTopbar() {
     return () => {
       alive = false;
       unsub();
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshCustomer = () => {
+      const customer = getStoredCustomer();
+      setCustomerName(customer ? `${customer.fname ?? ""} ${customer.lname ?? ""}`.trim() || "My Account" : "");
+    };
+    const refreshCart = () => setCartItemsCount(cartCount(readPublicCart()));
+    refreshCustomer();
+    refreshCart();
+    window.addEventListener("public-customer-updated", refreshCustomer);
+    window.addEventListener("public-cart-updated", refreshCart);
+    window.addEventListener("storage", refreshCart);
+    return () => {
+      window.removeEventListener("public-customer-updated", refreshCustomer);
+      window.removeEventListener("public-cart-updated", refreshCart);
+      window.removeEventListener("storage", refreshCart);
     };
   }, []);
 
@@ -151,6 +173,28 @@ export default function LandingTopbar() {
           </button>
 
           <div className={styles.socials}>
+            <Link href="/public/cart" className={styles['social-icon']} aria-label="Cart" title="Cart" style={{ position: "relative" }}>
+              <i className="fa fa-shopping-cart" aria-hidden="true"></i>
+              {cartItemsCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: -6,
+                  right: -7,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 999,
+                  background: "#ec1d25",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  lineHeight: "16px",
+                  textAlign: "center",
+                }}>{cartItemsCount}</span>
+              )}
+            </Link>
+            <Link href={customerName ? "/public/account" : "/public/login"} className={styles['social-icon']} aria-label={customerName ? "My Account" : "Login"} title={customerName || "Login"}>
+              <i className="fa fa-user" aria-hidden="true"></i>
+            </Link>
             <a
               href="https://facebook.com/"
               className={styles['social-icon']}

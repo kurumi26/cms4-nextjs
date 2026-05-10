@@ -164,9 +164,9 @@ const registerCmsBlocks = (editor: any) => {
     content: `
       <section style="padding:56px 24px;">
         <div style="max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;">
-          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Starter</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$19</p><p style="color:#475569;">Great for small teams.</p></div>
-          <div style="border:2px solid #0d6efd;border-radius:12px;padding:18px;"><h3>Pro</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$49</p><p style="color:#475569;">Best for growing teams.</p></div>
-          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Business</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">$99</p><p style="color:#475569;">Advanced needs and support.</p></div>
+          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Starter</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">₱19</p><p style="color:#475569;">Great for small teams.</p></div>
+          <div style="border:2px solid #0d6efd;border-radius:12px;padding:18px;"><h3>Pro</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">₱49</p><p style="color:#475569;">Best for growing teams.</p></div>
+          <div style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;"><h3>Business</h3><p style="font-size:28px;font-weight:700;margin:8px 0;">₱99</p><p style="color:#475569;">Advanced needs and support.</p></div>
         </div>
       </section>
     `,

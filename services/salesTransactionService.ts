@@ -15,6 +15,17 @@ export interface SalesTransaction {
   order_status: string;
   notes?: string | null;
   transacted_at?: string | null;
+  items?: SalesTransactionItem[];
+}
+
+export interface SalesTransactionItem {
+  id?: number;
+  product_id?: number | string | null;
+  name: string;
+  item_type?: string | null;
+  price: string | number;
+  quantity: string | number;
+  total_price?: string | number | null;
 }
 
 export const getSalesTransactions = async (params?: any, options?: { silent?: boolean }) => {
@@ -25,12 +36,12 @@ export const getSalesTransactions = async (params?: any, options?: { silent?: bo
   return res.data;
 };
 
-export const createSalesTransaction = async (payload: Partial<SalesTransaction>) => {
+export const createSalesTransaction = async (payload: Partial<SalesTransaction> & { items?: SalesTransactionItem[] }) => {
   const res = await axiosInstance.post("/sales-transactions", payload);
   return res.data;
 };
 
-export const updateSalesTransaction = async (id: number, payload: Partial<SalesTransaction>) => {
+export const updateSalesTransaction = async (id: number, payload: Partial<SalesTransaction> & { items?: SalesTransactionItem[] }) => {
   const res = await axiosInstance.put(`/sales-transactions/${id}`, payload);
   return res.data;
 };

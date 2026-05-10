@@ -2,6 +2,9 @@ import LandingPageLayout from "@/components/Layout/GuestLayout";
 import { getPublicPageBySlug } from "@/services/publicPageService";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@/components/icons/search";
+import { toast } from "@/lib/toast";
+import { addPublicCartItem, productToCartItem } from "@/lib/publicCart";
+import { getStoredCustomer } from "@/services/publicCustomerService";
 import {
 	fetchPublicProducts,
 	fetchPublicCategories,
@@ -253,7 +256,17 @@ function ProductCard({ product: p, viewMode }: { product: Product; viewMode: "gr
 	const imageSrc = resolveProductImageUrl(p.image_url ?? p.image);
 	const label = p.name ?? p.title ?? p.slug ?? "";
 	const blurb = String(p.description ?? p.teaser ?? p.summary ?? "");
-	const price = p.price ? `$${Number(p.price).toFixed(2)}` : null;
+	const price = p.price
+		? Number(p.price).toLocaleString("en-PH", { style: "currency", currency: "PHP" })
+		: null;
+	const addToCart = () => {
+		if (!getStoredCustomer()) {
+			window.location.href = `/public/login?redirect=${encodeURIComponent("/public/products")}`;
+			return;
+		}
+		addPublicCartItem(productToCartItem(p, 1));
+		toast.success("Added to cart");
+	};
 
 	return (
 		<div className={`${viewMode === "grid" ? "col-sm-6 col-lg-4" : "col-12"} p-b-40`}>
@@ -318,6 +331,14 @@ function ProductCard({ product: p, viewMode }: { product: Product; viewMode: "gr
 					)}
 				</div>
 			</a>
+			<button
+				type="button"
+				className="btn btn-success btn-sm"
+				onClick={addToCart}
+				style={{ width: "100%", marginTop: 10, minHeight: 38, fontWeight: 700 }}
+			>
+				Add to Cart
+			</button>
 		</div>
 	);
 }

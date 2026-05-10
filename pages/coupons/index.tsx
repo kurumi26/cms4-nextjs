@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
+import ConfirmModal from "@/components/UI/ConfirmModal";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
 import { Coupon, createCoupon, deleteCoupon, getCoupons, updateCoupon } from "@/services/couponService";
@@ -26,6 +27,7 @@ function ManageCoupons() {
   const [perPage, setPerPage] = useState(10);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view" | null>(null);
   const [selected, setSelected] = useState<Coupon | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
 
   const fetchCoupons = async (opts?: { silent?: boolean }) => {
@@ -100,11 +102,17 @@ function ManageCoupons() {
     }
   };
 
-  const remove = async (coupon: Coupon) => {
-    if (!confirm(`Delete coupon ${coupon.code}?`)) return;
+  const remove = (coupon: Coupon) => {
+    setDeleteTarget(coupon);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
     try {
-      await deleteCoupon(coupon.id);
+      await deleteCoupon(deleteTarget.id);
       toast.success("Coupon deleted");
+      setDeleteTarget(null);
       fetchCoupons();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to delete coupon");
@@ -186,6 +194,15 @@ function ManageCoupons() {
           onSubmit={submit}
         />
       )}
+
+      <ConfirmModal
+        show={!!deleteTarget}
+        title="Delete Coupon"
+        message={<>Are you sure you want to delete <strong>{deleteTarget?.code}</strong>?</>}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
@@ -284,7 +301,7 @@ function ReadField({ label, value }: { label: string; value: any }) {
   );
 }
 
-const money = (value: any) => Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+const money = (value: any) => Number(value || 0).toLocaleString("en-PH", { style: "currency", currency: "PHP" });
 const formatDate = (value?: string | null) => value ? new Date(value).toLocaleDateString() : "-";
 const formatDateInput = (value?: string | null) => value ? String(value).slice(0, 10) : "";
 
