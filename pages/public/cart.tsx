@@ -3,13 +3,31 @@ import Link from "next/link";
 import LandingPageLayout from "@/components/Layout/GuestLayout";
 import { cartSubtotal, PublicCartItem, readPublicCart, removePublicCartItem, updatePublicCartQty } from "@/lib/publicCart";
 
+const cityCharges: Record<string, number> = {
+  "Quezon City": 400,
+  "Makati": 450,
+  "Pasig": 350,
+  "Taguig": 500,
+  "Manila": 400,
+  "Other": 500,
+};
+
 function CustomerCartPage() {
   const [items, setItems] = useState<PublicCartItem[]>([]);
+  const [shippingMethod, setShippingMethod] = useState<"pickup" | "delivery">("pickup");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCity, setDeliveryCity] = useState("");
+
   useEffect(() => setItems(readPublicCart()), []);
+
   const subtotal = cartSubtotal(items);
+  const deliveryCharge = shippingMethod === "delivery" && deliveryCity ? (cityCharges[deliveryCity] ?? 500) : 0;
+  const total = subtotal + deliveryCharge;
 
   const updateQty = (key: string, qty: number) => setItems(updatePublicCartQty(key, qty));
   const removeItem = (key: string) => setItems(removePublicCartItem(key));
+
+  const checkoutHref = `/public/checkout?shipping=${shippingMethod}${deliveryCity ? `&city=${encodeURIComponent(deliveryCity)}` : ""}${deliveryAddress ? `&address=${encodeURIComponent(deliveryAddress)}` : ""}`;
 
   return (
     <CustomerShell active="cart">
@@ -22,6 +40,7 @@ function CustomerCartPage() {
           </div>
         ) : (
           <>
+            {/* ── Cart Items Table ── */}
             <div className="cart-table-wrap">
               <table className="cart-table">
                 <thead>
@@ -58,10 +77,84 @@ function CustomerCartPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* ── Shipping Method ── */}
+            <div className="shipping-section">
+              <div className="shipping-section-title">
+                <i className="fa-solid fa-truck" />
+                Shipping Method
+              </div>
+              <div className="shipping-options">
+                <button
+                  type="button"
+                  className={`shipping-card${shippingMethod === "pickup" ? " is-selected" : ""}`}
+                  onClick={() => setShippingMethod("pickup")}
+                >
+                  <span className="shipping-radio">{shippingMethod === "pickup" ? "●" : "○"}</span>
+                  <span className="shipping-icon"><i className="fa-solid fa-store" /></span>
+                  <div className="shipping-info">
+                    <span className="shipping-label">Store Pickup</span>
+                    <span className="shipping-desc">Pick up your order at our store — Free</span>
+                  </div>
+                  <span className="shipping-price free">FREE</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`shipping-card${shippingMethod === "delivery" ? " is-selected" : ""}`}
+                  onClick={() => setShippingMethod("delivery")}
+                >
+                  <span className="shipping-radio">{shippingMethod === "delivery" ? "●" : "○"}</span>
+                  <span className="shipping-icon"><i className="fa-solid fa-truck-fast" /></span>
+                  <div className="shipping-info">
+                    <span className="shipping-label">Home Delivery</span>
+                    <span className="shipping-desc">We deliver to your door</span>
+                  </div>
+                  <span className="shipping-price">{deliveryCity ? money(cityCharges[deliveryCity] ?? 500) : "From ₱350"}</span>
+                </button>
+              </div>
+
+              {shippingMethod === "delivery" && (
+                <div className="delivery-fields">
+                  <div className="delivery-field">
+                    <label>City / Area</label>
+                    <select value={deliveryCity} onChange={(e) => setDeliveryCity(e.target.value)}>
+                      <option value="">— Select your city —</option>
+                      {Object.entries(cityCharges).map(([city, charge]) => (
+                        <option key={city} value={city}>{city} — {money(charge)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="delivery-field">
+                    <label>Delivery Address</label>
+                    <input
+                      type="text"
+                      placeholder="House no., Street, Barangay"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Order Summary ── */}
             <div className="cart-summary">
               <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
-              <div><span>Total</span><strong className="grand">{money(subtotal)}</strong></div>
-              <Link href="/public/checkout" className="customer-btn">Checkout</Link>
+              {shippingMethod === "delivery" && (
+                <div className="shipping-line">
+                  <span>Shipping {deliveryCity ? `(${deliveryCity})` : ""}</span>
+                  <strong>{deliveryCharge ? money(deliveryCharge) : <span className="text-muted" style={{ fontSize: 13 }}>Select city</span>}</strong>
+                </div>
+              )}
+              {shippingMethod === "pickup" && (
+                <div><span>Shipping</span><strong className="free-tag">FREE</strong></div>
+              )}
+              <div className="total-line"><span>Total</span><strong className="grand">{money(total)}</strong></div>
+              <Link href={checkoutHref} className="customer-btn checkout-btn">
+                <i className="fa-solid fa-lock" style={{ marginRight: 8 }} />
+                Proceed to Checkout
+              </Link>
             </div>
           </>
         )}
@@ -222,17 +315,168 @@ export function CustomerStyles() {
       }
       .cart-summary {
         margin-left: auto;
-        width: min(100%, 340px);
+        width: min(100%, 380px);
         padding: 22px 26px 26px;
       }
       .cart-summary div {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         border-bottom: 1px solid #eef2f7;
         padding: 10px 0;
       }
+      .cart-summary .total-line {
+        border-bottom: none;
+        padding-bottom: 16px;
+      }
       .cart-summary .grand {
         font-size: 24px;
+        color: #0f172a;
+      }
+      .free-tag {
+        color: #00843d;
+        font-size: 13px;
+        font-weight: 800;
+        background: #dcfce7;
+        padding: 2px 8px;
+        border-radius: 20px;
+      }
+      .checkout-btn {
+        width: 100%;
+        margin-top: 4px;
+        font-size: 15px;
+        gap: 6px;
+      }
+      /* ── Shipping Section ── */
+      .shipping-section {
+        padding: 24px 26px;
+        border-top: 1px solid #eef2f7;
+      }
+      .shipping-section-title {
+        font-weight: 800;
+        font-size: 15px;
+        color: #0f172a;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .shipping-section-title i {
+        color: #2f7db4;
+      }
+      .shipping-options {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+      }
+      .shipping-options .shipping-card {
+        flex: 1;
+      }
+      .shipping-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        cursor: pointer;
+        text-align: left;
+        transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      }
+      .shipping-card:hover {
+        border-color: #94a3b8;
+        background: #f1f5f9;
+      }
+      .shipping-card.is-selected {
+        border-color: #00843d;
+        background: #f0fdf4;
+        box-shadow: 0 0 0 3px rgba(0,132,61,0.1);
+      }
+      .shipping-radio {
+        font-size: 18px;
+        color: #94a3b8;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+      .shipping-card.is-selected .shipping-radio {
+        color: #00843d;
+      }
+      .shipping-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        color: #475569;
+        flex-shrink: 0;
+      }
+      .shipping-card.is-selected .shipping-icon {
+        background: #dcfce7;
+        color: #00843d;
+      }
+      .shipping-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .shipping-label {
+        font-weight: 700;
+        font-size: 14px;
+        color: #0f172a;
+      }
+      .shipping-desc {
+        font-size: 12px;
+        color: #64748b;
+      }
+      .shipping-price {
+        font-weight: 800;
+        font-size: 14px;
+        color: #0f172a;
+        white-space: nowrap;
+      }
+      .shipping-price.free {
+        color: #00843d;
+        background: #dcfce7;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+      }
+      .delivery-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 14px;
+        padding: 16px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+      }
+      .delivery-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .delivery-field label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .delivery-field input,
+      .delivery-field select {
+        padding: 9px 12px;
+        font-size: 14px;
+      }
+      @media (max-width: 600px) {
+        .delivery-fields { grid-template-columns: 1fr; }
+        .shipping-options { flex-direction: column; }
       }
       .customer-btn {
         display: inline-flex;
