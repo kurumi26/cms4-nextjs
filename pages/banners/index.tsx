@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import DataTable, { Column } from "@/components/UI/DataTable";
 import SearchBar from "@/components/UI/SearchBar";
-import { getAlbums, AlbumRow, updateAlbumMeta, deleteAlbum, getAlbum } from "@/services/albumService";
+import { getAlbums, AlbumRow, updateAlbumMeta, deleteAlbum, getAlbum, restoreAlbum } from "@/services/albumService";
 import { OptionItem, getOptions } from "@/services/optionService";
 import { toast } from "@/lib/toast";
 import ConfirmModal from "@/components/UI/ConfirmModal";
@@ -32,11 +32,14 @@ function ManageAlbums() {
   const [transitionOut, setTransitionOut] = useState("");
   const [duration, setDuration] = useState<number>(2);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<AlbumRow | null>(null);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showBulkRestoreConfirm, setShowBulkRestoreConfirm] = useState(false);
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const [advancedSearchValues, setAdvancedSearchValues] = useState<AdvancedSearchValues>({});
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
@@ -195,7 +198,17 @@ function ManageAlbums() {
       render: (row) => (
         <>
           {showDeleted || isRowDeleted(row) ? (
-            <span className="text-muted small">Deleted</span>
+            <button
+              className="btn btn-link p-0 text-success"
+              title="Restore album"
+              aria-label="Restore album"
+              onClick={() => {
+                setRestoreTarget(row);
+                setShowRestoreConfirm(true);
+              }}
+            >
+              <i className="fas fa-trash-restore" />
+            </button>
           ) : (
             <>
               <button
@@ -318,6 +331,37 @@ function ManageAlbums() {
     }
   };
 
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    try {
+      await restoreAlbum(restoreTarget.id);
+      toast.success("Album restored");
+      setShowRestoreConfirm(false);
+      setRestoreTarget(null);
+      setSelectedIds((prev) => prev.filter((id) => id !== restoreTarget.id));
+      setAlbums((prev) => prev.filter((album) => album.id !== restoreTarget.id));
+      setShowDeleted(false);
+      setCurrentPage(1);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to restore album");
+    }
+  };
+
+  const confirmBulkRestore = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map((id) => restoreAlbum(id)));
+      toast.success(`Restored ${selectedIds.length} album(s)`);
+      setAlbums((prev) => prev.filter((album) => !selectedIds.includes(album.id)));
+      setSelectedIds([]);
+      setShowBulkRestoreConfirm(false);
+      setShowDeleted(false);
+      setCurrentPage(1);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to restore selected albums");
+    }
+  };
+
   const openDeleteConfirm = () => setShowDeleteConfirm(true);
   const cancelDelete = () => setShowDeleteConfirm(false);
 
@@ -338,12 +382,21 @@ function ManageAlbums() {
 
         actionsMenu={(
           <>
-            <button
-              className="list-group-item list-group-item-action text-danger"
-              onClick={() => { setShowBulkDeleteConfirm(true); }}
-            >
-              Delete
-            </button>
+            {showDeleted ? (
+              <button
+                className="list-group-item list-group-item-action text-success"
+                onClick={() => { setShowBulkRestoreConfirm(true); }}
+              >
+                Restore
+              </button>
+            ) : (
+              <button
+                className="list-group-item list-group-item-action text-danger"
+                onClick={() => { setShowBulkDeleteConfirm(true); }}
+              >
+                Delete
+              </button>
+            )}
           </>
         )}
         rightExtras={(
@@ -477,6 +530,23 @@ function ManageAlbums() {
         onCancel={cancelDelete}
       />
 
+      <ConfirmModal
+        show={showRestoreConfirm && !!restoreTarget}
+        title="Restore Album"
+        message={(
+          <p>Restore <strong>{restoreTarget?.name}</strong>?</p>
+        )}
+        confirmLabel="Restore"
+        danger={false}
+        confirmVariant="success"
+        accentVariant="success"
+        onConfirm={handleRestore}
+        onCancel={() => {
+          setShowRestoreConfirm(false);
+          setRestoreTarget(null);
+        }}
+      />
+
       {/* Small anchored dropdown menu (near cog icon) */}
       {showSettingsMenu && selected && menuPos && (
         <>
@@ -516,6 +586,20 @@ function ManageAlbums() {
         )}
         onConfirm={confirmBulkDelete}
         onCancel={() => setShowBulkDeleteConfirm(false)}
+      />
+
+      <ConfirmModal
+        show={showBulkRestoreConfirm}
+        title="Restore Album(s)"
+        message={(
+          <p>Restore selected <strong>{selectedIds.length}</strong> album(s)?</p>
+        )}
+        confirmLabel="Restore"
+        danger={false}
+        confirmVariant="success"
+        accentVariant="success"
+        onConfirm={confirmBulkRestore}
+        onCancel={() => setShowBulkRestoreConfirm(false)}
       />
     </div>
   );

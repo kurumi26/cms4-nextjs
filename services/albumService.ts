@@ -36,6 +36,11 @@ export interface AlbumRow {
   name: string;
   total_images: number;
   updated_at: string;
+  deleted_at?: string | null;
+  is_deleted?: boolean | number | string;
+  deleted?: boolean;
+  visibility?: string | null;
+  status?: string | null;
 }
 
 export const getAlbums = (
@@ -70,6 +75,10 @@ export const updateAlbumMeta = (id: number, payload: Partial<AlbumPayload>) => {
 
 export const deleteAlbum = (id: number) => {
   return axiosInstance.delete(`/albums/${id}`);
+};
+
+export const restoreAlbum = (id: number) => {
+  return axiosInstance.post(`/albums/${id}/restore`);
 };
 
 const buildAlbumFormData = (payload: AlbumPayload) => {
