@@ -132,6 +132,14 @@ export default function Sidebar({ isOpen, isMobile, onClose, width }: SidebarPro
             { label: "Create Category", href: "/products/category_create" },
           ],
         },
+        {
+          label: "Services", icon: "fa-solid fa-screwdriver-wrench", href: "/services",
+          children: [
+            { label: "Manage Services", href: "/services" },
+            { label: "Create Service", href: "/services/create" },
+            { label: "Create Category", href: "/services/category_create" },
+          ],
+        },
       ],
     },
   ];
