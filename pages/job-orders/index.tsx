@@ -213,511 +213,519 @@ function JobOrderDetailsModal({ order, loading, onClose }: { order: JobOrder; lo
   const miscItems = order.items?.filter((item) => item.is_miscellaneous) ?? [];
 
   return (
-    <div className="modal show d-block jo-detail-backdrop" tabIndex={-1}>
+    <div className="jod-backdrop modal show d-block" tabIndex={-1}>
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div className="modal-content jo-detail-modal">
-          <div className="modal-header jo-detail-header">
-            <div className="header-copy">
-              <span className="header-kicker">Job Order</span>
-              <h5 className="modal-title">{order.jo_no}</h5>
-              <div className="header-subtitle">
-                {order.customer_name || "No customer"} · {formatDateTime(order.order_date)}
+        <div className="modal-content jod-modal">
+
+          {/* ── Header ── */}
+          <div className="jod-header">
+            <div className="jod-header-left">
+              <div className="jod-kicker"><i className="fa-solid fa-file-invoice" /> Job Order</div>
+              <div className="jod-jo-no">{order.jo_no}</div>
+              <div className="jod-subtitle">
+                {order.customer_name || "No customer"}&nbsp;·&nbsp;{formatDateTime(order.order_date)}
               </div>
             </div>
-            <div className="header-meta">
-              <span className={`status-pill ${statusClass(order.status)}`}>{order.status || "Open Date"}</span>
-              <strong>PHP {money(order.total || 0)}</strong>
+            <div className="jod-header-right">
+              <span className={`jod-status-pill jod-status-${statusClass(order.status)}`}>
+                {order.status || "Open Date"}
+              </span>
+              <div className="jod-header-total">₱ {money(order.total || 0)}</div>
             </div>
-            <button type="button" className="btn-close" onClick={onClose} />
+            <button type="button" className="jod-close" onClick={onClose} aria-label="Close">
+              <i className="fa-solid fa-xmark" />
+            </button>
           </div>
 
-          <div className="modal-body">
-            {loading && <div className="refresh-strip">Refreshing details...</div>}
+          <div className="modal-body jod-body">
+            {loading && (
+              <div className="jod-refresh">
+                <i className="fa-solid fa-rotate fa-spin" /> Refreshing details…
+              </div>
+            )}
 
-            <div className="detail-hero">
-              <div className="hero-tile customer">
-                <span className="tile-icon"><i className="fa-solid fa-user" /></span>
-                <div>
-                  <span className="detail-label">Customer</span>
-                  <strong>{order.customer_name || "-"}</strong>
-                  <small>{order.customer_email || order.customer_contact || "No contact details"}</small>
+            {/* ── Hero tiles ── */}
+            <div className="jod-hero">
+              <div className="jod-hero-tile jod-hero-customer">
+                <div className="jod-hero-icon jod-icon-blue"><i className="fa-solid fa-user" /></div>
+                <div className="jod-hero-body">
+                  <span className="jod-hero-label">Customer</span>
+                  <strong className="jod-hero-name">{order.customer_name || "—"}</strong>
+                  <small className="jod-hero-sub">{order.customer_email || order.customer_contact || "No contact details"}</small>
                 </div>
               </div>
-              <div className="hero-tile">
-                <span className="tile-icon"><i className="fa-solid fa-truck" /></span>
-                <div>
-                  <span className="detail-label">Delivery</span>
-                  <strong>{order.delivery_type || "-"}</strong>
-                  <small>{order.delivery_location || order.delivery_address || "No delivery location"}</small>
+              <div className="jod-hero-tile">
+                <div className="jod-hero-icon jod-icon-slate"><i className="fa-solid fa-truck" /></div>
+                <div className="jod-hero-body">
+                  <span className="jod-hero-label">Delivery</span>
+                  <strong className="jod-hero-name">{order.delivery_type || "—"}</strong>
+                  <small className="jod-hero-sub">{order.delivery_location || order.delivery_address || "No delivery location"}</small>
                 </div>
               </div>
-              <div className="hero-tile total">
-                <span className="tile-icon"><i className="fa-solid fa-receipt" /></span>
-                <div>
-                  <span className="detail-label">Total</span>
-                  <strong className="detail-total">PHP {money(order.total || 0)}</strong>
-                  <small>{order.total_quantity ?? 0} total item(s)</small>
+              <div className="jod-hero-tile jod-hero-total">
+                <div className="jod-hero-icon jod-icon-teal"><i className="fa-solid fa-receipt" /></div>
+                <div className="jod-hero-body">
+                  <span className="jod-hero-label">Total</span>
+                  <strong className="jod-hero-name jod-hero-total-val">₱ {money(order.total || 0)}</strong>
+                  <small className="jod-hero-sub">{order.total_quantity ?? 0} total item(s)</small>
                 </div>
               </div>
             </div>
 
-            <div className="detail-grid">
-              <DetailCard title="Order">
-                <ReadLine label="JO No." value={order.jo_no} />
-                <ReadLine label="Source" value={order.source} />
-                <ReadLine label="Category" value={order.category} />
-                <ReadLine label="Order Date" value={formatDateTime(order.order_date)} />
-                <ReadLine label="Date Needed" value={formatDateTime(order.date_needed)} />
-              </DetailCard>
-
-              <DetailCard title="Customer">
-                <ReadLine label="Type" value={pretty(order.customer_type)} />
-                <ReadLine label="Name" value={order.customer_name} />
-                <ReadLine label="Email" value={order.customer_email} />
-                <ReadLine label="Contact" value={order.customer_contact} />
-              </DetailCard>
-
-              <DetailCard title="Delivery">
-                <ReadLine label="Delivery Type" value={order.delivery_type} />
-                <ReadLine label="Location" value={order.delivery_location} />
-                <ReadLine label="Address" value={order.delivery_address} />
-                <ReadLine label="Delivery Charge" value={money(order.delivery_charge || 0)} />
-              </DetailCard>
+            {/* ── Info grid ── */}
+            <div className="jod-info-grid">
+              <div className="jod-info-card">
+                <div className="jod-card-head"><span className="jod-card-dot jod-dot-blue" />Order</div>
+                <div className="jod-card-body">
+                  <div className="jod-rl"><span>JO No.</span><strong>{order.jo_no || "—"}</strong></div>
+                  <div className="jod-rl"><span>Source</span><strong>{order.source || "—"}</strong></div>
+                  <div className="jod-rl"><span>Category</span><strong>{order.category || "—"}</strong></div>
+                  <div className="jod-rl"><span>Order Date</span><strong>{formatDateTime(order.order_date)}</strong></div>
+                  <div className="jod-rl"><span>Date Needed</span><strong>{formatDateTime(order.date_needed)}</strong></div>
+                </div>
+              </div>
+              <div className="jod-info-card">
+                <div className="jod-card-head"><span className="jod-card-dot jod-dot-violet" />Customer</div>
+                <div className="jod-card-body">
+                  <div className="jod-rl"><span>Type</span><strong>{pretty(order.customer_type)}</strong></div>
+                  <div className="jod-rl"><span>Name</span><strong>{order.customer_name || "—"}</strong></div>
+                  <div className="jod-rl"><span>Email</span><strong>{order.customer_email || "—"}</strong></div>
+                  <div className="jod-rl"><span>Contact</span><strong>{order.customer_contact || "—"}</strong></div>
+                </div>
+              </div>
+              <div className="jod-info-card">
+                <div className="jod-card-head"><span className="jod-card-dot jod-dot-orange" />Delivery</div>
+                <div className="jod-card-body">
+                  <div className="jod-rl"><span>Delivery Type</span><strong>{order.delivery_type || "—"}</strong></div>
+                  <div className="jod-rl"><span>Location</span><strong>{order.delivery_location || "—"}</strong></div>
+                  <div className="jod-rl"><span>Address</span><strong>{order.delivery_address || "—"}</strong></div>
+                  <div className="jod-rl"><span>Delivery Charge</span><strong>₱ {money(order.delivery_charge || 0)}</strong></div>
+                </div>
+              </div>
             </div>
 
-            <ItemsTable title="Added Products" items={products} />
-            <ItemsTable title="Added Miscellaneous Products" items={miscItems} />
-
-            <div className="row g-3">
-              <div className="col-lg-7">
-                <DetailCard title="Payments">
-                  <div className="detail-table-wrap">
-                    <table className="detail-table">
-                      <thead>
+            {/* ── Items tables ── */}
+            {[
+              { label: "Products", items: products, accent: "#16a34a" },
+              { label: "Miscellaneous Products", items: miscItems, accent: "#7c3aed" },
+            ].map(({ label, items, accent }) => (
+              <div className="jod-items-card" key={label}>
+                <div className="jod-card-head">
+                  <span className="jod-card-dot" style={{ background: accent }} />{label}
+                  <span className="jod-items-count">{items.length}</span>
+                </div>
+                <div className="jod-table-wrap">
+                  <table className="jod-table">
+                    <thead>
+                      <tr>
+                        <th>Product Name</th>
+                        <th>Type</th>
+                        <th className="jod-r">Price/Item</th>
+                        <th className="jod-c">Qty</th>
+                        <th className="jod-r">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.length === 0 ? (
                         <tr>
-                          <th>Method</th>
-                          <th className="text-end">Amount</th>
-                          <th>Remarks</th>
-                          <th>Attachment</th>
+                          <td colSpan={5} className="jod-empty">
+                            <i className="fa-regular fa-folder-open" /> No {label.toLowerCase()} added.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {(order.payments ?? []).length === 0 ? (
-                          <tr><td colSpan={4} className="empty-cell">No payments added.</td></tr>
-                        ) : order.payments?.map((payment) => (
-                          <tr key={payment.id ?? `${payment.payment_method}-${payment.amount}`}>
-                            <td>{payment.payment_method}</td>
-                            <td className="text-end">{money(payment.amount || 0)}</td>
-                            <td>{payment.remarks || "-"}</td>
-                            <td>{payment.attachment_path || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </DetailCard>
+                      ) : items.map((item) => (
+                        <tr key={item.id ?? `${item.name}-${item.quantity}`}>
+                          <td><strong style={{ fontWeight: 600, color: "#0f172a" }}>{item.name}</strong></td>
+                          <td><span className="jod-type-pill">{pretty(item.item_type)}</span></td>
+                          <td className="jod-r">₱ {money(item.price)}</td>
+                          <td className="jod-c"><span className="jod-qty-pill">{item.quantity}</span></td>
+                          <td className="jod-r jod-total-cell">₱ {money(item.total_price ?? Number(item.price || 0) * item.quantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+
+            {/* ── Payments + Computation ── */}
+            <div className="jod-bottom-grid">
+              <div className="jod-items-card">
+                <div className="jod-card-head"><span className="jod-card-dot jod-dot-blue" />Payments</div>
+                <div className="jod-table-wrap">
+                  <table className="jod-table">
+                    <thead>
+                      <tr>
+                        <th>Method</th>
+                        <th className="jod-r">Amount</th>
+                        <th>Remarks</th>
+                        <th>Attachment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(order.payments ?? []).length === 0 ? (
+                        <tr><td colSpan={4} className="jod-empty"><i className="fa-regular fa-folder-open" /> No payments added.</td></tr>
+                      ) : order.payments?.map((payment) => (
+                        <tr key={payment.id ?? `${payment.payment_method}-${payment.amount}`}>
+                          <td><span className="jod-pay-method">{payment.payment_method}</span></td>
+                          <td className="jod-r jod-total-cell">₱ {money(payment.amount || 0)}</td>
+                          <td className="jod-muted">{payment.remarks || "—"}</td>
+                          <td className="jod-muted">{payment.attachment_path || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="col-lg-5">
-                <DetailCard title="Computation" accent>
-                  <div className="totals-panel">
-                    <ReadLine label="Total Quantity" value={String(order.total_quantity ?? 0)} strong />
-                    <ReadLine label="Delivery Charge" value={money(order.delivery_charge || 0)} strong />
-                    <ReadLine label="Sub Total" value={`PHP ${money(order.subtotal || 0)}`} strong />
-                    <ReadLine label="Total Discount" value={money(order.discount_total || 0)} strong />
-                    <div className="detail-grand-total">
-                      <span>Total</span>
-                      <strong>PHP {money(order.total || 0)}</strong>
-                    </div>
+              <div className="jod-computation-card">
+                <div className="jod-comp-header">
+                  <div className="jod-comp-icon"><i className="fa-solid fa-calculator" /></div>
+                  <div>
+                    <div className="jod-comp-title">Computation</div>
+                    <div className="jod-comp-sub">Order summary</div>
                   </div>
-                </DetailCard>
+                </div>
+                <div className="jod-comp-body">
+                  <div className="jod-comp-line"><span>Total Quantity</span><strong>{order.total_quantity ?? 0}</strong></div>
+                  <div className="jod-comp-line"><span>Delivery Charge</span><strong>₱ {money(order.delivery_charge || 0)}</strong></div>
+                  <div className="jod-comp-line"><span>Sub Total</span><strong>₱ {money(order.subtotal || 0)}</strong></div>
+                  <div className="jod-comp-divider" />
+                  <div className="jod-comp-line"><span>Total Discount</span><strong className="jod-discount">− ₱ {money(order.discount_total || 0)}</strong></div>
+                  <div className="jod-comp-total">
+                    <span>Total</span>
+                    <span className="jod-comp-total-val">₱ {money(order.total || 0)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <DetailCard title="Remarks">
-              <div className="remarks-box">{order.remarks || "-"}</div>
-            </DetailCard>
+            {/* ── Remarks ── */}
+            <div className="jod-items-card">
+              <div className="jod-card-head"><span className="jod-card-dot jod-dot-slate" />Remarks</div>
+              <div className="jod-card-body">
+                <div className="jod-remarks">{order.remarks || "—"}</div>
+              </div>
+            </div>
           </div>
 
-          <div className="modal-footer">
-            <button className="btn btn-outline-secondary" type="button" onClick={onClose}>Close</button>
+          <div className="jod-footer">
+            <button className="jod-close-btn" type="button" onClick={onClose}>Close</button>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .jo-detail-backdrop {
-          background: rgba(15, 23, 42, 0.58);
-          backdrop-filter: blur(2px);
-        }
-        .jo-detail-modal {
+      <style jsx global>{`
+        /* ── Backdrop / shell ── */
+        .jod-backdrop { background: rgba(15,23,42,.6); backdrop-filter: blur(3px); }
+        .jod-modal {
           border: 0;
-          border-radius: 12px;
+          border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 24px 80px rgba(15, 23, 42, 0.3);
+          box-shadow: 0 32px 80px rgba(15,23,42,.35);
         }
-        .jo-detail-header {
-          background: #0f172a;
-          color: #fff;
-          border-bottom: 0;
-          padding: 20px 24px;
-          align-items: center;
-          gap: 18px;
+
+        /* ── Header ── */
+        .jod-header {
+          background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+          padding: 20px 22px;
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
         }
-        .jo-detail-modal :global(.modal-body) {
-          background: #f6f8fb;
-          padding: 20px 24px 12px;
-        }
-        .jo-detail-modal :global(.modal-footer) {
-          background: #fff;
-          border-top-color: #e2e8f0;
-          padding: 12px 24px;
-        }
-        .jo-detail-modal :global(.btn-close) {
-          filter: invert(1) grayscale(100%);
-          opacity: 0.85;
-        }
-        .header-copy {
-          flex: 1;
-          min-width: 0;
-        }
-        .header-kicker {
+        .jod-header-left { flex: 1; min-width: 0; }
+        .jod-kicker {
           color: #93c5fd;
-          display: block;
           font-size: 11px;
           font-weight: 800;
-          letter-spacing: 0.08em;
-          margin-bottom: 3px;
+          letter-spacing: .08em;
           text-transform: uppercase;
+          margin-bottom: 4px;
         }
-        .header-copy h5 {
-          font-size: 24px;
-          font-weight: 800;
-          line-height: 1.15;
-          margin: 0;
-        }
-        .header-subtitle {
-          color: #cbd5e1;
-          font-size: 13px;
-          margin-top: 5px;
-        }
-        .header-meta {
+        .jod-jo-no { color: #fff; font-size: 22px; font-weight: 800; line-height: 1.2; }
+        .jod-subtitle { color: #94a3b8; font-size: 12.5px; margin-top: 4px; }
+        .jod-header-right {
           display: flex;
-          align-items: flex-end;
           flex-direction: column;
+          align-items: flex-end;
           gap: 8px;
+          flex-shrink: 0;
         }
-        .header-meta strong {
-          color: #5eead4;
-          font-size: 20px;
-          line-height: 1;
-          white-space: nowrap;
-        }
-        .status-pill {
+        .jod-header-total { color: #4ade80; font-size: 20px; font-weight: 800; white-space: nowrap; }
+        .jod-status-pill {
           border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 800;
-          line-height: 1;
-          padding: 7px 11px;
+          padding: 5px 12px;
           white-space: nowrap;
         }
-        .status-processing {
-          background: #dbeafe;
-          color: #1d4ed8;
+        .jod-status-status-open     { background: #fef3c7; color: #92400e; }
+        .jod-status-status-processing { background: #dbeafe; color: #1d4ed8; }
+        .jod-status-status-completed  { background: #dcfce7; color: #15803d; }
+        .jod-status-status-cancelled  { background: #fee2e2; color: #b91c1c; }
+        .jod-close {
+          width: 32px; height: 32px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,.15);
+          background: rgba(255,255,255,.08);
+          color: #fff;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 15px;
+          flex-shrink: 0;
+          transition: background .15s;
         }
-        .status-completed {
-          background: #dcfce7;
-          color: #15803d;
+        .jod-close:hover { background: rgba(255,255,255,.18); }
+
+        /* ── Body ── */
+        .jod-body { background: #f1f5f9; padding: 18px 20px 10px; overflow-y: auto; }
+        .jod-footer {
+          background: #fff;
+          border-top: 1px solid #e2e8f0;
+          padding: 12px 20px;
+          display: flex;
+          justify-content: flex-end;
         }
-        .status-cancelled {
-          background: #fee2e2;
-          color: #b91c1c;
+        .jod-close-btn {
+          padding: 8px 22px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          background: #fff;
+          color: #475569;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background .15s;
         }
-        .status-open {
-          background: #fef3c7;
-          color: #92400e;
-        }
-        .refresh-strip {
+        .jod-close-btn:hover { background: #f8fafc; }
+
+        /* ── Refresh banner ── */
+        .jod-refresh {
           background: #eff6ff;
           border: 1px solid #bfdbfe;
           border-radius: 8px;
           color: #1d4ed8;
           font-size: 13px;
           margin-bottom: 14px;
-          padding: 10px 12px;
+          padding: 9px 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
-        .detail-hero {
+
+        /* ── Hero tiles ── */
+        .jod-hero {
           display: grid;
-          grid-template-columns: 1.3fr 0.8fr 0.9fr;
+          grid-template-columns: 1.3fr 1fr 1fr;
           gap: 12px;
           margin-bottom: 14px;
         }
-        .hero-tile,
-        .detail-card {
-          border: 1px solid #dde5f0;
+        .jod-hero-tile {
+          background: #fff;
+          border: 1px solid #e2e8f0;
           border-radius: 10px;
-          background: #fff;
-          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        }
-        .hero-tile {
+          padding: 14px 16px;
           display: flex;
           gap: 12px;
-          min-width: 0;
-          padding: 16px;
+          align-items: flex-start;
+          box-shadow: 0 1px 3px rgba(15,23,42,.04);
         }
-        .hero-tile.customer {
-          border-left: 4px solid #2563eb;
-        }
-        .hero-tile.total {
-          border-left: 4px solid #0f766e;
-        }
-        .tile-icon {
-          align-items: center;
-          background: #eff6ff;
+        .jod-hero-customer { border-left: 4px solid #2563eb; }
+        .jod-hero-total    { border-left: 4px solid #0f766e; }
+        .jod-hero-icon {
+          width: 36px; height: 36px;
           border-radius: 8px;
-          color: #2563eb;
-          display: inline-flex;
-          flex: 0 0 38px;
-          height: 38px;
-          justify-content: center;
-          width: 38px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 15px;
+          flex-shrink: 0;
         }
-        .detail-label {
-          display: block;
-          color: #64748b;
-          font-size: 12px;
-          margin-bottom: 4px;
-        }
-        .hero-tile strong {
-          color: #0f172a;
-          display: block;
-          font-size: 16px;
-          line-height: 1.25;
-          overflow-wrap: anywhere;
-        }
-        .hero-tile small {
-          color: #94a3b8;
-          display: block;
-          font-size: 12px;
-          line-height: 1.35;
-          margin-top: 3px;
-          overflow-wrap: anywhere;
-        }
-        .detail-total {
-          color: #0f766e !important;
-        }
-        .detail-grid {
+        .jod-icon-blue   { background: #eff6ff; color: #2563eb; }
+        .jod-icon-slate  { background: #f1f5f9; color: #475569; }
+        .jod-icon-teal   { background: #f0fdfa; color: #0f766e; }
+        .jod-hero-label  { display: block; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+        .jod-hero-name   { display: block; color: #0f172a; font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+        .jod-hero-total-val { color: #0f766e !important; }
+        .jod-hero-sub    { display: block; color: #94a3b8; font-size: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+
+        /* ── Cards ── */
+        .jod-info-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0,1fr));
           gap: 12px;
           margin-bottom: 14px;
         }
-        .detail-card {
-          margin-bottom: 14px;
-          overflow: hidden;
-        }
-        .detail-card-title {
-          align-items: center;
+        .jod-info-card, .jod-items-card, .jod-computation-card {
           background: #fff;
-          border-bottom: 1px solid #e2e8f0;
-          color: #172554;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(15,23,42,.04);
+          margin-bottom: 14px;
+        }
+        .jod-card-head {
           display: flex;
-          font-size: 13px;
-          font-weight: 800;
-          justify-content: space-between;
-          padding: 12px 14px;
-        }
-        .detail-card-title::before {
-          background: #2563eb;
-          border-radius: 999px;
-          content: "";
-          height: 8px;
-          margin-right: 8px;
-          width: 8px;
-        }
-        .detail-card-title span {
           align-items: center;
-          display: inline-flex;
-          flex: 1;
+          gap: 8px;
+          padding: 11px 14px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          font-size: 12.5px;
+          font-weight: 800;
+          color: #0f172a;
+          text-transform: uppercase;
+          letter-spacing: .04em;
         }
-        .detail-card.accent {
-          border-color: #99f6e4;
+        .jod-card-dot {
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          display: inline-block;
         }
-        .detail-card.accent .detail-card-title {
-          background: #f0fdfa;
-          color: #0f766e;
+        .jod-dot-blue   { background: #2563eb; }
+        .jod-dot-violet { background: #7c3aed; }
+        .jod-dot-orange { background: #ea580c; }
+        .jod-dot-slate  { background: #64748b; }
+        .jod-items-count {
+          margin-left: auto;
+          background: #e0f2fe;
+          color: #0369a1;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 999px;
+          text-transform: none;
+          letter-spacing: 0;
         }
-        .detail-card-body {
-          padding: 14px;
-        }
-        .read-line {
+        .jod-card-body { padding: 12px 14px; }
+
+        /* ── Read lines ── */
+        .jod-rl {
           display: grid;
-          grid-template-columns: minmax(120px, 42%) minmax(0, 1fr);
-          gap: 14px;
-          padding: 6px 0;
+          grid-template-columns: minmax(110px, 44%) minmax(0, 1fr);
+          gap: 12px;
+          padding: 7px 0;
           border-bottom: 1px solid #f1f5f9;
           font-size: 13px;
-          min-height: 32px;
           align-items: start;
         }
-        .read-line:last-child {
-          border-bottom: 0;
-        }
-        .read-line span {
-          color: #64748b;
-        }
-        .read-line strong {
-          color: #0f172a;
-          overflow-wrap: anywhere;
-          text-align: right;
-          font-weight: 600;
-          min-width: 0;
-        }
-        .detail-table-wrap {
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          overflow: auto;
-        }
-        .detail-table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 560px;
-        }
-        .detail-table th {
+        .jod-rl:last-child { border-bottom: 0; }
+        .jod-rl span { color: #64748b; }
+        .jod-rl strong { color: #0f172a; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+
+        /* ── Tables ── */
+        .jod-table-wrap { overflow: auto; }
+        .jod-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+        .jod-table th {
           background: #f8fafc;
-          color: #64748b;
+          color: #94a3b8;
           font-size: 11px;
-          font-weight: 800;
-          padding: 9px 10px;
+          font-weight: 700;
           text-transform: uppercase;
+          letter-spacing: .05em;
+          padding: 9px 12px;
+          border-bottom: 1px solid #e2e8f0;
           white-space: nowrap;
         }
-        .detail-table td {
-          border-top: 1px solid #eef2f7;
-          color: #334155;
+        .jod-table td {
+          padding: 10px 12px;
+          border-bottom: 1px solid #f1f5f9;
           font-size: 13px;
-          padding: 10px;
-          vertical-align: top;
+          color: #334155;
+          vertical-align: middle;
         }
-        .detail-table tbody tr:hover td {
-          background: #fbfdff;
+        .jod-table tbody tr:last-child td { border-bottom: 0; }
+        .jod-table tbody tr:hover td { background: #f8fafc; }
+        .jod-r { text-align: right; }
+        .jod-c { text-align: center; }
+        .jod-empty { text-align: center; color: #94a3b8 !important; padding: 20px 12px !important; font-size: 13px !important; }
+        .jod-muted  { color: #64748b; font-size: 12.5px; }
+        .jod-type-pill { background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+        .jod-qty-pill  { background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 5px; }
+        .jod-pay-method { font-weight: 600; color: #0f172a; }
+        .jod-total-cell { font-weight: 700; color: #0f172a !important; }
+
+        /* ── Bottom grid ── */
+        .jod-bottom-grid {
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 14px;
+          align-items: start;
+          margin-bottom: 0;
         }
-        .empty-cell {
-          color: #94a3b8 !important;
-          text-align: center;
-          padding: 18px 10px !important;
+        .jod-bottom-grid .jod-items-card,
+        .jod-bottom-grid .jod-computation-card { margin-bottom: 14px; }
+
+        /* ── Computation card ── */
+        .jod-comp-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 16px;
+          background: linear-gradient(135deg, #0f172a, #1e3a5f);
+          border-bottom: 1px solid #1e3a5f;
         }
-        .text-end {
-          text-align: right;
+        .jod-comp-icon {
+          width: 32px; height: 32px;
+          background: rgba(255,255,255,.12);
+          border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+          color: #fff; font-size: 14px;
         }
-        .detail-grand-total {
+        .jod-comp-title { color: #fff; font-size: 13px; font-weight: 700; }
+        .jod-comp-sub   { color: rgba(255,255,255,.5); font-size: 11px; }
+        .jod-comp-body  { padding: 12px 16px 0; }
+        .jod-comp-line {
           display: flex;
           justify-content: space-between;
-          gap: 16px;
-          background: #0f172a;
-          border-radius: 9px;
-          margin-top: 12px;
-          padding: 14px;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 0;
+          font-size: 13px;
+          border-bottom: 1px solid #f1f5f9;
         }
-        .detail-grand-total span {
-          color: #cbd5e1;
+        .jod-comp-line:last-of-type { border-bottom: 0; }
+        .jod-comp-line span   { color: #64748b; }
+        .jod-comp-line strong { color: #0f172a; font-weight: 700; }
+        .jod-discount { color: #dc2626 !important; }
+        .jod-comp-divider { height: 1px; background: #e2e8f0; margin: 4px 0; }
+        .jod-comp-total {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+          border-top: 1px solid #bbf7d0;
+          margin: 8px -16px 0;
+          padding: 12px 16px;
           font-weight: 700;
+          font-size: 14px;
+          color: #14532d;
         }
-        .detail-grand-total strong {
-          color: #5eead4;
-          font-size: 18px;
-        }
-        .totals-panel .read-line {
-          padding-left: 2px;
-          padding-right: 2px;
-        }
-        .remarks-box {
+        .jod-comp-total-val { font-size: 20px; font-weight: 800; color: #15803d; }
+
+        /* ── Remarks ── */
+        .jod-remarks {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           color: #334155;
-          min-height: 64px;
+          font-size: 13px;
+          min-height: 56px;
           padding: 12px;
           white-space: pre-wrap;
         }
+
+        /* ── Responsive ── */
         @media (max-width: 992px) {
-          .detail-hero,
-          .detail-grid {
-            grid-template-columns: 1fr;
-          }
-          .jo-detail-header {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-          .header-meta {
-            align-items: flex-start;
-          }
+          .jod-hero, .jod-info-grid { grid-template-columns: 1fr; }
+          .jod-bottom-grid { grid-template-columns: 1fr; }
+          .jod-header { flex-direction: column; }
+          .jod-header-right { flex-direction: row; align-items: center; }
         }
         @media (max-width: 576px) {
-          .read-line {
-            grid-template-columns: 1fr;
-            gap: 2px;
-          }
-          .read-line strong {
-            text-align: left;
-          }
+          .jod-rl { grid-template-columns: 1fr; gap: 2px; }
+          .jod-rl strong { text-align: left; }
         }
       `}</style>
     </div>
-  );
-}
-
-function DetailCard({ title, children, accent }: { title: string; children: React.ReactNode; accent?: boolean }) {
-  return (
-    <section className={`detail-card${accent ? " accent" : ""}`}>
-      <div className="detail-card-title"><span>{title}</span></div>
-      <div className="detail-card-body">{children}</div>
-    </section>
-  );
-}
-
-function ReadLine({ label, value, strong }: { label: string; value?: string | number | null; strong?: boolean }) {
-  return (
-    <div className="read-line">
-      <span>{label}</span>
-      <strong style={strong ? { fontWeight: 700 } : undefined}>{value || "-"}</strong>
-    </div>
-  );
-}
-
-function ItemsTable({ title, items }: { title: string; items: NonNullable<JobOrder["items"]> }) {
-  return (
-    <DetailCard title={title}>
-      <div className="detail-table-wrap">
-        <table className="detail-table">
-          <thead>
-            <tr>
-              <th>Product Name</th>
-              <th>Type</th>
-              <th className="text-end">Price/Item</th>
-              <th className="text-end">Qty</th>
-              <th className="text-end">Total Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr><td colSpan={5} className="empty-cell">No items added.</td></tr>
-            ) : items.map((item) => (
-              <tr key={item.id ?? `${item.name}-${item.quantity}`}>
-                <td>{item.name}</td>
-                <td>{pretty(item.item_type)}</td>
-                <td className="text-end">{money(item.price)}</td>
-                <td className="text-end">{item.quantity}</td>
-                <td className="text-end">{money(item.total_price ?? Number(item.price || 0) * item.quantity)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </DetailCard>
   );
 }
 
