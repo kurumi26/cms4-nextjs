@@ -2,6 +2,7 @@ export interface BannerForm {
   id?: number;
   preview?: string;
   image?: File;
+  media_type?: "image" | "video";
   is_active?: boolean;
   is_hidden?: boolean;
   title?: string;

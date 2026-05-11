@@ -8,6 +8,8 @@ import { toast } from "@/lib/toast";
 import { axiosInstance } from "@/services/axios";
 import Tooltip from "@/components/UI/Tooltip";
 
+type BannerType = "image" | "video";
+
 const FONT_FAMILY_OPTIONS: Array<{ label: string; value: string }> = [
   { label: "Default", value: "" },
   { label: "Great Vibes", value: "Great Vibes, cursive" },
@@ -34,6 +36,7 @@ function EditAlbum() {
   const [transitionIn, setTransitionIn] = useState("");
   const [transitionOut, setTransitionOut] = useState("");
   const [duration, setDuration] = useState(2);
+  const [bannerType, setBannerType] = useState<BannerType>("image");
 
   const [banners, setBanners] = useState<BannerForm[]>([]);
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -56,6 +59,14 @@ function EditAlbum() {
     if (rawUrl.startsWith("/")) return rawUrl;
     if (rawUrl.startsWith("blob:") || rawUrl.startsWith("data:")) return rawUrl;
     return `/api/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+  };
+
+  const isVideoUrl = (url?: string | null) => /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(String(url ?? ""));
+  const bannerMediaType = (banner: Partial<BannerForm> & { image_path?: string }, fallback: BannerType = bannerType): BannerType => {
+    if (banner.media_type === "video") return "video";
+    if (banner.image instanceof File && banner.image.type.startsWith("video/")) return "video";
+    if (isVideoUrl(banner.preview) || isVideoUrl(banner.image_path)) return "video";
+    return fallback;
   };
 
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
@@ -89,11 +100,18 @@ function EditAlbum() {
       setTransitionIn(String(album.transition_in));
       setTransitionOut(String(album.transition_out));
       setDuration(album.transition);
+      const loadedBannerType: BannerType = album.banner_type === "video" ? "video" : "image";
+      setBannerType(loadedBannerType);
 
       setBanners(
-        album.banners.map((b: any) => ({
+        album.banners.map((b: any) => {
+          const rawServerUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`;
+          const mediaType: BannerType = isVideoUrl(b.image_path) || b.media_type === "video" ? "video" : loadedBannerType;
+
+          return ({
           id: b.id,
-          preview: toProxiedImageUrl(`${process.env.NEXT_PUBLIC_API_URL}/storage/${b.image_path}`),
+          preview: mediaType === "video" ? rawServerUrl : toProxiedImageUrl(rawServerUrl),
+          media_type: mediaType,
           title: b.title,
           title_font: b.title_font ?? b.titleFont ?? b.title_font_family ?? b.titleFontFamily,
           title_font_size:
@@ -130,7 +148,8 @@ function EditAlbum() {
           button_font: b.button_font ?? b.buttonFont ?? b.button_font_family ?? b.buttonFontFamily,
           url: b.url,
           alt: b.alt,
-        }))
+        });
+        })
       );
     } catch (err) {
       toast.error("Album not found");
@@ -149,6 +168,7 @@ function EditAlbum() {
     const newBanners: BannerForm[] = Array.from(files).map((file) => ({
       image: file,
       preview: URL.createObjectURL(file),
+      media_type: file.type.startsWith("video/") ? "video" : bannerType,
     }));
 
     setBanners((prev) => [...prev, ...newBanners]);
@@ -565,7 +585,7 @@ function EditAlbum() {
       transition_in: transitionIn,
       transition_out: transitionOut,
       transition: duration,
-      banner_type: "image",
+      banner_type: bannerType,
       banners: banners.map((b, i) => ({
         id: b.id,
         title: b.title,
@@ -581,6 +601,7 @@ function EditAlbum() {
         url: b.url,
         alt: b.alt,
         order: i,
+        media_type: bannerMediaType(b),
         ...(b.image instanceof File ? { image: b.image } : {}),
       })),
     };
@@ -671,19 +692,51 @@ function EditAlbum() {
         <small className="text-muted">{duration}s</small>
       </div>
 
-      {/* Upload Images */}
+      {/* Banner Type */}
+      <div className="mb-3">
+        <label className="form-label d-flex align-items-center">
+          Banner Type <span className="text-danger">*</span>
+          <Tooltip text="Choose whether this album uses image or video banner uploads." />
+        </label>
+        <div className="form-check">
+          <input
+            type="radio"
+            className="form-check-input"
+            id="imageBanner"
+            checked={bannerType === "image"}
+            onChange={() => setBannerType("image")}
+          />
+          <label className="form-check-label" htmlFor="imageBanner">
+            Image
+          </label>
+        </div>
+        <div className="form-check">
+          <input
+            type="radio"
+            className="form-check-input"
+            id="videoBanner"
+            checked={bannerType === "video"}
+            onChange={() => setBannerType("video")}
+          />
+          <label className="form-check-label" htmlFor="videoBanner">
+            Video
+          </label>
+        </div>
+      </div>
+
+      {/* Upload Media */}
       <div className="mb-4">
         <label className="form-label d-flex align-items-center">
-          Album Images
-          <Tooltip text="Upload additional images to this banner album slideshow." />
+          {bannerType === "video" ? "Album Videos" : "Album Images"}
+          <Tooltip text={bannerType === "video" ? "Upload additional videos to this banner album slideshow." : "Upload additional images to this banner album slideshow."} />
         </label>
         <button
           type="button"
           className="btn btn-outline-secondary d-block"
           onClick={() => document.getElementById("imageUpload")?.click()}
         >
-          Upload Images
-          <Tooltip text="Add new images to the banner album." />
+          {bannerType === "video" ? "Upload Videos" : "Upload Images"}
+          <Tooltip text={bannerType === "video" ? "Add new videos to the banner album." : "Add new images to the banner album."} />
         </button>
 
         <input
@@ -691,7 +744,7 @@ function EditAlbum() {
           type="file"
           className="d-none"
           multiple
-          accept="image/*"
+          accept={bannerType === "video" ? "video/*" : "image/*"}
           onChange={handleImageUpload}
         />
       </div>
@@ -701,11 +754,23 @@ function EditAlbum() {
         {banners.map((banner, index) => (
           <div key={index} className="col-md-4 mb-4">
             <div className="card h-100">
-              <img
-                src={banner.preview}
-                className="card-img-top"
-                style={{ height: 200, objectFit: "cover" }}
-              />
+              {bannerMediaType(banner) === "video" ? (
+                <video
+                  src={banner.preview}
+                  className="card-img-top"
+                  muted
+                  loop
+                  playsInline
+                  controls
+                  style={{ height: 200, objectFit: "cover" }}
+                />
+              ) : (
+                <img
+                  src={banner.preview}
+                  className="card-img-top"
+                  style={{ height: 200, objectFit: "cover" }}
+                />
+              )}
 
               <div className="card-body">
                 {/* Simple font preview (title + description) */}
@@ -940,13 +1005,15 @@ function EditAlbum() {
                 >
                   Remove
                 </button>
-                <button
-                  className="btn btn-outline-secondary btn-sm mt-2 ms-2"
-                  onClick={() => openEditModal(index)}
-                >
-                  <i className="fa fa-edit"></i> Edit
-                  <Tooltip text="Crop or resize the banner image." />
-                </button>
+                {bannerMediaType(banner) !== "video" && (
+                  <button
+                    className="btn btn-outline-secondary btn-sm mt-2 ms-2"
+                    onClick={() => openEditModal(index)}
+                  >
+                    <i className="fa fa-edit"></i> Edit
+                    <Tooltip text="Crop or resize the banner image." />
+                  </button>
+                )}
               </div>
             </div>
           </div>

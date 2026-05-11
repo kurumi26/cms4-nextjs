@@ -8,6 +8,11 @@ interface MainBannerProps {
 
 export default function MainBanner({ album }: MainBannerProps) {
   const HOME_BANNER_VISIBILITY_STORAGE_KEY = "cms4.homeBanner.visibility.v1";
+  const isVideoBanner = (banner: any) => {
+    const mediaType = String(banner?.media_type ?? banner?.mediaType ?? "").toLowerCase();
+    if (mediaType === "video") return true;
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(String(banner?.image_url ?? ""));
+  };
 
   const toBoolean = (value: any): boolean | undefined => {
     if (typeof value === "boolean") return value;
@@ -300,10 +305,22 @@ export default function MainBanner({ album }: MainBannerProps) {
                 animationClass ? `animate__${animationClass}` : "",
               ].filter(Boolean).join(" ")}
               style={{
-                backgroundImage: `url(${banner.image_url})`,
+                ...(isVideoBanner(banner) ? {} : { backgroundImage: `url(${banner.image_url})` }),
                 ["--animate-duration" as any]: `${animationDurationMs}ms`,
               }}
-            />
+            >
+              {isVideoBanner(banner) && (
+                <video
+                  className={styles.slideVideo}
+                  src={banner.image_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
+              )}
+            </div>
           );
         })}
       </div>

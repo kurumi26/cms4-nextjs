@@ -12,6 +12,7 @@ export interface PublicBanner {
   description_bold?: boolean;
   alt?: string;
   image_url: string;
+  media_type?: "image" | "video";
   button_text?: string;
   button_font?: string;
   button_font_size?: number;

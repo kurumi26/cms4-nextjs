@@ -7,6 +7,8 @@ import { createAlbum } from "@/services/albumService";
 import { toast } from "@/lib/toast";
 import Tooltip from "@/components/UI/Tooltip";
 
+type BannerType = "image" | "video";
+
 function CreateAlbum() {
   const router = useRouter();
 
@@ -17,11 +19,17 @@ function CreateAlbum() {
   const [transitionIn, setTransitionIn] = useState("");
   const [transitionOut, setTransitionOut] = useState("");
   const [duration, setDuration] = useState(2);
+  const [bannerType, setBannerType] = useState<BannerType>("image");
 
   const [banners, setBanners] = useState<BannerForm[]>([]);
 
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
   const [exitOptions, setExitOptions] = useState<OptionItem[]>([]);
+  const isVideoBanner = (banner: BannerForm) => {
+    if (banner.media_type === "video") return true;
+    if (banner.image instanceof File && banner.image.type.startsWith("video/")) return true;
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(String(banner.preview ?? ""));
+  };
 
   /* ======================
    * Load options
@@ -44,6 +52,7 @@ function CreateAlbum() {
     const newBanners: BannerForm[] = Array.from(files).map((file) => ({
       image: file,
       preview: URL.createObjectURL(file),
+      media_type: file.type.startsWith("video/") ? "video" : bannerType,
     }));
 
     setBanners((prev) => [...prev, ...newBanners]);
@@ -86,7 +95,7 @@ function CreateAlbum() {
       transition_in: transitionIn,
       transition_out: transitionOut,
       transition: duration,
-      banner_type: "image",
+      banner_type: bannerType,
       banners: banners.map((b, i) => ({
         title: b.title,
         title_font: b.title_font,
@@ -98,6 +107,7 @@ function CreateAlbum() {
         alt: b.alt,
         order: i,
         image: b.image,
+        media_type: isVideoBanner(b) ? "video" : "image",
       })),
     };
 
@@ -187,19 +197,51 @@ function CreateAlbum() {
         <small className="text-muted">{duration}s</small>
       </div>
 
-      {/* Upload Images */}
+      {/* Banner Type */}
+      <div className="mb-3">
+        <label className="form-label d-flex align-items-center">
+          Banner Type <span className="text-danger">*</span>
+          <Tooltip text="Choose whether this album uses image or video banner uploads." />
+        </label>
+        <div className="form-check">
+          <input
+            type="radio"
+            className="form-check-input"
+            id="imageBanner"
+            checked={bannerType === "image"}
+            onChange={() => setBannerType("image")}
+          />
+          <label className="form-check-label" htmlFor="imageBanner">
+            Image
+          </label>
+        </div>
+        <div className="form-check">
+          <input
+            type="radio"
+            className="form-check-input"
+            id="videoBanner"
+            checked={bannerType === "video"}
+            onChange={() => setBannerType("video")}
+          />
+          <label className="form-check-label" htmlFor="videoBanner">
+            Video
+          </label>
+        </div>
+      </div>
+
+      {/* Upload Media */}
       <div className="mb-4">
         <label className="form-label d-flex align-items-center">
-          Album Images <span className="text-danger">*</span>
-          <Tooltip text="Upload one or more images that will appear in this banner album slideshow." />
+          {bannerType === "video" ? "Album Videos" : "Album Images"} <span className="text-danger">*</span>
+          <Tooltip text={bannerType === "video" ? "Upload one or more videos that will appear in this banner album slideshow." : "Upload one or more images that will appear in this banner album slideshow."} />
         </label>
         <button
           type="button"
           className="btn btn-outline-secondary d-block"
           onClick={() => document.getElementById("imageUpload")?.click()}
         >
-          Upload Images
-          <Tooltip text="Select multiple images from your device to add to this banner album." />
+          {bannerType === "video" ? "Upload Videos" : "Upload Images"}
+          <Tooltip text={bannerType === "video" ? "Select multiple videos from your device to add to this banner album." : "Select multiple images from your device to add to this banner album."} />
         </button>
 
         <input
@@ -207,7 +249,7 @@ function CreateAlbum() {
           type="file"
           className="d-none"
           multiple
-          accept="image/*"
+          accept={bannerType === "video" ? "video/*" : "image/*"}
           onChange={handleImageUpload}
         />
       </div>
@@ -218,11 +260,23 @@ function CreateAlbum() {
           {banners.map((banner, index) => (
             <div key={index} className="col-md-4 mb-4">
               <div className="card h-100">
-                <img
-                  src={banner.preview}
-                  className="card-img-top"
-                  style={{ height: 200, objectFit: "cover" }}
-                />
+                {isVideoBanner(banner) ? (
+                  <video
+                    src={banner.preview}
+                    className="card-img-top"
+                    muted
+                    loop
+                    playsInline
+                    controls
+                    style={{ height: 200, objectFit: "cover" }}
+                  />
+                ) : (
+                  <img
+                    src={banner.preview}
+                    className="card-img-top"
+                    style={{ height: 200, objectFit: "cover" }}
+                  />
+                )}
 
                 <div className="card-body">
                   <div className="mb-2">

@@ -19,6 +19,7 @@ export interface BannerPayload {
   url?: string;
   order?: number;
   image?: File;
+  media_type?: "image" | "video";
 }
 
 export interface AlbumPayload {
@@ -26,7 +27,7 @@ export interface AlbumPayload {
   transition_in: string;
   transition_out: string;
   transition: number;
-  banner_type: "image";
+  banner_type: "image" | "video";
   type?: string;
   banners: BannerPayload[];
 }

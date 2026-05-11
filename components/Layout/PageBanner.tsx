@@ -13,6 +13,11 @@ export default function PageBanner({
   album,
 }: PageBannerProps) {
   const banners = album?.banners || [];
+  const isVideoBanner = (banner: any) => {
+    const mediaType = String(banner?.media_type ?? banner?.mediaType ?? "").toLowerCase();
+    if (mediaType === "video") return true;
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(String(banner?.image_url ?? ""));
+  };
   const [current, setCurrent] = useState(0);
   const [exiting, setExiting] = useState<number | null>(null);
 
@@ -175,7 +180,7 @@ export default function PageBanner({
               style={{
                 position: "absolute",
                 inset: 0,
-                backgroundImage: `url(${banner.image_url})`,
+                ...(isVideoBanner(banner) ? {} : { backgroundImage: `url(${banner.image_url})` }),
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 opacity: isActive || isExiting ? 1 : 0,
@@ -183,7 +188,19 @@ export default function PageBanner({
                 zIndex: isExiting ? 2 : isActive ? 1 : 0,
                 ["--animate-duration" as any]: `${animationDurationMs}ms`,
               }}
-            />
+            >
+              {isVideoBanner(banner) && (
+                <video
+                  src={banner.image_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              )}
+            </div>
           );
         })}
 
