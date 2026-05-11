@@ -54,6 +54,13 @@ const isImage = (name: string) => {
   return ['jpg','jpeg','png','gif','webp','svg','avif'].includes(ext);
 };
 
+const getExtension = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
+const isVideo = (name: string) => ['mp4','mov','avi','mkv','webm'].includes(getExtension(name));
+const isAudio = (name: string) => ['mp3','wav','ogg','flac'].includes(getExtension(name));
+const isPdf = (name: string) => getExtension(name) === 'pdf';
+const isTextPreview = (name: string) =>
+  ['txt','csv','json','js','ts','jsx','tsx','php','py','html','css','md','xml'].includes(getExtension(name));
+
 type ViewMode = 'grid' | 'list';
 type SortKey  = 'name' | 'size' | 'date';
 
@@ -87,10 +94,54 @@ function PortalModal({ children, onClose }: { children: React.ReactNode; onClose
 }
 
 // ── Image Preview Portal ────────────────────────────────────────
-function ImagePreviewPortal({ file, url, onClose }: { file: FMFile; url: string; onClose: () => void }) {
+function FilePreviewPortal({
+  file,
+  url,
+  onClose,
+  onDownload,
+}: {
+  file: FMFile;
+  url: string;
+  onClose: () => void;
+  onDownload: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return null;
+
+  const content = isImage(file.name) ? (
+    <img
+      src={url}
+      alt={file.name}
+      onClick={(e) => e.stopPropagation()}
+      style={{ maxWidth: '88vw', maxHeight: '80vh', borderRadius: 10, objectFit: 'contain', boxShadow: '0 25px 80px rgba(0,0,0,0.5)' }}
+    />
+  ) : isVideo(file.name) ? (
+    <video
+      src={url}
+      controls
+      onClick={(e) => e.stopPropagation()}
+      style={{ maxWidth: '88vw', maxHeight: '80vh', borderRadius: 10, background: '#000' }}
+    />
+  ) : isAudio(file.name) ? (
+    <div className="bg-white rounded p-4" onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 88vw)' }}>
+      <audio src={url} controls style={{ width: '100%' }} />
+    </div>
+  ) : isPdf(file.name) || isTextPreview(file.name) ? (
+    <iframe
+      src={url}
+      title={file.name}
+      onClick={(e) => e.stopPropagation()}
+      style={{ width: '88vw', height: '80vh', border: 0, borderRadius: 10, background: '#fff' }}
+    />
+  ) : (
+    <div className="bg-white rounded p-4 text-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(520px, 88vw)' }}>
+      <h5 className="mb-2">{file.name}</h5>
+      <p className="text-muted mb-3">This file type may not preview in the browser.</p>
+      <button type="button" className="btn btn-primary" onClick={onDownload}>Download</button>
+    </div>
+  );
+
   return createPortal(
     <div
       onClick={onClose}
@@ -104,14 +155,12 @@ function ImagePreviewPortal({ file, url, onClose }: { file: FMFile; url: string;
       <div className="d-flex justify-content-between align-items-center px-3 w-100"
         style={{ maxWidth: '90vw' }} onClick={(e) => e.stopPropagation()}>
         <span className="text-white fw-semibold">{file.name}</span>
-        <button className="btn btn-sm btn-light" onClick={onClose}>✕ Close</button>
+        <div className="d-flex gap-2">
+          <button className="btn btn-sm btn-light" onClick={onDownload}>Download</button>
+          <button className="btn btn-sm btn-light" onClick={onClose}>Close</button>
+        </div>
       </div>
-      <img
-        src={url}
-        alt={file.name}
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '88vw', maxHeight: '80vh', borderRadius: 10, objectFit: 'contain', boxShadow: '0 25px 80px rgba(0,0,0,0.5)' }}
-      />
+      {content}
     </div>,
     document.body
   );
@@ -186,6 +235,40 @@ export default function FileManagerPage() {
     if (sortKey === 'date') return (a.updatedAt ?? '').localeCompare(b.updatedAt ?? '');
     return 0;
   });
+
+  const getFileUrl = (file: FMFile) => {
+    const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
+    return `${process.env.NEXT_PUBLIC_API_URL}/storage/${encodedPath}`;
+  };
+
+  const selectedFiles = files.filter((file) => selected.has(file.path));
+  const selectedDownloadableFiles = selectedFiles.filter((file) => !file.isDirectory);
+  const singleSelectedFile = selectedFiles.length === 1 ? selectedFiles[0] : null;
+
+  const handlePreview = (file: FMFile) => {
+    if (file.isDirectory) {
+      navigate(file.path);
+      return;
+    }
+    setPreview(file);
+  };
+
+  const handleDownload = async (file: FMFile) => {
+    if (file.isDirectory) return;
+    const url = getFileUrl(file);
+    const link = document.createElement('a');
+    link.href = `/api/file-download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(file.name)}`;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleDownloadSelected = async () => {
+    for (const file of selectedDownloadableFiles) {
+      await handleDownload(file);
+    }
+  };
 
   const toggleSelect = (path: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -275,9 +358,7 @@ export default function FileManagerPage() {
     }
   };
 
-  const previewUrl = preview
-    ? `${process.env.NEXT_PUBLIC_API_URL}/storage/${preview.path}`
-    : '';
+  const previewUrl = preview ? getFileUrl(preview) : '';
 
   return (
     <div className="bg-light" style={{ minHeight: '100vh' }}>
@@ -352,6 +433,20 @@ export default function FileManagerPage() {
           onClick={() => fileInputRef.current?.click()}>
           ↑ Upload
         </button>
+
+        {singleSelectedFile && !singleSelectedFile.isDirectory && (
+          <button type="button" className="btn btn-sm btn-outline-secondary"
+            onClick={() => handlePreview(singleSelectedFile)}>
+            Preview
+          </button>
+        )}
+
+        {selectedDownloadableFiles.length > 0 && (
+          <button type="button" className="btn btn-sm btn-outline-secondary"
+            onClick={handleDownloadSelected}>
+            Download ({selectedDownloadableFiles.length})
+          </button>
+        )}
 
         {selected.size > 0 && (
           <button type="button" className="btn btn-sm btn-outline-danger"
@@ -477,7 +572,7 @@ export default function FileManagerPage() {
                         style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid #dee2e6', cursor: 'zoom-in' }}
                         onClick={(e) => { e.stopPropagation(); setPreview(file); }}>
                         <img
-                          src={`${process.env.NEXT_PUBLIC_API_URL}/storage/${file.path}`}
+                          src={getFileUrl(file)}
                           alt={file.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -495,6 +590,24 @@ export default function FileManagerPage() {
                         <p className="mb-0 text-muted" style={{ fontSize: 11 }}>{formatSize(file.size)}</p>
                       )}
                     </div>
+                    {!file.isDirectory && (
+                      <div className="d-flex gap-1 justify-content-center flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary py-0 px-2"
+                          onClick={() => handlePreview(file)}
+                        >
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary py-0 px-2"
+                          onClick={() => handleDownload(file)}
+                        >
+                          Download
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -512,7 +625,7 @@ export default function FileManagerPage() {
                     <th>Name</th>
                     <th style={{ width: 100 }} className="text-end">Size</th>
                     <th style={{ width: 150 }} className="text-end">Modified</th>
-                    <th style={{ width: 90 }}></th>
+                    <th style={{ width: 230 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -543,12 +656,19 @@ export default function FileManagerPage() {
                       <td className="text-muted small text-end">{formatDate(file.updatedAt)}</td>
                       <td>
                         <div className="d-flex gap-1 justify-content-end">
-                          {!file.isDirectory && isImage(file.name) && (
+                          {!file.isDirectory && (
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-secondary py-0 px-2"
-                              onClick={(e) => { e.stopPropagation(); setPreview(file); }}
-                              title="Preview">👁</button>
+                              onClick={(e) => { e.stopPropagation(); handlePreview(file); }}
+                              title="Preview">Preview</button>
+                          )}
+                          {!file.isDirectory && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary py-0 px-2"
+                              onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                              title="Download">Download</button>
                           )}
                           <button
                             type="button"
@@ -655,10 +775,11 @@ export default function FileManagerPage() {
 
       {/* Image Preview */}
       {preview && (
-        <ImagePreviewPortal
+        <FilePreviewPortal
           file={preview}
           url={previewUrl}
           onClose={() => setPreview(null)}
+          onDownload={() => handleDownload(preview)}
         />
       )}
 
@@ -707,13 +828,22 @@ export default function FileManagerPage() {
         ✎ Rename
       </button>
 
-      {/* Preview — images only */}
-        {!contextMenu.file.isDirectory && isImage(contextMenu.file.name) && (
+      {/* Preview / Download */}
+        {!contextMenu.file.isDirectory && (
           <button
             className="btn btn-sm btn-link text-dark text-decoration-none w-100 text-start px-3 py-2"
             style={{ borderRadius: 0 }}
-            onClick={() => { setPreview(contextMenu.file); setContextMenu(null); }}>
-            👁 Preview
+            onClick={() => { handlePreview(contextMenu.file); setContextMenu(null); }}>
+            Preview
+          </button>
+        )}
+
+        {!contextMenu.file.isDirectory && (
+          <button
+            className="btn btn-sm btn-link text-dark text-decoration-none w-100 text-start px-3 py-2"
+            style={{ borderRadius: 0 }}
+            onClick={() => { handleDownload(contextMenu.file); setContextMenu(null); }}>
+            Download
           </button>
         )}
 

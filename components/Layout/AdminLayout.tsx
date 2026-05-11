@@ -10,8 +10,11 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+const ADMIN_SIDEBAR_HIDDEN_KEY = "cms5.admin.sidebarHidden";
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const sidebarToggleRef = useRef<HTMLButtonElement | null>(null);
 
@@ -25,13 +28,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return () => media.removeEventListener("change", update);
   }, []);
 
+  useEffect(() => {
+    try {
+      setSidebarHidden(window.localStorage.getItem(ADMIN_SIDEBAR_HIDDEN_KEY) === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const closeSidebar = useCallback(() => {
     setSidebarOpen(false);
     // If focus is currently inside the sidebar, move it to the toggle button
     // to avoid aria-hidden warnings from browsers.
     requestAnimationFrame(() => sidebarToggleRef.current?.focus());
   }, []);
-  const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
+  const toggleSidebar = useCallback(() => {
+    if (isMobile) {
+      setSidebarOpen((v) => !v);
+      return;
+    }
+
+    setSidebarHidden((value) => {
+      const next = !value;
+      try {
+        window.localStorage.setItem(ADMIN_SIDEBAR_HIDDEN_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [isMobile]);
 
   const [companyName, setCompanyName] = useState<string | null>(null);
   useEffect(() => {
@@ -61,7 +87,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div
       className={`cms-admin-layout d-flex vh-100 bg-light ${
         sidebarOpen ? "cms-admin-layout--sidebar-open" : ""
-      }`}
+      } ${sidebarHidden && !isMobile ? "cms-admin-layout--sidebar-hidden" : ""}`}
     >
       <Head>
         <title>{tabTitle}</title>
@@ -73,20 +99,39 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <div className="cms-sidebar-overlay" onClick={closeSidebar} />
 
-      <Sidebar
-        isOpen={sidebarOpen}
-        isMobile={isMobile}
-        onClose={closeSidebar}
-        width={300}
-      />
+      {(!sidebarHidden || isMobile) && (
+        <Sidebar
+          isOpen={sidebarOpen}
+          isMobile={isMobile}
+          onClose={closeSidebar}
+          width={300}
+        />
+      )}
 
       <div className="flex-grow-1 d-flex flex-column">
-        <Topbar onToggleSidebar={toggleSidebar} sidebarToggleRef={sidebarToggleRef} />
+        <Topbar
+          onToggleSidebar={isMobile ? toggleSidebar : undefined}
+          sidebarToggleRef={sidebarToggleRef}
+          sidebarHidden={sidebarHidden && !isMobile}
+          isMobile={isMobile}
+        />
         <br></br>
         <main className="p-0 overflow-auto flex-grow-1">
           {children}
         </main>
       </div>
+
+      {!isMobile && (
+        <button
+          type="button"
+          className={`cms-sidebar-edge-toggle${sidebarHidden ? " cms-sidebar-edge-toggle--hidden" : ""}`}
+          onClick={toggleSidebar}
+          aria-label={sidebarHidden ? "Show sidebar" : "Hide sidebar"}
+          title={sidebarHidden ? "Show sidebar" : "Hide sidebar"}
+        >
+          <i className={`fa-solid ${sidebarHidden ? "fa-right-long" : "fa-left-long"}`} />
+        </button>
+      )}
 
       <ToastHost />
     </div>

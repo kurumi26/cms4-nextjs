@@ -151,6 +151,34 @@
   display: none;
 }
 
+.cms-sidebar-edge-toggle {
+  position: fixed;
+  top: 14px;
+  left: calc(300px - 19px);
+  z-index: 1300;
+  width: 38px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+  transition: left 0.2s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.cms-sidebar-edge-toggle:hover,
+.cms-sidebar-edge-toggle:focus-visible {
+  background: #f8fafc;
+  color: #0d6efd;
+}
+
+.cms-sidebar-edge-toggle--hidden {
+  left: 12px;
+}
+
 /* Mobile off-canvas */
 @media (max-width: 991px) {
   .cms-sidebar {
@@ -190,7 +218,7 @@
   }
 }
 
-/* Desktop: hide the toggle button */
+/* Mobile drawer toggle lives in the topbar; desktop uses the edge toggle. */
 @media (min-width: 992px) {
   .cms-topbar__sidebar-toggle {
     display: none !important;

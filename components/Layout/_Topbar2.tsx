@@ -11,9 +11,11 @@ import { logout } from "@/services/authService";
 type TopbarProps = {
   onToggleSidebar?: () => void;
   sidebarToggleRef?: React.Ref<HTMLButtonElement>;
+  sidebarHidden?: boolean;
+  isMobile?: boolean;
 };
 
-export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProps) {
+export default function Topbar({ onToggleSidebar, sidebarToggleRef, sidebarHidden = false, isMobile = false }: TopbarProps) {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
   const dropdownRef = React.useRef<any>(null);
@@ -93,7 +95,20 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
     <>
       <nav className="navbar navbar-light bg-white shadow-sm px-4" style={{ minHeight: '56px', padding: '0 1.5rem' }}>
         <div className="container-fluid w-100 flex-grow-1 d-flex justify-content-between align-items-center gap-2">
-        <div className="d-flex align-items-center" style={{ minWidth: 0 }}>
+        <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="btn btn-outline-secondary cms-topbar__sidebar-toggle"
+              onClick={onToggleSidebar}
+              aria-label={isMobile ? "Toggle sidebar" : sidebarHidden ? "Show sidebar" : "Hide sidebar"}
+              title={isMobile ? "Toggle sidebar" : sidebarHidden ? "Show sidebar" : "Hide sidebar"}
+              ref={sidebarToggleRef}
+            >
+              <i className={`fa-solid ${isMobile ? "fa-bars" : sidebarHidden ? "fa-bars" : "fa-left-long"}`} />
+            </button>
+          )}
+
           {logoUrl && !logoFailed ? (
             <img
               src={logoUrl}
@@ -150,20 +165,10 @@ export default function Topbar({ onToggleSidebar, sidebarToggleRef }: TopbarProp
             <li>
               <button className="dropdown-item" onClick={() => setShowLogoutConfirm(true)}>
                 Logout
-              </button>
-            </li>
-          </ul>
+            </button>
+          </li>
+        </ul>
         </div>
-
-        <button
-          type="button"
-          className="btn btn-outline-secondary cms-topbar__sidebar-toggle"
-          onClick={onToggleSidebar}
-          aria-label="Toggle sidebar"
-          ref={sidebarToggleRef}
-        >
-          <i className="fa-solid fa-bars" />
-        </button>
         </div>
         </div>
       </nav>
