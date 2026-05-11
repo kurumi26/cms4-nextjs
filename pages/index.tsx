@@ -1,29 +1,48 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import AuthLayout from "@/components/Layout/AuthLayout";
-import { login } from "@/services/authService";  // Import the login function
+import { login } from "@/services/authService";
 import { toast } from "@/lib/toast";
+
+const getLoginErrorMessage = (error: any) => {
+  const data = error?.response?.data;
+  const firstValidationError = data?.errors
+    ? Object.values(data.errors).flat().find(Boolean)
+    : null;
+
+  return (
+    firstValidationError ||
+    data?.message ||
+    error?.message ||
+    "Login failed, please try again."
+  );
+};
 
 function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email && password) {
-      try {
-        console.log("Payload:", { email, password });
+    if (!email || !password || isSubmitting) return;
 
-        await login(email, password);
-        toast.success("Login successfully.")
-        router.push("/dashboard");
-      } catch (error: any) {
-        toast.error(error.message || "Login failed, please try again")
-        setErrorMessage(error.message || "Login failed, please try again");
-      }
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      await login(email, password);
+      toast.success("Login successfully.");
+      router.push("/dashboard");
+    } catch (error: any) {
+      const message = String(getLoginErrorMessage(error));
+      toast.error(message);
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -52,6 +71,8 @@ function LoginPage() {
             className="form-control"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(errorMessage)}
             required
           />
         </div>
@@ -66,17 +87,28 @@ function LoginPage() {
             className="form-control"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={isSubmitting}
             required
           />
         </div>
 
         {/* Buttons */}
         <div className="d-flex gap-2">
-          <button type="submit" className="btn btn-primary w-50">
-            Log In
+          <button type="submit" className="btn btn-primary w-50" disabled={isSubmitting}>
+            {isSubmitting && (
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                aria-hidden="true"
+              />
+            )}
+            {isSubmitting ? "Signing in..." : "Log In"}
           </button>
 
-          <a href="/forgot-password" className="btn btn-info text-white w-50">
+          <a
+            href="/forgot-password"
+            className={`btn btn-info text-white w-50 ${isSubmitting ? "disabled" : ""}`}
+            aria-disabled={isSubmitting}
+          >
             Forgot Password
           </a>
         </div>
