@@ -15,7 +15,7 @@
 }
 
 .cms-banner-card .card-img-top {
-  cursor: grab;
+  cursor: default;
 }
 
 .cms-banner-drag-handle {

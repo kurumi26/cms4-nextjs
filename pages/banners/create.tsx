@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import AdminLayout from "@/components/Layout/AdminLayout";
 import { BannerForm } from "@/schemas/banner";
@@ -22,6 +22,8 @@ function CreateAlbum() {
   const [bannerType, setBannerType] = useState<BannerType>("image");
 
   const [banners, setBanners] = useState<BannerForm[]>([]);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
 
   const [entranceOptions, setEntranceOptions] = useState<OptionItem[]>([]);
   const [exitOptions, setExitOptions] = useState<OptionItem[]>([]);
@@ -69,6 +71,45 @@ function CreateAlbum() {
       }
       return prev.filter((_, i) => i !== index);
     });
+  };
+
+  const handleDragStart = (index: number, e: React.DragEvent) => {
+    dragIndexRef.current = index;
+    setDraggingIndex(index);
+    try {
+      e.dataTransfer?.setData("text/plain", String(index));
+    } catch {}
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (index: number, e: React.DragEvent) => {
+    e.preventDefault();
+    const from = dragIndexRef.current;
+    if (from === null || from === index) {
+      setDraggingIndex(null);
+      dragIndexRef.current = null;
+      return;
+    }
+
+    setBanners((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(index, 0, moved);
+      return next;
+    });
+
+    setDraggingIndex(null);
+    dragIndexRef.current = null;
+  };
+
+  const handleDragEnd = () => {
+    setDraggingIndex(null);
+    dragIndexRef.current = null;
   };
 
   const updateBanner = (
@@ -259,7 +300,22 @@ function CreateAlbum() {
         <div className="row mb-4">
           {banners.map((banner, index) => (
             <div key={index} className="col-md-4 mb-4">
-              <div className="card h-100">
+              <div
+                className={`card h-100 cms-banner-card ${draggingIndex === index ? "cms-banner-card--dragging" : ""}`}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(index, e)}
+              >
+                <div
+                  className="cms-banner-drag-handle"
+                  title="Drag to reorder"
+                  aria-label="Drag to reorder"
+                  draggable
+                  onDragStart={(e) => handleDragStart(index, e)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <i className="fa-solid fa-grip-lines" />
+                </div>
+
                 {isVideoBanner(banner) ? (
                   <video
                     src={banner.preview}
@@ -268,12 +324,16 @@ function CreateAlbum() {
                     loop
                     playsInline
                     controls
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                     style={{ height: 200, objectFit: "cover" }}
                   />
                 ) : (
                   <img
                     src={banner.preview}
                     className="card-img-top"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                     style={{ height: 200, objectFit: "cover" }}
                   />
                 )}

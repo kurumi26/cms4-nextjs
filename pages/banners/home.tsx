@@ -406,24 +406,6 @@ function HomeBanner() {
   };
 
   const handleDragStart = (index: number, e: React.DragEvent) => {
-    const target = e.target as HTMLElement | null;
-    const startedFromAllowedArea = !!target?.closest(
-      ".cms-banner-drag-handle, .card-img-top"
-    );
-    if (!startedFromAllowedArea) {
-      e.preventDefault();
-      return;
-    }
-
-    if (
-      target?.closest(
-        "input, textarea, select, option, button, a, [contenteditable='true'], [data-no-drag='true']"
-      )
-    ) {
-      e.preventDefault();
-      return;
-    }
-
     dragIndexRef.current = index;
     setDraggingIndex(index);
     try {
@@ -1191,9 +1173,6 @@ function HomeBanner() {
               className={`card h-100 cms-banner-card ${
                 draggingIndex === index ? "cms-banner-card--dragging" : ""
               }`}
-              draggable
-              onDragStart={(e) => handleDragStart(index, e)}
-              onDragEnd={handleDragEnd}
               onDragOver={(e) => handleDragOver(index, e)}
               onDrop={(e) => handleDrop(index, e)}
             >
@@ -1201,6 +1180,9 @@ function HomeBanner() {
                 className="cms-banner-drag-handle"
                 title="Drag to reorder"
                 aria-label="Drag to reorder"
+                draggable
+                onDragStart={(e) => handleDragStart(index, e)}
+                onDragEnd={handleDragEnd}
               >
                 <i className="fa-solid fa-grip-lines" />
               </div>
@@ -1213,6 +1195,8 @@ function HomeBanner() {
                   loop
                   playsInline
                   controls
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ height: "200px", objectFit: "cover" }}
                 />
               ) : (
@@ -1220,7 +1204,8 @@ function HomeBanner() {
                   src={banner.preview}
                   className="card-img-top"
                   alt="Banner"
-                  draggable
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
                   style={{ height: "200px", objectFit: "cover" }}
                 />
               )}
