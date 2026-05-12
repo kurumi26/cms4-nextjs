@@ -35,7 +35,7 @@ export const storeCustomer = (customer: PublicCustomer | null) => {
 };
 
 export const customerLogin = async (email: string, password: string) => {
-  const res = await axiosInstance.post("/login", { email, password });
+  const res = await axiosInstance.post("/customer-login", { email, password });
   if (res.data?.token) storeAuthToken(res.data.token);
   if (res.data?.user) storeCustomer(res.data.user);
   return res.data;
